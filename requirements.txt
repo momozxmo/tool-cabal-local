@@ -1,0 +1,4 @@
+playwright>=1.40
+openpyxl==3.1.*        # pin: monkeypatch พึ่ง private API (WorkSheetParser) — เวอร์ชันใหม่อาจพัง
+# tkinter มากับ Python อยู่แล้ว (ไม่ต้องลงเพิ่ม) — ใช้ธีม ttk 'clam' ไม่ต้องพึ่ง ttkbootstrap แล้ว
+# ถ้าจะ build .exe ติดตั้งเพิ่ม:  pyinstaller
