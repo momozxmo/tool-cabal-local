@@ -3,5 +3,10 @@ openpyxl==3.1.*        # pin: monkeypatch พึ่ง private API (WorkSheetPar
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 python-multipart>=0.0.9,<1
+SQLAlchemy>=2.0,<3
+alembic>=1.13,<2
+argon2-cffi>=23,<26
+cryptography>=42,<46
+psycopg[binary]>=3.1,<4
 # tkinter มากับ Python อยู่แล้ว (ไม่ต้องลงเพิ่ม) — ใช้ธีม ttk 'clam' ไม่ต้องพึ่ง ttkbootstrap แล้ว
 # ถ้าจะ build .exe ติดตั้งเพิ่ม:  pyinstaller

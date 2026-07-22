@@ -20,3 +20,9 @@ __pycache__/
 
 # Stray artifact folder (tool path-escaping bug, not project content)
 UserskoomoDocumentsCrazyall for cabal/
+.cabal_chrome_profile/
+.env
+*.db
+*.sqlite
+*.sqlite3
+extension/config.local.js
