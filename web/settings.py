@@ -42,6 +42,12 @@ class Settings:
                 RuntimeWarning,
                 stacklevel=2,
             )
+        try:
+            browser_concurrency = max(
+                1, int(os.getenv('BROWSER_CONCURRENCY', '1'))
+            )
+        except ValueError as exc:
+            raise ValueError('BROWSER_CONCURRENCY must be an integer') from exc
         return cls(
             app_env=app_env,
             database_url=os.getenv('DATABASE_URL', 'sqlite:///./all_for_cabal_web.db'),
@@ -50,8 +56,10 @@ class Settings:
                 os.urandom(32)).decode('ascii'),
             bootstrap_admin_username=admin_user,
             bootstrap_admin_password=admin_password,
-            session_cookie_secure=os.getenv(
-                'SESSION_COOKIE_SECURE', 'true' if production else 'false'
-            ).lower() == 'true',
-            browser_concurrency=max(1, int(os.getenv('BROWSER_CONCURRENCY', '1'))),
+            session_cookie_secure=(
+                True if production else os.getenv(
+                    'SESSION_COOKIE_SECURE', 'false'
+                ).lower() == 'true'
+            ),
+            browser_concurrency=browser_concurrency,
         )
