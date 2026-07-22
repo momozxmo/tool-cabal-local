@@ -362,7 +362,6 @@ class _BundleEditor:
         self._win = parent.winfo_toplevel()   # ไว้เป็น parent ของ messagebox
         self.rewards = []                      # [{'type','value','qty'}]
         self._items = []                       # rows mode: รายไอเทมตามลำดับ [{'id','name','qty','tier','rate'?}]
-        self._orig_order = []                  # rows mode: ลำดับ id ตอน import (ไว้ปุ่มเรียงกลับ)
         self._build(parent)
 
     def _build(self, parent):
@@ -519,22 +518,30 @@ class _BundleEditor:
         """โหมด rows: รายไอเทมเรียงลำดับ (บน→ล่าง) + ปุ่มตัดออกรายตัว + ▲▼ ย้ายลำดับ — ใช้ในหน้ารีวิว
         ลำดับใน self._items = ลำดับที่จะขึ้นบนเว็บ (สำคัญ)"""
         tk.Label(parent, text='ไอเทมในบันเดิล  •  เรียงตามลำดับ import อัตโนมัติ (บน→ล่าง = ลำดับบนเว็บ)  •  '
-                             'เลือกแถวแล้ว ✕ ตัดออก / ▲▼ ย้ายเอง / ↺ เรียงกลับตาม import',
+                             'เลือกแถวแล้ว ✕ ตัดออก / ▲▼ ย้ายเอง',
                  bg=C['bg_dark'], fg=C['muted'], font=('Segoe UI', 9),
                  anchor='w', justify='left').pack(fill='x', padx=10)
         box = tk.Frame(parent, bg=C['bg_dark'])
         box.pack(fill='both', expand=True, padx=10, pady=(2, 4))
-        tv = ttk.Treeview(box, columns=('no', 'id', 'name', 'qty', 'tier'), show='headings',
+        tv = ttk.Treeview(box, columns=('no', 'id', 'name', 'qty', 'tier', 'rate'), show='headings',
                           selectmode='browse', height=8)
-        for c, txt, w, anc, st in (('no', '#', 38, 'center', False), ('id', 'Item ID', 90, 'w', False),
-                                   ('name', 'ชื่อไอเท็ม', 240, 'w', True), ('qty', 'จำนวน', 60, 'center', False),
-                                   ('tier', 'Tier', 90, 'w', False)):
+        # ความกว้างคุมให้รวมพอดี (~492px) เพื่อให้คอลัมน์ 'เรทสุ่ม' โผล่ครบไม่โดนตัดขอบ
+        # แม้แพเนลจะแคบ + มีสกอลล์แนวนอนกันเหนียวถ้าย่อจนแคบมาก (minwidth กันคอลัมน์ถูกบีบหาย)
+        for c, txt, w, anc, st in (('no', '#', 36, 'center', False), ('id', 'Item ID', 80, 'w', False),
+                                   ('name', 'ชื่อไอเท็ม', 170, 'w', True), ('qty', 'จำนวน', 54, 'center', False),
+                                   ('tier', 'Tier', 80, 'w', False), ('rate', 'เรทสุ่ม', 72, 'center', False)):
             tv.heading(c, text=txt)
-            tv.column(c, width=w, anchor=anc, stretch=st)
-        vsb = ttk.Scrollbar(box, command=tv.yview)
-        tv.configure(yscrollcommand=vsb.set)
-        vsb.pack(side='right', fill='y')
-        tv.pack(side='left', fill='both', expand=True)
+            tv.column(c, width=w, minwidth=w, anchor=anc, stretch=st)
+        # คอลัมน์ 'rate' โผล่เฉพาะ Type=RANDOM (คุมด้วย displaycolumns ใน _sync_rate_row)
+        tv.configure(displaycolumns=('no', 'id', 'name', 'qty', 'tier'))
+        vsb = ttk.Scrollbar(box, orient='vertical', command=tv.yview)
+        hsb = ttk.Scrollbar(box, orient='horizontal', command=tv.xview)
+        tv.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        tv.grid(row=0, column=0, sticky='nsew')
+        vsb.grid(row=0, column=1, sticky='ns')
+        hsb.grid(row=1, column=0, sticky='ew')
+        box.rowconfigure(0, weight=1)
+        box.columnconfigure(0, weight=1)
         self.item_tree = tv
 
         ctl = tk.Frame(parent, bg=C['bg_dark'])
@@ -545,9 +552,6 @@ class _BundleEditor:
                   font=FB, relief='flat', padx=10, cursor='hand2').pack(side='left', padx=(6, 0))
         tk.Button(ctl, text='▼', command=lambda: self._row_move(1), bg=C['bg_card'], fg=C['text'],
                   font=FB, relief='flat', padx=10, cursor='hand2').pack(side='left', padx=(2, 0))
-        tk.Button(ctl, text='↺ เรียงตาม import', command=self._row_reset_order, bg=C['bg_card'],
-                  fg=C['teal'], font=('Segoe UI', 9), relief='flat', padx=8,
-                  cursor='hand2').pack(side='left', padx=(8, 0))
         tk.Label(ctl, text='   แก้ที่เลือก → จำนวน', bg=C['bg_dark'], fg=C['muted'],
                  font=('Segoe UI', 9)).pack(side='left')
         self._row_qty = tk.StringVar()
@@ -574,8 +578,12 @@ class _BundleEditor:
         self._paste_tier = tk.Text(prow, width=12, height=3, bg=C['bg_inp'], fg=C['text'],
                                    insertbackground=C['text'], font=('Consolas', 10), relief='flat', wrap='none')
         self._paste_tier.grid(row=1, column=1, sticky='w', padx=(8, 0))
+        # คอลัมน์วาง 'เรทสุ่ม' (โผล่เฉพาะ Type=RANDOM) — ฉลาก+ช่องเก็บไว้ toggle พร้อมกัน
+        self._paste_rate_lbl = tk.Label(prow, text='เรทสุ่ม', bg=C['bg_med'], fg=C['warn'], font=('Segoe UI', 9))
+        self._paste_rate = tk.Text(prow, width=10, height=3, bg=C['bg_inp'], fg=C['warn'],
+                                   insertbackground=C['text'], font=('Consolas', 10), relief='flat', wrap='none')
         pbtn = tk.Frame(prow, bg=C['bg_med'])
-        pbtn.grid(row=1, column=2, sticky='n', padx=8)
+        pbtn.grid(row=1, column=3, sticky='n', padx=8)
         tk.Button(pbtn, text='📋 ใช้กับไอเทม (ตามลำดับ)', command=self._row_paste_apply,
                   bg=C['accent2'], fg='#fff', font=FM, relief='flat', padx=10, cursor='hand2').pack(anchor='w')
         tk.Button(pbtn, text='↧ เติมจากค่าปัจจุบัน (แก้แล้ววางกลับ)', command=self._row_paste_fill,
@@ -594,8 +602,14 @@ class _BundleEditor:
 
         def _sync_rate_row(*_):
             if self.v_type.get().upper() == 'RANDOM':
+                self.item_tree.configure(displaycolumns=('no', 'id', 'name', 'qty', 'tier', 'rate'))
+                self._paste_rate_lbl.grid(row=0, column=2, sticky='w', padx=(8, 0))
+                self._paste_rate.grid(row=1, column=2, sticky='w', padx=(8, 0))
                 self._rate_ctl.pack(fill='x', pady=(0, 4))
             else:
+                self.item_tree.configure(displaycolumns=('no', 'id', 'name', 'qty', 'tier'))
+                self._paste_rate_lbl.grid_forget()
+                self._paste_rate.grid_forget()
                 self._rate_ctl.pack_forget()
         self.v_type.trace_add('write', _sync_rate_row)
         _sync_rate_row()
@@ -652,7 +666,8 @@ class _BundleEditor:
         for i, it in enumerate(self._items):
             tv.insert('', 'end', iid=str(i),
                       values=(i + 1, it.get('id', ''), self._row_name(it),
-                              it.get('qty', '') or '1', it.get('tier', '') or DEFAULT_TIER))
+                              it.get('qty', '') or '1', it.get('tier', '') or DEFAULT_TIER,
+                              it.get('rate', '') or ''))
         if self._items:
             j = min(keep if keep is not None else 0, len(self._items) - 1)
             tv.selection_set(str(j))
@@ -687,20 +702,13 @@ class _BundleEditor:
         self._items[idx], self._items[j] = self._items[j], self._items[idx]
         self._render_rows(keep=j)
 
-    def _row_reset_order(self):
-        """ดีดลำดับกลับไปตามที่ import มา (คง qty/tier ที่แก้ไว้) — เผื่อเลื่อน ▲▼ แล้วอยากคืน"""
-        if not self._orig_order:
-            return
-        self._row_commit_edit()
-        pos = {iid: i for i, iid in enumerate(self._orig_order)}
-        self._items.sort(key=lambda it: pos.get(it.get('id'), len(pos)))
-        self._render_rows(keep=0)
-
     def _row_paste_apply(self):
         """เอาค่าที่วางในกล่อง จำนวน/Tier ไปใส่ไอเทมตามลำดับบรรทัด (บน→ล่าง) — เว้นบรรทัด = ไม่แตะตัวนั้น"""
         self._row_commit_edit()
         qlines = self._paste_qty.get('1.0', 'end').splitlines()
         tlines = self._paste_tier.get('1.0', 'end').splitlines()
+        rlines = self._paste_rate.get('1.0', 'end').splitlines()
+        is_rand = self.v_type.get().upper() == 'RANDOM'
         tier_map = {t.lower(): t for t in TIERS}
         for i, it in enumerate(self._items):
             if i < len(qlines):
@@ -709,15 +717,22 @@ class _BundleEditor:
                     it['qty'] = m.group()
             if i < len(tlines) and tlines[i].strip():
                 it['tier'] = tier_map.get(tlines[i].strip().lower(), it.get('tier') or DEFAULT_TIER)
+            if is_rand and i < len(rlines):        # เรทสุ่ม = ทศนิยม/จำนวนเต็ม (0.000-100.000)
+                m = re.search(r'\d+(\.\d+)?', rlines[i])
+                if m:
+                    it['rate'] = m.group()
         self._render_rows()
 
     def _row_paste_fill(self):
         """เติมกล่องวางด้วยค่าปัจจุบันของไอเทม (จะได้แก้ทีละคอลัมน์แล้ววางกลับ)"""
         self._paste_qty.delete('1.0', 'end')
         self._paste_tier.delete('1.0', 'end')
+        self._paste_rate.delete('1.0', 'end')
         if self._items:
             self._paste_qty.insert('1.0', '\n'.join(str(it.get('qty', '') or '1') for it in self._items))
             self._paste_tier.insert('1.0', '\n'.join(str(it.get('tier', '') or DEFAULT_TIER) for it in self._items))
+            if self.v_type.get().upper() == 'RANDOM':
+                self._paste_rate.insert('1.0', '\n'.join(str(it.get('rate', '') or '') for it in self._items))
 
     # ---- โหลด/ดึงข้อมูล ----
     @staticmethod
@@ -741,7 +756,6 @@ class _BundleEditor:
                 if str(it.get('rate', '') or '').strip():
                     row['rate'] = str(it.get('rate'))
                 self._items.append(row)
-            self._orig_order = [it['id'] for it in self._items]   # ลำดับ import เดิม (ปุ่มเรียงกลับ)
             self._render_rows(keep=0)
         else:
             ids, names, qtys, tiers, rates = [], [], [], [], []
