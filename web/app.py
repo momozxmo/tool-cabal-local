@@ -106,8 +106,14 @@ def _set_session_cookie(response: Response, raw_token: str, settings: Settings) 
     )
 
 
-def _clear_session_cookie(response: Response) -> None:
-    response.delete_cookie('afc_session', path='/', httponly=True, samesite='lax')
+def _clear_session_cookie(response: Response, settings: Settings) -> None:
+    response.delete_cookie(
+        'afc_session',
+        path='/',
+        secure=settings.session_cookie_secure,
+        httponly=True,
+        samesite='lax',
+    )
 
 
 def get_db(request: Request):
@@ -217,7 +223,7 @@ def logout(
 ):
     request.app.state.auth_service.revoke_session(db, afc_session)
     response = Response(status_code=204)
-    _clear_session_cookie(response)
+    _clear_session_cookie(response, request.app.state.settings)
     return response
 
 
@@ -242,7 +248,7 @@ def change_password(
     user.password_changed_at = utc_now()
     request.app.state.auth_service.revoke_all_sessions(db, user.id)
     response = Response(status_code=204)
-    _clear_session_cookie(response)
+    _clear_session_cookie(response, request.app.state.settings)
     return response
 
 

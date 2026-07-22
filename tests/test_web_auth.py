@@ -249,6 +249,35 @@ def test_logout_revokes_session_and_clears_cookie(test_settings, test_database):
     assert client.get('/api/auth/me').status_code == 401
 
 
+def test_production_cookie_deletion_is_secure_for_logout_and_password_change(
+    test_settings, test_database
+):
+    settings = replace(test_settings, app_env='production', session_cookie_secure=True)
+    application = web_app.create_app(settings, test_database)
+    _create_user(application, test_database)
+    client = TestClient(
+        application,
+        base_url='https://testserver',
+        follow_redirects=False,
+    )
+
+    assert _login(client).status_code == 200
+    logged_out = client.post('/api/auth/logout')
+    assert _login(client).status_code == 200
+    password_changed = client.post('/api/auth/change-password', json={
+        'current_password': 'correct horse',
+        'new_password': 'a better password',
+    })
+
+    for response in (logged_out, password_changed):
+        assert response.status_code == 204
+        cookie = response.headers['set-cookie'].lower()
+        assert 'secure' in cookie
+        assert 'httponly' in cookie
+        assert 'samesite=lax' in cookie
+        assert 'path=/' in cookie
+
+
 def test_change_password_rejects_wrong_password_and_revokes_all_sessions(
     test_settings, test_database
 ):
