@@ -42,7 +42,13 @@
 <main class="shell">
   <header class="topbar">
     <div class="brand"><h1>All for Cabal · Item Finder</h1><p>ค้นหาไอเทมจาก Template / Event / Prize / Shop Plan</p></div>
-    <span id="serverBadge" class="badge">พร้อมใช้งาน</span>
+    <div class="userbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      <span id="serverBadge" class="badge">พร้อมใช้งาน</span>
+      <span id="aztekStatus" class="badge" style="background:#3a2f14;color:var(--yellow)">Aztek: กำลังตรวจสอบ…</span>
+      <span id="currentUser" class="hint"></span>
+      <a id="btnAccount" class="button" href="/account">บัญชี / เชื่อม Aztek</a>
+      <button id="btnLogout" type="button" class="danger">ออกจากระบบ</button>
+    </div>
   </header>
 
   <div class="grid">
@@ -129,7 +135,15 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const state = { mode:'event', modes:{}, workspaceId:'', criteria:[], results:[], selected:new Set(), pendingId:'', socket:null };
+const state = { mode:'event', modes:{}, workspaceId:'', criteria:[], results:[], selected:new Set(), pendingId:'', socket:null, user:null, aztekConnected:false };
+
+// Same-origin API calls funnel through here so an expired web session always
+// bounces to /login instead of silently failing.
+async function apiFetch(url, options){
+  const response = await fetch(url, options);
+  if(response.status===401){ window.location.replace('/login'); throw new Error('unauthorized'); }
+  return response;
+}
 
 function escapeText(value){ return String(value ?? ''); }
 function log(message, level='INFO'){
@@ -142,15 +156,33 @@ function deepSummary(row){
   [['qty_val','จำนวน'],['crit_val','คริต']].forEach(([key,label])=>{ if(row[key])out.push(`${label}=${row[key]}`); });
   return out.join(' ') || '-';
 }
-function setBusy(busy){ $('btnSearch').disabled=busy||!state.workspaceId||!state.criteria.length; $('btnStop').disabled=!busy;
+function setBusy(busy){ $('btnSearch').disabled=busy||!state.workspaceId||!state.criteria.length||!state.aztekConnected; $('btnStop').disabled=!busy;
   $('btnImportTemplate').disabled=busy; $('btnImportPlan').disabled=busy; $('btnClearWorkspace').disabled=busy; }
+async function loadIdentity(){
+  const user=await apiFetch('/api/auth/me').then(r=>r.json());
+  state.user=user; $('currentUser').textContent=`${user.username} (${user.role})`;
+}
+function paintAztek(status){
+  const badge=$('aztekStatus'); state.aztekConnected = status==='active';
+  if(status==='active'){ badge.textContent='Aztek: เชื่อมแล้ว'; badge.style.background='#163b31'; badge.style.color='#69e0b5'; }
+  else if(status==='expired'){ badge.textContent='Aztek: หมดอายุ — เชื่อมใหม่'; badge.style.background='#4a1f24'; badge.style.color='var(--red)'; }
+  else { badge.textContent='Aztek: ยังไม่ได้เชื่อม'; badge.style.background='#3a2f14'; badge.style.color='var(--yellow)'; }
+  setBusy(!!state.socket);
+}
+async function loadAztekStatus(){
+  try{ const s=await apiFetch('/api/aztek/status').then(r=>r.json()); paintAztek(s.status); }
+  catch(error){ paintAztek('disconnected'); }
+}
+$('btnLogout').onclick=async()=>{ $('btnLogout').disabled=true; try{ await fetch('/api/auth/logout',{method:'POST'}); } finally{ window.location.replace('/login'); } };
 function resultActions(){ const has=state.results.length>0; ['btnBundles','btnExportXlsx','btnExportCsv','btnCopyAll'].forEach(id=>$(id).disabled=!has);
   $('btnCopySelected').disabled=!state.selected.size; $('selectedCount').textContent=`เลือก ${state.selected.size}`; }
 
 async function init(){
-  const [games,modes]=await Promise.all([fetch('/api/games').then(r=>r.json()),fetch('/api/modes').then(r=>r.json())]);
+  await loadIdentity();
+  const [games,modes]=await Promise.all([apiFetch('/api/games').then(r=>r.json()),apiFetch('/api/modes').then(r=>r.json())]);
   games.games.forEach(game=>{const option=document.createElement('option'); option.value=option.textContent=game; $('game').appendChild(option);});
   state.modes=modes; applyMode('event',false);
+  await loadAztekStatus();
 }
 async function applyMode(mode, clear=true){
   if(clear && state.workspaceId && !confirm('เปลี่ยนโหมดแล้วรายการที่ Import ไว้จะถูกล้าง ดำเนินการต่อไหม?')){
@@ -174,7 +206,7 @@ function useWorkspace(data){ state.workspaceId=data.workspace_id; state.mode=dat
   if(data.skipped?.length){const warning=document.createElement('span');warning.className='warning';warning.textContent=` · ข้าม ${data.skipped.length}`;summary.appendChild(warning);}
   setBusy(false); if(data.results?.length){state.results=data.results;renderResults();} }
 async function upload(kind,file){ if(!file)return; const form=new FormData(); form.append('file',file);form.append('mode',state.mode);if(state.workspaceId)form.append('workspace_id',state.workspaceId);
-  setBusy(true); try{const response=await fetch(kind==='template'?'/api/import-template':'/api/import-plan',{method:'POST',body:form});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Import ไม่สำเร็จ');
+  setBusy(true); try{const response=await apiFetch(kind==='template'?'/api/import-template':'/api/import-plan',{method:'POST',body:form});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Import ไม่สำเร็จ');
     if(data.needs_sheet_selection){state.pendingId=data.pending_id;openSheetPicker(data.sheets);}else useWorkspace(data);
   }catch(error){log(error.message,'ERROR');alert(error.message);}finally{setBusy(false);$('templateFile').value='';$('planFile').value='';}}
 $('btnImportTemplate').onclick=()=>$('templateFile').click(); $('templateFile').onchange=event=>upload('template',event.target.files[0]);
@@ -183,10 +215,10 @@ $('btnImportPlan').onclick=()=>$('planFile').click(); $('planFile').onchange=eve
 function openSheetPicker(sheets){const list=$('sheetList');list.replaceChildren();sheets.forEach(sheet=>{const label=document.createElement('label');label.className='sheet-row';const input=document.createElement('input');input.type='checkbox';input.value=sheet.name;input.checked=true;label.append(input,document.createTextNode(` ${sheet.name} (${sheet.count})`));list.appendChild(label);});$('sheetDialog').showModal();}
 $('btnSheetsAll').onclick=()=>document.querySelectorAll('#sheetList input').forEach(x=>x.checked=true); $('btnSheetsNone').onclick=()=>document.querySelectorAll('#sheetList input').forEach(x=>x.checked=false);
 $('btnApplySheets').onclick=async()=>{const selected=[...document.querySelectorAll('#sheetList input:checked')].map(x=>x.value);if(!selected.length){alert('เลือกอย่างน้อย 1 sheet');return;}
-  const response=await fetch('/api/import-plan/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pending_id:state.pendingId,selected_sheets:selected})});const data=await response.json();if(!response.ok){alert(data.detail);return;} $('sheetDialog').close();useWorkspace(data);};
+  const response=await apiFetch('/api/import-plan/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pending_id:state.pendingId,selected_sheets:selected})});const data=await response.json();if(!response.ok){alert(data.detail);return;} $('sheetDialog').close();useWorkspace(data);};
 document.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>$(button.dataset.close).close());
 
-async function clearWorkspace(){ if(state.socket)state.socket.close();if(state.workspaceId)await fetch('/api/workspaces/'+state.workspaceId,{method:'DELETE'});
+async function clearWorkspace(){ if(state.socket)state.socket.close();if(state.workspaceId)await apiFetch('/api/workspaces/'+state.workspaceId,{method:'DELETE'});
   state.workspaceId='';state.criteria=[];state.results=[];state.selected.clear();renderCriteria();renderResults();renderNotFound([]);$('workspaceSummary').textContent='ล้างรายการแล้ว';setBusy(false);}
 $('btnClearWorkspace').onclick=clearWorkspace;
 
@@ -204,8 +236,10 @@ function startSearch(){if(!state.workspaceId)return;resetResults();renderNotFoun
   const protocol=location.protocol==='https:'?'wss:':'ws:';const socket=new WebSocket(`${protocol}//${location.host}/ws/search`);state.socket=socket;
   socket.onopen=()=>socket.send(JSON.stringify({workspace_id:state.workspaceId,game:$('game').value,web_mode:document.querySelector('input[name=webMode]:checked').value}));
   socket.onmessage=event=>{const message=JSON.parse(event.data);if(message.type==='log')log(message.msg,message.level);else if(message.type==='progress'){const percent=message.total?message.cur/message.total*100:0;$('progress').value=Math.min(100,percent);$('progressText').textContent=`${message.cur}/${message.total} ${message.name||''}`;}
-    else if(message.type==='reset_results')resetResults();else if(message.type==='result')addResult(message.item);else if(message.type==='done'){$('progress').value=100;$('progressText').textContent=`เสร็จ · พบ ${message.count}`;renderNotFound(message.not_found||[]);setBusy(false);}};
-  socket.onerror=()=>log('WebSocket ขัดข้อง','ERROR');socket.onclose=()=>{state.socket=null;setBusy(false);};}
+    else if(message.type==='reset_results')resetResults();else if(message.type==='result')addResult(message.item);
+    else if(message.type==='error'){ if(message.code==='aztek_session_required'||message.code==='aztek_session_expired'){ paintAztek(message.code==='aztek_session_expired'?'expired':'disconnected'); log((message.msg||'ต้องเชื่อมเซสชัน Aztek ก่อน')+' — เปิดหน้า “บัญชี / เชื่อม Aztek”','ERROR'); } else { log(message.msg||'เกิดข้อผิดพลาด','ERROR'); } }
+    else if(message.type==='done'){$('progress').value=100;$('progressText').textContent=`เสร็จ · พบ ${message.count}`;renderNotFound(message.not_found||[]);setBusy(false);}};
+  socket.onerror=()=>log('WebSocket ขัดข้อง','ERROR');socket.onclose=event=>{state.socket=null;setBusy(false); if(event&&event.code===4401){window.location.replace('/login');}};}
 $('btnSearch').onclick=startSearch;$('btnStop').onclick=()=>{if(state.socket){state.socket.close();log('ยกเลิกการค้นหา','WARNING');}};
 
 $('btnSelectAll').onclick=()=>{state.selected=new Set(state.results.map((_,i)=>i));document.querySelectorAll('#resultsTable tbody input').forEach(x=>x.checked=true);resultActions();};
@@ -214,7 +248,7 @@ async function copyIds(selectedOnly){const indexes=selectedOnly?[...state.select
 $('btnCopyAll').onclick=()=>copyIds(false);$('btnCopySelected').onclick=()=>copyIds(true);
 function download(format){if(!state.workspaceId)return;const anchor=document.createElement('a');anchor.href=`/api/workspaces/${state.workspaceId}/export.${format}`;anchor.click();}
 $('btnExportXlsx').onclick=()=>download('xlsx');$('btnExportCsv').onclick=()=>download('csv');
-$('btnBundles').onclick=async()=>{const response=await fetch(`/api/workspaces/${state.workspaceId}/bundles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selected_indexes:[...state.selected]})});const data=await response.json();if(!response.ok){alert(data.detail);return;}const list=$('bundleList');list.replaceChildren();data.bundles.forEach(bundle=>{const box=document.createElement('div');box.className='bundle';const title=document.createElement('h4');title.textContent=`${bundle.name} (${bundle.items.length})`;const items=document.createElement('div');items.className='hint';items.textContent=bundle.items.map((item,i)=>`${i+1}. ${item.id} ${item.name}`).join(' · ');box.append(title,items);list.appendChild(box);});$('bundleDialog').showModal();};
+$('btnBundles').onclick=async()=>{const response=await apiFetch(`/api/workspaces/${state.workspaceId}/bundles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selected_indexes:[...state.selected]})});const data=await response.json();if(!response.ok){alert(data.detail);return;}const list=$('bundleList');list.replaceChildren();data.bundles.forEach(bundle=>{const box=document.createElement('div');box.className='bundle';const title=document.createElement('h4');title.textContent=`${bundle.name} (${bundle.items.length})`;const items=document.createElement('div');items.className='hint';items.textContent=bundle.items.map((item,i)=>`${i+1}. ${item.id} ${item.name}`).join(' · ');box.append(title,items);list.appendChild(box);});$('bundleDialog').showModal();};
 $('btnClearLog').onclick=()=>$('log').replaceChildren();
 
 init().catch(error=>{log(error.message,'ERROR');$('serverBadge').textContent='เชื่อมต่อไม่ได้';$('serverBadge').className='badge error';});

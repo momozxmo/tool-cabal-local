@@ -25,7 +25,28 @@
         <div class="card-body"><form id="changePasswordForm"><div class="fields"><label for="current_password">รหัสผ่านปัจจุบัน<input id="current_password" name="current_password" type="password" autocomplete="current-password" required></label><label for="new_password">รหัสผ่านใหม่<input id="new_password" name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><button id="changePasswordButton" class="primary" type="submit">บันทึกรหัสผ่านใหม่</button></div><p id="accountMessage" class="message" role="alert" aria-live="polite"></p></form></div>
       </section>
     </div>
-    <section class="card notice" aria-label="สถานะการเชื่อม Aztek"><div class="card-body"><p>ระบบเชื่อม Aztek จะเปิดในขั้นถัดไป</p></div></section>
+    <section class="card" aria-labelledby="aztekTitle" style="margin-top:14px">
+      <h2 id="aztekTitle">เชื่อมเซสชัน Aztek</h2>
+      <div class="card-body">
+        <dl class="profile">
+          <div><dt>สถานะ</dt><dd id="aztekStatusText">กำลังโหลด…</dd></div>
+          <div><dt>บัญชีที่เชื่อม</dt><dd id="aztekAccountLabel">-</dd></div>
+          <div><dt>อัปเดตล่าสุด</dt><dd id="aztekUpdatedAt">-</dd></div>
+        </dl>
+        <p class="hint" style="margin-top:12px">กด “สร้างรหัสจับคู่” แล้วนำรหัสไปวางในส่วนขยาย Chrome (All for Cabal — Aztek Session Bridge) ภายใน 5 นาที รหัสใช้ได้ครั้งเดียว</p>
+        <div class="actions">
+          <button id="createPairingButton" class="primary" type="button">สร้างรหัสจับคู่</button>
+          <button id="disconnectAztekButton" class="danger" type="button">ตัดการเชื่อมต่อ</button>
+        </div>
+        <div id="pairingBox" class="card notice" hidden style="margin-top:14px">
+          <div class="card-body">
+            <label for="pairingToken">รหัสจับคู่ (ใช้ครั้งเดียว)<input id="pairingToken" type="text" readonly></label>
+            <div class="actions"><button id="copyPairingButton" type="button">คัดลอกรหัส</button><span id="pairingCountdown" class="hint"></span></div>
+          </div>
+        </div>
+        <p id="aztekMessage" class="message" role="status" aria-live="polite" style="color:var(--muted)"></p>
+      </div>
+    </section>
   </main>
   <script>
     const accountUsername = document.getElementById('accountUsername');
@@ -90,9 +111,119 @@
       }
     });
 
+    const aztekStatusText = document.getElementById('aztekStatusText');
+    const aztekAccountLabel = document.getElementById('aztekAccountLabel');
+    const aztekUpdatedAt = document.getElementById('aztekUpdatedAt');
+    const createPairingButton = document.getElementById('createPairingButton');
+    const disconnectAztekButton = document.getElementById('disconnectAztekButton');
+    const pairingBox = document.getElementById('pairingBox');
+    const pairingTokenInput = document.getElementById('pairingToken');
+    const copyPairingButton = document.getElementById('copyPairingButton');
+    const pairingCountdown = document.getElementById('pairingCountdown');
+    const aztekMessage = document.getElementById('aztekMessage');
+
+    let countdownTimer = null;
+    let statusPoll = null;
+
+    function statusLabel(status) {
+      if (status === 'active') return 'เชื่อมแล้ว';
+      if (status === 'expired') return 'หมดอายุ — เชื่อมใหม่';
+      return 'ยังไม่ได้เชื่อม';
+    }
+
+    function stopCountdown() {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      pairingCountdown.textContent = '';
+    }
+
+    function stopPolling() {
+      if (statusPoll) { clearInterval(statusPoll); statusPoll = null; }
+    }
+
+    async function loadAztekStatus() {
+      try {
+        const status = await fetch('/api/aztek/status').then((r) => r.json());
+        aztekStatusText.textContent = statusLabel(status.status);
+        aztekAccountLabel.textContent = status.account_label || '-';
+        aztekUpdatedAt.textContent = status.updated_at
+          ? new Date(status.updated_at).toLocaleString('th-TH') : '-';
+        if (status.status === 'active' && statusPoll) {
+          stopPolling(); stopCountdown(); pairingBox.hidden = true;
+          aztekMessage.textContent = 'เชื่อมต่อสำเร็จแล้ว';
+        }
+        return status;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function startCountdown(expiresAt) {
+      stopCountdown();
+      const deadline = new Date(expiresAt).getTime();
+      const tick = () => {
+        const remaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+        const minutes = String(Math.floor(remaining / 60)).padStart(2, '0');
+        const seconds = String(remaining % 60).padStart(2, '0');
+        pairingCountdown.textContent = 'หมดอายุใน ' + minutes + ':' + seconds;
+        if (remaining <= 0) {
+          stopCountdown(); stopPolling(); pairingBox.hidden = true;
+          aztekMessage.textContent = 'รหัสหมดอายุแล้ว — กดสร้างใหม่ได้';
+        }
+      };
+      tick();
+      countdownTimer = setInterval(tick, 1000);
+    }
+
+    createPairingButton.addEventListener('click', async () => {
+      createPairingButton.disabled = true;
+      aztekMessage.textContent = '';
+      try {
+        const response = await fetch('/api/aztek/pairing-token', {method: 'POST'});
+        if (!response.ok) {
+          aztekMessage.textContent = await errorMessage(response, 'สร้างรหัสไม่สำเร็จ');
+          return;
+        }
+        const data = await response.json();
+        pairingTokenInput.value = data.pairing_token;
+        pairingBox.hidden = false;
+        startCountdown(data.expires_at);
+        stopPolling();
+        statusPoll = setInterval(loadAztekStatus, 5000);
+        aztekMessage.textContent = 'นำรหัสนี้ไปวางในส่วนขยาย Chrome ภายใน 5 นาที';
+      } catch (error) {
+        aztekMessage.textContent = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้';
+      } finally {
+        createPairingButton.disabled = false;
+      }
+    });
+
+    copyPairingButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pairingTokenInput.value);
+        aztekMessage.textContent = 'คัดลอกรหัสแล้ว';
+      } catch (error) {
+        pairingTokenInput.select();
+        aztekMessage.textContent = 'คัดลอกไม่สำเร็จ — เลือกและคัดลอกเอง';
+      }
+    });
+
+    disconnectAztekButton.addEventListener('click', async () => {
+      disconnectAztekButton.disabled = true;
+      aztekMessage.textContent = '';
+      try {
+        await fetch('/api/aztek/session', {method: 'DELETE'});
+        stopCountdown(); stopPolling(); pairingBox.hidden = true;
+        await loadAztekStatus();
+        aztekMessage.textContent = 'ตัดการเชื่อมต่อแล้ว';
+      } finally {
+        disconnectAztekButton.disabled = false;
+      }
+    });
+
     loadAccount().catch(() => {
       accountMessage.textContent = 'ไม่สามารถโหลดข้อมูลบัญชีได้';
     });
+    loadAztekStatus();
   </script>
 </body>
 </html>

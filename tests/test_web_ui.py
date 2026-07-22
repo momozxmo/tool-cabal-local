@@ -39,6 +39,18 @@ def test_ui_has_all_result_columns_and_shop_description():
         assert label in HTML, label
 
 
+def test_item_finder_header_has_identity_connection_and_logout():
+    for element_id in ('currentUser', 'aztekStatus', 'btnAccount', 'btnLogout'):
+        assert ('id="%s"' % element_id) in HTML, element_id
+    for fragment in (
+        '/api/auth/me', '/api/aztek/status', '/api/auth/logout', 'apiFetch',
+        'aztek_session_required', 'aztek_session_expired', 'aztekConnected',
+    ):
+        assert fragment in HTML, fragment
+    # An expired web session must bounce to the login page, not fail silently.
+    assert "window.location.replace('/login')" in HTML
+
+
 def test_login_and_account_pages_use_the_approved_auth_api_contract_safely():
     static_dir = os.path.join(ROOT, 'web', 'static')
     login_path = os.path.join(static_dir, 'login.html')
@@ -57,7 +69,10 @@ def test_login_and_account_pages_use_the_approved_auth_api_contract_safely():
     for fragment in (
         '/api/auth/me', '/api/auth/change-password', '/api/auth/logout',
         'changePasswordForm', 'current_password', 'new_password',
-        'logoutButton', 'textContent', 'ระบบเชื่อม Aztek จะเปิดในขั้นถัดไป',
+        'logoutButton', 'textContent',
+        # Real Aztek connection UI (replaces the earlier placeholder).
+        '/api/aztek/pairing-token', 'pairingToken', '/api/aztek/status',
+        '/api/aztek/session', 'pairingCountdown',
     ):
         assert fragment in account_html, fragment
     for html in (login_html, account_html):
