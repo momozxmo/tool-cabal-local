@@ -776,15 +776,17 @@ git commit -m "feat(extension): import per-user Aztek sessions"
 - [ ] **Step 1: Write failing runner isolation tests**
 
 ```python
-@pytest.mark.asyncio
-async def test_web_runner_uses_non_persistent_context(monkeypatch, storage_state):
-    fake = FakePlaywright()
-    monkeypatch.setattr(search_runner, 'async_playwright', lambda: fake)
-    finder = make_finder()
-    await finder.run(valid_search_data(), storage_state)
-    assert fake.chromium.launch_calls == [{'headless': True}]
-    assert fake.browser.new_context_calls == [{'storage_state': storage_state}]
-    assert fake.chromium.persistent_calls == []
+def test_web_runner_uses_non_persistent_context(monkeypatch, storage_state):
+    async def exercise():
+        fake = FakePlaywright()
+        monkeypatch.setattr(search_runner, 'async_playwright', lambda: fake)
+        finder = make_finder()
+        await finder.run(valid_search_data(), storage_state)
+        assert fake.chromium.launch_calls == [{'headless': True}]
+        assert fake.browser.new_context_calls == [{'storage_state': storage_state}]
+        assert fake.chromium.persistent_calls == []
+
+    asyncio.run(exercise())
 
 def test_search_requires_connected_aztek_session(authenticated_client, workspace):
     with authenticated_client.websocket_connect('/ws/search') as ws:

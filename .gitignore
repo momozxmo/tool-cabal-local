@@ -16,6 +16,7 @@ __pycache__/
 .claude/
 .understand-anything/
 .worktrees/
+.superpowers/
 
 # Stray artifact folder (tool path-escaping bug, not project content)
 UserskoomoDocumentsCrazyall for cabal/
