@@ -6,10 +6,12 @@ import sys
 import tempfile
 from typing import Literal
 
-from fastapi import (FastAPI, File, Form, HTTPException, Response,
-                     UploadFile, WebSocket, WebSocketDisconnect)
+from fastapi import (APIRouter, Cookie, Depends, FastAPI, File, Form,
+                     HTTPException, Request, Response, UploadFile, WebSocket,
+                     WebSocketDisconnect)
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -18,9 +20,13 @@ if ROOT not in sys.path:
 import aztek_core as core  # noqa: E402
 import item_finder  # noqa: E402
 from web import item_service, search_runner  # noqa: E402
+from web.auth_service import AuthService  # noqa: E402
+from web.db import Database  # noqa: E402
+from web.models import User  # noqa: E402
+from web.settings import Settings  # noqa: E402
 
 
-app = FastAPI(title='All for Cabal — Web')
+router = APIRouter()
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 WORKSPACES = item_service.WorkspaceStore()
 Mode = Literal['event', 'itemcode', 'shop']
@@ -33,6 +39,28 @@ class ApplyPlanRequest(BaseModel):
 
 class BundleRequest(BaseModel):
     selected_indexes: list[int] = Field(default_factory=list)
+
+
+def get_db(request: Request):
+    with request.app.state.database.session() as db:
+        yield db
+
+
+def require_user(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+) -> User:
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is None:
+        raise HTTPException(status_code=401, detail='กรุณาเข้าสู่ระบบ')
+    return user
+
+
+def require_admin(user: User = Depends(require_user)) -> User:
+    if user.role != 'admin':
+        raise HTTPException(status_code=403, detail='ไม่มีสิทธิ์ใช้งานส่วนนี้')
+    return user
 
 
 def _workspace_view(workspace):
@@ -75,29 +103,29 @@ async def _temporary_upload(file):
     return handle.name
 
 
-@app.get('/', response_class=HTMLResponse)
+@router.get('/', response_class=HTMLResponse)
 def index():
     with open(os.path.join(STATIC_DIR, 'index.html'), encoding='utf-8') as stream:
         return stream.read()
 
 
-@app.get('/api/health')
+@router.get('/api/health')
 def health():
     return {'ok': True}
 
 
-@app.get('/api/games')
+@router.get('/api/games')
 def games():
     return {'games': list(item_finder.GAME_NAMES)}
 
 
-@app.get('/api/modes')
+@router.get('/api/modes')
 def modes():
     return {mode: item_service.mode_policy(mode)
             for mode in ('event', 'itemcode', 'shop')}
 
 
-@app.get('/api/template')
+@router.get('/api/template')
 def download_template():
     handle, path = tempfile.mkstemp(suffix='.xlsx')
     os.close(handle)
@@ -117,7 +145,7 @@ def download_template():
     )
 
 
-@app.post('/api/import-template')
+@router.post('/api/import-template')
 async def import_template(file: UploadFile = File(...), mode: Mode = Form('event'),
                           workspace_id: str = Form('')):
     item_service.mode_policy(mode)
@@ -143,7 +171,7 @@ async def import_template(file: UploadFile = File(...), mode: Mode = Form('event
     return _workspace_view(workspace)
 
 
-@app.post('/api/import-plan')
+@router.post('/api/import-plan')
 async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
                       workspace_id: str = Form('')):
     parser = item_service.parser_for_mode(mode)
@@ -174,7 +202,7 @@ async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
     }
 
 
-@app.post('/api/import-plan/apply')
+@router.post('/api/import-plan/apply')
 def apply_plan(payload: ApplyPlanRequest):
     pending_id = payload.pending_id.strip()
     selected = payload.selected_sheets
@@ -187,19 +215,19 @@ def apply_plan(payload: ApplyPlanRequest):
     return _workspace_view(workspace)
 
 
-@app.get('/api/workspaces/{workspace_id}')
+@router.get('/api/workspaces/{workspace_id}')
 def get_workspace(workspace_id: str):
     return _workspace_view(_get_workspace(workspace_id))
 
 
-@app.delete('/api/workspaces/{workspace_id}', status_code=204)
+@router.delete('/api/workspaces/{workspace_id}', status_code=204)
 def delete_workspace(workspace_id: str):
     _get_workspace(workspace_id)
     WORKSPACES.delete(workspace_id)
     return Response(status_code=204)
 
 
-@app.get('/api/workspaces/{workspace_id}/export.csv')
+@router.get('/api/workspaces/{workspace_id}/export.csv')
 def export_csv(workspace_id: str):
     workspace = _get_workspace(workspace_id)
     if not workspace.results:
@@ -211,7 +239,7 @@ def export_csv(workspace_id: str):
     )
 
 
-@app.get('/api/workspaces/{workspace_id}/export.xlsx')
+@router.get('/api/workspaces/{workspace_id}/export.xlsx')
 def export_xlsx(workspace_id: str):
     workspace = _get_workspace(workspace_id)
     if not workspace.results:
@@ -223,7 +251,7 @@ def export_xlsx(workspace_id: str):
     )
 
 
-@app.post('/api/workspaces/{workspace_id}/bundles')
+@router.post('/api/workspaces/{workspace_id}/bundles')
 def bundle_preview(workspace_id: str, payload: BundleRequest):
     workspace = _get_workspace(workspace_id)
     indexes = payload.selected_indexes
@@ -237,7 +265,7 @@ def bundle_preview(workspace_id: str, payload: BundleRequest):
     return {'bundles': item_service.build_bundles(rows, workspace.group_meta)}
 
 
-@app.websocket('/ws/search')
+@router.websocket('/ws/search')
 async def ws_search(ws: WebSocket):
     """Run the existing Item Finder engine headlessly and stream events."""
     await ws.accept()
@@ -318,3 +346,22 @@ async def ws_search(ws: WebSocket):
             await ws.close()
         except Exception:
             pass
+
+
+def create_app(
+    settings: Settings | None = None,
+    database: Database | None = None,
+) -> FastAPI:
+    resolved_settings = settings or Settings.from_env()
+    resolved_database = database or Database(resolved_settings)
+    auth_service = AuthService(resolved_settings)
+
+    application = FastAPI(title='All for Cabal — Web')
+    application.state.settings = resolved_settings
+    application.state.database = resolved_database
+    application.state.auth_service = auth_service
+    application.include_router(router)
+    return application
+
+
+app = create_app()
