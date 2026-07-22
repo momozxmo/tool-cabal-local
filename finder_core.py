@@ -28,3 +28,12 @@ class SearchConfig:
 
     def as_dict(self):
         return {k: getattr(self, k) for k in _CONFIG_KEYS}
+
+
+def build_launch_kwargs(*, headless, user_data_dir, chrome_exe=None):
+    """kwargs สำหรับ launch_persistent_context — ให้ตรงกับที่ _auto/_open_login เคย inline ไว้."""
+    kw = dict(user_data_dir=user_data_dir, headless=headless,
+              args=['--start-maximized'], no_viewport=True)
+    if chrome_exe:
+        kw['executable_path'] = chrome_exe
+    return kw

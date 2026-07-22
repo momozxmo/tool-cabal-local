@@ -29,8 +29,23 @@ def test_searchconfig_defaults():
     check('unknown keys ignored', fc.SearchConfig.from_dict(
         {'game': 'g', 'url': 'u', 'multi': [], 'bogus': 1}).game == 'g')
 
+def test_build_launch_kwargs_with_chrome():
+    kw = fc.build_launch_kwargs(headless=False, user_data_dir='C:/prof', chrome_exe='C:/chrome.exe')
+    check('user_data_dir set', kw['user_data_dir'] == 'C:/prof')
+    check('headless False', kw['headless'] is False)
+    check('args maximized', kw['args'] == ['--start-maximized'])
+    check('no_viewport True', kw['no_viewport'] is True)
+    check('executable_path set', kw['executable_path'] == 'C:/chrome.exe')
+
+def test_build_launch_kwargs_no_chrome():
+    kw = fc.build_launch_kwargs(headless=True, user_data_dir='C:/prof')
+    check('headless True', kw['headless'] is True)
+    check('no executable_path key when chrome_exe None', 'executable_path' not in kw)
+
 if __name__ == '__main__':
     test_searchconfig_from_dict_roundtrip()
     test_searchconfig_defaults()
+    test_build_launch_kwargs_with_chrome()
+    test_build_launch_kwargs_no_chrome()
     print('\n' + ('ALL PASS' if not FAIL else 'FAIL: ' + ', '.join(FAIL)))
     sys.exit(1 if FAIL else 0)
