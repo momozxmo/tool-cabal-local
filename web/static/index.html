@@ -1,245 +1,223 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>All for Cabal — Web</title>
-<style>
-  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --text:#e6edf3; --muted:#8b949e;
-          --accent:#1f6feb; --accent2:#238636; --warn:#d29922; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text);
-         font-family: 'Segoe UI', system-ui, sans-serif; }
-  header { background:var(--card); border-bottom:1px solid var(--line);
-           padding:14px 20px; display:flex; align-items:center; gap:10px; }
-  header h1 { font-size:16px; margin:0; font-weight:600; }
-  header .tag { color:#39d0d8; font-size:13px; }
-  main { max-width:1100px; margin:0 auto; padding:20px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
-          padding:16px 18px; margin-bottom:16px; }
-  .card h2 { font-size:14px; margin:0 0 12px; color:var(--muted); font-weight:600; }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-  input[type=file] { color:var(--text); font-size:13px; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:8px;
-           padding:8px 16px; font-size:13px; cursor:pointer; }
-  button:hover { filter:brightness(1.1); }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  button.ghost { background:var(--card); border:1px solid var(--line); color:var(--muted); }
-  #status { font-size:13px; color:var(--muted); margin-left:6px; }
-  .count { color:var(--accent2); font-weight:600; }
-  .err { color:#f85149; }
-  .tablewrap { overflow-x:auto; margin-top:12px; }
-  table { border-collapse:collapse; width:100%; font-size:13px; }
-  th, td { border-bottom:1px solid var(--line); padding:7px 10px; text-align:left;
-           white-space:nowrap; }
-  th { color:var(--muted); font-weight:600; background:#11161d; position:sticky; top:0; }
-  tbody tr:hover { background:#1b222b; }
-  .soon { color:var(--warn); font-size:13px; }
-  .hint { color:var(--muted); font-size:12px; margin-top:6px; }
-  select { background:#0d1117; color:var(--text); border:1px solid var(--line);
-           border-radius:6px; padding:5px 8px; font-size:13px; }
-  label { font-size:13px; color:var(--muted); }
-  #log { max-height:300px; overflow:auto; margin:0; font-size:12px; line-height:1.55;
-         white-space:pre-wrap; word-break:break-word; }
-  .lg-INFO { color:var(--muted); } .lg-STEP { color:#58a6ff; }
-  .lg-SUCCESS { color:var(--accent2); } .lg-WARNING { color:var(--warn); }
-  .lg-ERROR { color:#f85149; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>All for Cabal — Item Finder</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1017;--panel:#151c25;--panel2:#1c2531;--line:#2d3948;
+      --text:#e7edf5;--muted:#8f9cac;--blue:#3182f6;--green:#32c48d;--yellow:#f4c44e;
+      --red:#ef5b67;--shadow:0 16px 40px #0005}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Tahoma,sans-serif}
+    button,input,select{font:inherit} button,.button{border:1px solid transparent;border-radius:8px;padding:8px 13px;
+      background:var(--panel2);color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    button:hover,.button:hover{border-color:#536579} button:disabled{opacity:.45;cursor:not-allowed}
+    .primary{background:var(--blue);color:#fff}.success{background:#167d5c;color:#fff}.warn{background:var(--yellow);color:#17120a}
+    .danger{background:#8d2d37;color:#fff}.shell{max-width:1500px;margin:auto;padding:20px}.topbar{display:flex;align-items:end;
+      justify-content:space-between;gap:20px;margin-bottom:16px}.brand h1{margin:0;font-size:25px}.brand p{margin:3px 0 0;color:var(--muted)}
+    .badge{padding:5px 9px;border-radius:999px;background:#163b31;color:#69e0b5;font-weight:600}
+    .grid{display:grid;grid-template-columns:minmax(360px,42%) minmax(480px,58%);gap:14px;align-items:start}
+    .stack{display:grid;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .card-head h2{font-size:16px;margin:0}.card-body{padding:15px}.section{display:grid;gap:12px}.field{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:10px}
+    .field>label{color:var(--muted)}select{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px}
+    .choice{display:flex;flex-wrap:wrap;gap:12px}.choice label{display:inline-flex;align-items:center;gap:6px}.actions{display:flex;flex-wrap:wrap;gap:8px}
+    .hint{color:var(--muted);font-size:12px}.ok{color:var(--green)}.error{color:var(--red)}.warning{color:var(--yellow)}
+    .summary{background:#0e151e;border:1px solid var(--line);border-radius:8px;padding:10px}.summary strong{color:var(--green)}
+    .table-wrap{overflow:auto;max-height:355px;border-top:1px solid var(--line)}table{border-collapse:collapse;min-width:100%;width:max-content}
+    th,td{padding:8px 10px;border-right:1px solid #26313e;border-bottom:1px solid #26313e;text-align:left;white-space:nowrap;max-width:520px;overflow:hidden;text-overflow:ellipsis}
+    th{position:sticky;top:0;background:#202b38;color:#cbd6e2;z-index:1}tr:hover td{background:#1a2430}.num{text-align:right;color:var(--muted)}
+    .log{height:230px;overflow:auto;background:#080c12;padding:10px;font:12px/1.55 Consolas,monospace;white-space:pre-wrap}
+    .log .SUCCESS{color:var(--green)}.log .WARNING{color:var(--yellow)}.log .ERROR{color:var(--red)}.log .STEP{color:#7ab8ff}
+    progress{width:100%;height:9px;accent-color:var(--green)}.result-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+    .count{color:var(--green);font-weight:700}.not-found{margin:0;padding-left:20px;color:var(--yellow);max-height:160px;overflow:auto}
+    .desc-col{display:none}body[data-mode="shop"] .desc-col{display:table-cell}dialog{width:min(720px,92vw);max-height:85vh;
+      color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}dialog::backdrop{background:#000a}
+    dialog h3{margin-top:0}.sheet-list,.bundle-list{display:grid;gap:7px;max-height:430px;overflow:auto;margin:12px 0}.sheet-row,.bundle{
+      background:#0e151e;border:1px solid var(--line);border-radius:8px;padding:9px}.bundle h4{margin:0 0 5px;color:var(--green)}
+    .hidden{display:none!important}@media(max-width:980px){.grid{grid-template-columns:1fr}.field{grid-template-columns:110px 1fr}.shell{padding:12px}}
+  </style>
 </head>
-<body>
-<header>
-  <h1>All for Cabal</h1><span class="tag">Web · Item Finder</span>
-</header>
-<main>
-  <div class="card">
-    <h2>1) อัปโหลด Template</h2>
-    <div class="row">
-      <input type="file" id="file" accept=".xlsx,.xlsm,.csv">
-      <button id="btnUpload">📂 อ่าน Template</button>
-      <span id="status"></span>
+<body data-mode="event">
+<main class="shell">
+  <header class="topbar">
+    <div class="brand"><h1>All for Cabal · Item Finder</h1><p>ค้นหาไอเทมจาก Template / Event / Prize / Shop Plan</p></div>
+    <span id="serverBadge" class="badge">พร้อมใช้งาน</span>
+  </header>
+
+  <div class="grid">
+    <div class="stack">
+      <section class="card">
+        <div class="card-head"><h2>1. ตั้งค่างานและนำเข้าไฟล์</h2></div>
+        <div class="card-body section">
+          <div class="field"><label>โหมด</label><div class="choice">
+            <label><input id="modeEvent" type="radio" name="mode" value="event" checked> Event</label>
+            <label><input id="modeItemcode" type="radio" name="mode" value="itemcode"> Item Code</label>
+            <label><input id="modeShop" type="radio" name="mode" value="shop"> Shop</label>
+          </div></div>
+          <div class="field"><label for="game">เซิร์ฟเวอร์</label><select id="game"></select></div>
+          <div class="field"><label>แสดงผลบนเว็บ</label><div class="choice">
+            <label><input id="webAny" type="radio" name="webMode" value="any" checked> ทั้งหมด</label>
+            <label><input id="webYes" type="radio" name="webMode" value="yes"> มี</label>
+            <label><input id="webNo" type="radio" name="webMode" value="no"> ไม่มี</label>
+          </div></div>
+          <div class="hint" id="modeHint">มี/ไม่มี = เข้าไปเช็คหน้ารายละเอียดทีละไอเทม</div>
+          <div class="actions">
+            <a class="button" href="/api/template">⬇ โหลด Template</a>
+            <button id="btnImportTemplate" class="primary">📂 Import Template</button>
+            <button id="btnImportPlan" class="success">🎁 Import Event/Prize</button>
+            <button id="btnClearWorkspace">ล้างรายการ</button>
+          </div>
+          <input id="templateFile" class="hidden" type="file" accept=".xlsx,.xlsm,.csv">
+          <input id="planFile" class="hidden" type="file" accept=".xlsx,.xlsm">
+          <div id="workspaceSummary" class="summary">ยังไม่ได้ import</div>
+        </div>
+        <div class="table-wrap"><table id="criteriaTable"><thead><tr><th>#</th><th>ItemKind</th><th>itemOption</th><th>durationIndex</th><th>ชื่อในไฟล์</th><th>พารามิเตอร์ที่เช็ค</th><th>กลุ่ม / ตาราง</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>2. ค้นหาบน Aztek</h2><span id="progressText" class="hint"></span></div>
+        <div class="card-body section">
+          <progress id="progress" max="100" value="0"></progress>
+          <div class="actions">
+            <button id="btnSearch" class="primary" disabled>🔍 ค้นหาทั้งหมด</button>
+            <button id="btnStop" class="danger" disabled>⏹ หยุด</button>
+          </div>
+          <div class="hint">เว็บรัน Chrome แบบ Headless และใช้ session Aztek ที่เชื่อมไว้ในเครื่องนี้</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Log</h2><button id="btnClearLog">ล้าง Log</button></div>
+        <div id="log" class="log" aria-live="polite"></div>
+      </section>
     </div>
-    <div class="hint">รองรับ .xlsx / .xlsm / .csv (template เดียวกับที่ใช้ในแอป desktop)</div>
-  </div>
 
-  <div class="card" id="resultCard" style="display:none">
-    <h2>รายการไอเทมใน Template (<span id="count" class="count">0</span> รายการ)</h2>
-    <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
-  </div>
+    <div class="stack">
+      <section class="card">
+        <div class="card-head"><h2>ผลลัพธ์ <span id="resultCount" class="count">0</span></h2>
+          <div class="result-actions">
+            <button id="btnSelectAll">เลือกทั้งหมด</button><button id="btnClearSelection">ล้างที่เลือก</button>
+          </div></div>
+        <div class="card-body result-actions">
+          <button id="btnBundles" class="success" disabled>📦 รวมเป็นบันเดิล (รีวิว)</button>
+          <button id="btnExportXlsx" class="warn" disabled>⬇ Excel</button>
+          <button id="btnExportCsv" disabled>⬇ CSV</button>
+          <button id="btnCopyAll" class="primary" disabled>Copy All IDs</button>
+          <button id="btnCopySelected" disabled>Copy Selected IDs</button>
+          <span id="selectedCount" class="hint">เลือก 0</span>
+        </div>
+        <div class="hint" style="padding:0 15px 8px">คลิก checkbox เพื่อเลือกหลายชิ้น · เว็บ✓/✗ = ค่าที่ตรวจ</div>
+        <div class="table-wrap" style="max-height:580px"><table id="resultsTable"><thead><tr>
+          <th>เลือก</th><th>#</th><th>Aztek ID</th><th>ชื่อในเว็บ</th><th>ชื่อในไฟล์</th><th>พารามิเตอร์ที่เช็ค</th><th>กลุ่ม / ตาราง</th><th class="desc-col">คำอธิบายไอเทม</th>
+        </tr></thead><tbody></tbody></table></div>
+      </section>
 
-  <div class="card" id="searchCard" style="display:none">
-    <h2>2) ค้นหาบน aztek</h2>
-    <div class="row">
-      <label>เกม:</label>
-      <select id="game"></select>
-      <span style="margin-left:12px">แสดงผลบนเว็บ:</span>
-      <label><input type="radio" name="wm" value="any" checked> ทั้งหมด</label>
-      <label><input type="radio" name="wm" value="yes"> มี</label>
-      <label><input type="radio" name="wm" value="no"> ไม่มี</label>
-      <button id="btnSearch">🔍 ค้นหาทั้งหมด</button>
-      <button id="btnStop" class="ghost" disabled>⏹ หยุด</button>
+      <section class="card">
+        <div class="card-head"><h2>รายการที่หาไม่เจอ <span id="notFoundCount" class="warning">0</span></h2></div>
+        <div class="card-body"><ol id="notFoundList" class="not-found"><li class="hint">ยังไม่มีข้อมูล</li></ol></div>
+      </section>
     </div>
-    <div class="hint">ต้องเคย login aztek ผ่านแอป desktop มาก่อน (ใช้ session เดิม) · ห้ามเปิด desktop พร้อมกัน (โปรไฟล์ถูกล็อก)</div>
-    <div id="prog" class="hint"></div>
-  </div>
-
-  <div class="card" id="resultsSearchCard" style="display:none">
-    <h2>ผลลัพธ์ (<span id="rcount" class="count">0</span>)</h2>
-    <div class="tablewrap"><table id="rtbl">
-      <thead><tr><th>#</th><th>Aztek ID</th><th>ชื่อในเว็บ</th><th>พารามิเตอร์ที่เช็ค</th><th>กลุ่ม</th><th>คำอธิบาย</th></tr></thead>
-      <tbody></tbody></table></div>
-  </div>
-
-  <div class="card" id="logCard" style="display:none">
-    <h2>Log</h2>
-    <pre id="log"></pre>
   </div>
 </main>
 
+<dialog id="sheetDialog"><h3>เลือก Sheet ที่จะ Import</h3><p class="hint">เลือกได้หลาย sheet</p>
+  <div class="actions"><button id="btnSheetsAll">เลือกทั้งหมด</button><button id="btnSheetsNone">ล้าง</button></div>
+  <div id="sheetList" class="sheet-list"></div><div class="actions"><button id="btnApplySheets" class="success">Import ที่เลือก</button><button data-close="sheetDialog">ยกเลิก</button></div>
+</dialog>
+<dialog id="bundleDialog"><h3>รีวิวบันเดิลจากผลค้นหา</h3><div id="bundleList" class="bundle-list"></div><div class="actions"><button data-close="bundleDialog">ปิด</button></div></dialog>
+
 <script>
-const LABELS = {
-  name:'ชื่อไอเทม', kind:'ItemKind', opt:'itemOption', dur:'durationIndex',
-  web:'เว็บ', img:'รูป', trade:'เทรด', drill:'เจาะ', qty_val:'จำนวน', crit_val:'คริต',
-  amt:'amount', sources:'กลุ่ม', group:'กลุ่ม'
-};
-const ORDER = ['name','kind','opt','dur','web','img','trade','drill','qty_val','crit_val','amt','sources','group'];
-
 const $ = id => document.getElementById(id);
+const state = { mode:'event', modes:{}, workspaceId:'', criteria:[], results:[], selected:new Set(), pendingId:'', socket:null };
 
-function renderTable(items) {
-  const thead = $('tbl').querySelector('thead');
-  const tbody = $('tbl').querySelector('tbody');
-  thead.innerHTML = ''; tbody.innerHTML = '';
-  if (!items.length) return;
-  // คอลัมน์ = คีย์ที่รู้จัก (เรียงตาม ORDER) เฉพาะที่มีค่าจริงในข้อมูล
-  const present = new Set();
-  items.forEach(it => Object.keys(it).forEach(k => {
-    const v = it[k];
-    if (v !== '' && v !== null && v !== undefined &&
-        !(Array.isArray(v) && v.length === 0)) present.add(k);
-  }));
-  const cols = ORDER.filter(k => present.has(k));
-  // เผื่อคีย์แปลกที่ไม่อยู่ใน ORDER
-  [...present].forEach(k => { if (!cols.includes(k)) cols.push(k); });
-
-  const trh = document.createElement('tr');
-  trh.innerHTML = '<th>#</th>' + cols.map(c => `<th>${LABELS[c] || c}</th>`).join('');
-  thead.appendChild(trh);
-
-  items.forEach((it, i) => {
-    const tr = document.createElement('tr');
-    const cells = cols.map(c => {
-      let v = it[c];
-      if (Array.isArray(v)) v = v.join(' , ');
-      return `<td>${v === null || v === undefined ? '' : String(v)}</td>`;
-    });
-    tr.innerHTML = `<td>${i + 1}</td>` + cells.join('');
-    tbody.appendChild(tr);
-  });
+function escapeText(value){ return String(value ?? ''); }
+function log(message, level='INFO'){
+  const line=document.createElement('div'); line.className=level; line.textContent=`[${new Date().toLocaleTimeString('th-TH')}] ${message}`;
+  $('log').appendChild(line); $('log').scrollTop=$('log').scrollHeight;
 }
+function deepSummary(row){
+  const labels=[['web','เว็บ'],['img','รูป'],['trade','เทรด'],['drill','เจาะ']]; const out=[];
+  labels.forEach(([key,label])=>{ if(row[key]==='yes')out.push(label+'✓'); else if(row[key]==='no')out.push(label+'✗'); });
+  [['qty_val','จำนวน'],['crit_val','คริต']].forEach(([key,label])=>{ if(row[key])out.push(`${label}=${row[key]}`); });
+  return out.join(' ') || '-';
+}
+function setBusy(busy){ $('btnSearch').disabled=busy||!state.workspaceId||!state.criteria.length; $('btnStop').disabled=!busy;
+  $('btnImportTemplate').disabled=busy; $('btnImportPlan').disabled=busy; $('btnClearWorkspace').disabled=busy; }
+function resultActions(){ const has=state.results.length>0; ['btnBundles','btnExportXlsx','btnExportCsv','btnCopyAll'].forEach(id=>$(id).disabled=!has);
+  $('btnCopySelected').disabled=!state.selected.size; $('selectedCount').textContent=`เลือก ${state.selected.size}`; }
 
-async function upload() {
-  const f = $('file').files[0];
-  if (!f) { $('status').innerHTML = '<span class="err">เลือกไฟล์ก่อน</span>'; return; }
-  $('btnUpload').disabled = true;
-  $('status').textContent = 'กำลังอ่าน...';
-  try {
-    const fd = new FormData();
-    fd.append('file', f);
-    const r = await fetch('/api/upload-template', { method:'POST', body: fd });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || 'อ่านไม่สำเร็จ');
-    $('count').textContent = data.count;
-    renderTable(data.items || []);
-    window._criteria = data.items || [];
-    $('resultCard').style.display = 'block';
-    $('searchCard').style.display = data.count ? 'block' : 'none';
-    loadGames();
-    $('status').innerHTML = `<span class="count">✓ อ่าน ${data.count} รายการ</span> จาก ${data.filename}`;
-  } catch (e) {
-    $('status').innerHTML = `<span class="err">✗ ${e.message}</span>`;
-  } finally {
-    $('btnUpload').disabled = false;
+async function init(){
+  const [games,modes]=await Promise.all([fetch('/api/games').then(r=>r.json()),fetch('/api/modes').then(r=>r.json())]);
+  games.games.forEach(game=>{const option=document.createElement('option'); option.value=option.textContent=game; $('game').appendChild(option);});
+  state.modes=modes; applyMode('event',false);
+}
+async function applyMode(mode, clear=true){
+  if(clear && state.workspaceId && !confirm('เปลี่ยนโหมดแล้วรายการที่ Import ไว้จะถูกล้าง ดำเนินการต่อไหม?')){
+    document.querySelector(`input[name=mode][value="${state.mode}"]`).checked=true; return;
   }
+  if(clear && state.workspaceId) await clearWorkspace(); state.mode=mode; document.body.dataset.mode=mode;
+  const policy=state.modes[mode]||{web_mode:'any',web_locked:false};
+  document.querySelector(`input[name=webMode][value="${policy.web_mode}"]`).checked=true;
+  document.querySelectorAll('input[name=webMode]').forEach(input=>input.disabled=policy.web_locked);
+  $('modeHint').textContent=mode==='itemcode'?'Item Code บังคับ “ไม่มี”':mode==='shop'?'Shop เริ่มที่ “ไม่มี” และอ่านคำอธิบายไอเทม':'มี/ไม่มี = เข้าไปเช็คหน้ารายละเอียดทีละไอเทม';
+  $('btnImportPlan').textContent=mode==='shop'?'🛒 Import Shop Plan':mode==='event'?'🎁 Import Event Plan':'🎁 Import Event/Prize';
 }
+document.querySelectorAll('input[name=mode]').forEach(input=>input.addEventListener('change',()=>applyMode(input.value)));
 
-$('btnUpload').addEventListener('click', upload);
-
-// ---- ค้นหา ----
-let _gamesLoaded = false;
-async function loadGames() {
-  if (_gamesLoaded) return;
-  try {
-    const r = await fetch('/api/games');
-    const d = await r.json();
-    $('game').innerHTML = (d.games || []).map(g =>
-      `<option>${g.replace(/</g, '&lt;')}</option>`).join('');
-    _gamesLoaded = true;
-  } catch (e) { /* เงียบไว้ */ }
+function renderCriteria(){ const body=$('criteriaTable').tBodies[0]; body.replaceChildren();
+  state.criteria.forEach((row,index)=>{const tr=document.createElement('tr'); [index+1,row.kind,row.opt,row.dur,row.name,deepSummary(row),(row.sources||[]).join(' , ')||'-'].forEach(value=>{const td=document.createElement('td');td.textContent=escapeText(value);tr.appendChild(td);});body.appendChild(tr);});
 }
+function useWorkspace(data){ state.workspaceId=data.workspace_id; state.mode=data.mode; state.criteria=data.items||[];
+  document.querySelector(`input[name=mode][value="${state.mode}"]`).checked=true; applyMode(state.mode,false); renderCriteria();resetResults();renderNotFound(data.not_found||[]);
+  const summary=$('workspaceSummary'), strong=document.createElement('strong');strong.textContent=`✓ ${data.count} รายการ`;summary.replaceChildren(strong,document.createTextNode(` จาก ${data.filename||''} · occurrence ${data.occurrence_count||0}`));
+  if(data.skipped?.length){const warning=document.createElement('span');warning.className='warning';warning.textContent=` · ข้าม ${data.skipped.length}`;summary.appendChild(warning);}
+  setBusy(false); if(data.results?.length){state.results=data.results;renderResults();} }
+async function upload(kind,file){ if(!file)return; const form=new FormData(); form.append('file',file);form.append('mode',state.mode);if(state.workspaceId)form.append('workspace_id',state.workspaceId);
+  setBusy(true); try{const response=await fetch(kind==='template'?'/api/import-template':'/api/import-plan',{method:'POST',body:form});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Import ไม่สำเร็จ');
+    if(data.needs_sheet_selection){state.pendingId=data.pending_id;openSheetPicker(data.sheets);}else useWorkspace(data);
+  }catch(error){log(error.message,'ERROR');alert(error.message);}finally{setBusy(false);$('templateFile').value='';$('planFile').value='';}}
+$('btnImportTemplate').onclick=()=>$('templateFile').click(); $('templateFile').onchange=event=>upload('template',event.target.files[0]);
+$('btnImportPlan').onclick=()=>$('planFile').click(); $('planFile').onchange=event=>upload('plan',event.target.files[0]);
 
-function logLine(msg, level) {
-  const pre = $('log');
-  const span = document.createElement('span');
-  span.className = 'lg-' + (level || 'INFO');
-  span.textContent = msg + '\n';
-  pre.appendChild(span);
-  pre.scrollTop = pre.scrollHeight;
-}
+function openSheetPicker(sheets){const list=$('sheetList');list.replaceChildren();sheets.forEach(sheet=>{const label=document.createElement('label');label.className='sheet-row';const input=document.createElement('input');input.type='checkbox';input.value=sheet.name;input.checked=true;label.append(input,document.createTextNode(` ${sheet.name} (${sheet.count})`));list.appendChild(label);});$('sheetDialog').showModal();}
+$('btnSheetsAll').onclick=()=>document.querySelectorAll('#sheetList input').forEach(x=>x.checked=true); $('btnSheetsNone').onclick=()=>document.querySelectorAll('#sheetList input').forEach(x=>x.checked=false);
+$('btnApplySheets').onclick=async()=>{const selected=[...document.querySelectorAll('#sheetList input:checked')].map(x=>x.value);if(!selected.length){alert('เลือกอย่างน้อย 1 sheet');return;}
+  const response=await fetch('/api/import-plan/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pending_id:state.pendingId,selected_sheets:selected})});const data=await response.json();if(!response.ok){alert(data.detail);return;} $('sheetDialog').close();useWorkspace(data);};
+document.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>$(button.dataset.close).close());
 
-function tdText(t) {
-  const td = document.createElement('td');
-  td.textContent = (t === null || t === undefined) ? '' : String(t);
-  return td;
-}
+async function clearWorkspace(){ if(state.socket)state.socket.close();if(state.workspaceId)await fetch('/api/workspaces/'+state.workspaceId,{method:'DELETE'});
+  state.workspaceId='';state.criteria=[];state.results=[];state.selected.clear();renderCriteria();renderResults();renderNotFound([]);$('workspaceSummary').textContent='ล้างรายการแล้ว';setBusy(false);}
+$('btnClearWorkspace').onclick=clearWorkspace;
 
-let _ws = null;
-function finishSearch() { $('btnSearch').disabled = false; $('btnStop').disabled = true; }
+function addResult(item){state.results.push(item);const index=state.results.length-1;const tr=document.createElement('tr');tr.dataset.index=index;
+  const select=document.createElement('input');select.type='checkbox';select.onchange=()=>{select.checked?state.selected.add(index):state.selected.delete(index);resultActions();};
+  const selectTd=document.createElement('td');selectTd.appendChild(select);tr.appendChild(selectTd);
+  [index+1,item.aztek_id,item.item_name,item.file_name,item.params,item.groups,item.desc].forEach((value,pos)=>{const td=document.createElement('td');td.textContent=escapeText(value);if(pos===6)td.className='desc-col';tr.appendChild(td);});
+  $('resultsTable').tBodies[0].appendChild(tr);$('resultCount').textContent=state.results.length;resultActions();}
+function renderResults(){ $('resultsTable').tBodies[0].replaceChildren();const rows=[...state.results];state.results=[];state.selected.clear();rows.forEach(addResult);resultActions(); }
+function resetResults(){state.results=[];state.selected.clear();$('resultsTable').tBodies[0].replaceChildren();$('resultCount').textContent='0';resultActions();}
+function renderNotFound(rows){const list=$('notFoundList');list.replaceChildren();$('notFoundCount').textContent=rows.length;if(!rows.length){const li=document.createElement('li');li.className='hint';li.textContent='เจอครบทุกรายการ';list.appendChild(li);return;}
+  rows.forEach(row=>{const li=document.createElement('li');li.textContent=`${row[0]} — ${row[1]}`;list.appendChild(li);});}
 
-function runSearch() {
-  const criteria = window._criteria || [];
-  if (!criteria.length) return;
-  const game = $('game').value;
-  const web_mode = document.querySelector('input[name=wm]:checked').value;
-  $('log').innerHTML = '';
-  $('rtbl').querySelector('tbody').innerHTML = '';
-  $('rcount').textContent = '0';
-  $('logCard').style.display = 'block';
-  $('resultsSearchCard').style.display = 'block';
-  $('prog').textContent = 'กำลังเชื่อมต่อ...';
-  $('btnSearch').disabled = true; $('btnStop').disabled = false;
+function startSearch(){if(!state.workspaceId)return;resetResults();renderNotFound([]);$('progress').value=0;$('progressText').textContent='กำลังเชื่อมต่อ…';setBusy(true);
+  const protocol=location.protocol==='https:'?'wss:':'ws:';const socket=new WebSocket(`${protocol}//${location.host}/ws/search`);state.socket=socket;
+  socket.onopen=()=>socket.send(JSON.stringify({workspace_id:state.workspaceId,game:$('game').value,web_mode:document.querySelector('input[name=webMode]:checked').value}));
+  socket.onmessage=event=>{const message=JSON.parse(event.data);if(message.type==='log')log(message.msg,message.level);else if(message.type==='progress'){const percent=message.total?message.cur/message.total*100:0;$('progress').value=Math.min(100,percent);$('progressText').textContent=`${message.cur}/${message.total} ${message.name||''}`;}
+    else if(message.type==='reset_results')resetResults();else if(message.type==='result')addResult(message.item);else if(message.type==='done'){$('progress').value=100;$('progressText').textContent=`เสร็จ · พบ ${message.count}`;renderNotFound(message.not_found||[]);setBusy(false);}};
+  socket.onerror=()=>log('WebSocket ขัดข้อง','ERROR');socket.onclose=()=>{state.socket=null;setBusy(false);};}
+$('btnSearch').onclick=startSearch;$('btnStop').onclick=()=>{if(state.socket){state.socket.close();log('ยกเลิกการค้นหา','WARNING');}};
 
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  _ws = new WebSocket(proto + '//' + location.host + '/ws/search');
-  let n = 0;
-  _ws.onopen = () => { $('prog').textContent = 'กำลังค้นหา...';
-    _ws.send(JSON.stringify({ game, web_mode, criteria })); };
-  _ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.type === 'log') logLine(m.msg, m.level);
-    else if (m.type === 'progress')
-      $('prog').textContent = `กำลังตรวจ ${m.cur}/${m.total} — ${m.name || ''}`;
-    else if (m.type === 'result') {
-      n++;
-      const it = m.item, tr = document.createElement('tr');
-      [n, it.aztek_id, it.item_name, it.params, it.groups, it.desc]
-        .forEach(v => tr.appendChild(tdText(v)));
-      $('rtbl').querySelector('tbody').appendChild(tr);
-      $('rcount').textContent = n;
-    } else if (m.type === 'done') {
-      $('prog').textContent = `เสร็จ — พบ ${m.count} รายการ`; finishSearch();
-    }
-  };
-  _ws.onerror = () => logLine('WebSocket error', 'ERROR');
-  _ws.onclose = () => finishSearch();
-}
+$('btnSelectAll').onclick=()=>{state.selected=new Set(state.results.map((_,i)=>i));document.querySelectorAll('#resultsTable tbody input').forEach(x=>x.checked=true);resultActions();};
+$('btnClearSelection').onclick=()=>{state.selected.clear();document.querySelectorAll('#resultsTable tbody input').forEach(x=>x.checked=false);resultActions();};
+async function copyIds(selectedOnly){const indexes=selectedOnly?[...state.selected]:state.results.map((_,i)=>i);if(!indexes.length){alert('ยังไม่ได้เลือกไอเทม');return;}const ids=indexes.map(i=>state.results[i]?.aztek_id).filter(Boolean);await navigator.clipboard.writeText(ids.join(', '));log(`Copied ${ids.length} IDs`,'SUCCESS');}
+$('btnCopyAll').onclick=()=>copyIds(false);$('btnCopySelected').onclick=()=>copyIds(true);
+function download(format){if(!state.workspaceId)return;const anchor=document.createElement('a');anchor.href=`/api/workspaces/${state.workspaceId}/export.${format}`;anchor.click();}
+$('btnExportXlsx').onclick=()=>download('xlsx');$('btnExportCsv').onclick=()=>download('csv');
+$('btnBundles').onclick=async()=>{const response=await fetch(`/api/workspaces/${state.workspaceId}/bundles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selected_indexes:[...state.selected]})});const data=await response.json();if(!response.ok){alert(data.detail);return;}const list=$('bundleList');list.replaceChildren();data.bundles.forEach(bundle=>{const box=document.createElement('div');box.className='bundle';const title=document.createElement('h4');title.textContent=`${bundle.name} (${bundle.items.length})`;const items=document.createElement('div');items.className='hint';items.textContent=bundle.items.map((item,i)=>`${i+1}. ${item.id} ${item.name}`).join(' · ');box.append(title,items);list.appendChild(box);});$('bundleDialog').showModal();};
+$('btnClearLog').onclick=()=>$('log').replaceChildren();
 
-function stopSearch() {
-  if (_ws) { try { _ws.close(); } catch (e) {} }
-  $('prog').textContent = 'หยุดแล้ว'; finishSearch();
-}
-
-$('btnSearch').addEventListener('click', runSearch);
-$('btnStop').addEventListener('click', stopSearch);
+init().catch(error=>{log(error.message,'ERROR');$('serverBadge').textContent='เชื่อมต่อไม่ได้';$('serverBadge').className='badge error';});
 </script>
 </body>
 </html>

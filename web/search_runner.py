@@ -1,111 +1,137 @@
 # -*- coding: utf-8 -*-
-"""รัน Item Finder แบบ headless สำหรับเว็บ โดย reuse เมธอด engine เดิมจาก item_finder.App
-ตรง ๆ (bind เมธอดเข้ากับคลาสเบา ๆ ที่ป้อน callback แทน widget) — ไม่ก็อปโค้ด ไม่สร้าง Tk root
-
-ข้อจำกัด MVP: ใช้ CHROME_PROFILE เดิม (ต้องเคย login aztek ผ่านแอป desktop มาก่อน) และห้ามเปิด
-แอป desktop พร้อมกัน (โปรไฟล์ถูกล็อกไม่ให้เปิดซ้ำ)
-"""
+"""Callback-driven host for the existing Item Finder Playwright engine."""
 import item_finder
+from web import item_service
 
 
-class _StubWidget:
-    """แทน tk widget (nb/root) — รับ .select()/.after() แบบไม่ทำอะไร"""
-    def select(self, *a, **k):
-        pass
+class _StubNotebook:
+    def select(self, *args, **kwargs):
+        return None
 
-    def after(self, *a, **k):
-        pass
+
+class _ImmediateRoot:
+    """Execute Tk-style after callbacks immediately on the asyncio thread."""
+    def after(self, delay, callback=None, *args):
+        if callback:
+            return callback(*args)
+        return None
 
 
 class HeadlessFinder:
-    """โฮสต์ของ engine ค้นหา: ป้อน state + callback แล้วให้เมธอดเดิมของ App ทำงานบนนี้"""
-
-    def __init__(self, on_log, on_result, on_progress):
+    def __init__(self, on_log, on_result, on_progress, *, occurrences=None,
+                 on_reset=None):
         self._on_log = on_log
         self._on_result = on_result
         self._on_progress = on_progress
+        self._on_reset = on_reset or (lambda: None)
         self._cancel = False
         self._results = []
-        self._occurrences = []          # ว่าง = ข้าม _regroup_results (ผลเรียงตามที่ค้นเจอ)
+        self._occurrences = [dict(row) for row in (occurrences or [])]
         self._not_found = []
         self._pager_dumped = False
-        self.nb = _StubWidget()
-        self.root = _StubWidget()
+        self.nb = _StubNotebook()
+        self.root = _ImmediateRoot()
 
-    # --- callback แทน GUI (เมธอด engine เรียกพวกนี้) ---
-    def log(self, msg, level='INFO'):
-        self._on_log(str(msg), level)
+    def log(self, message, level='INFO'):
+        self._on_log(str(message), level)
 
     def add_result_row(self, item):
         self._on_result(item)
 
-    def set_progress(self, cur, total, name):
-        self._on_progress(cur, total, name)
+    def set_progress(self, current, total, name):
+        self._on_progress(current, total, name)
 
     def _update_count(self):
-        pass
+        return None
 
     def _regroup_results(self):
-        pass
+        if not self._occurrences or not self._results:
+            return None
+        rows = item_service.regroup_results(self._results, self._occurrences)
+        if rows == self._results:
+            return None
+        self._results = rows
+        self._on_reset()
+        for row in rows:
+            self._on_result(row)
+        self.log('เรียงผลลัพธ์ตามชุด (เอกสาร) — %d แถว' % len(rows), 'SUCCESS')
+        return None
 
 
-# reuse เมธอด engine เดิมทั้งดุ้น (function object เดิม -> __globals__ ยังชี้ item_finder
-# ทำให้ helper/ค่าคงที่ภายใน เช่น web_values_summary/_norm_name/SEL/CHROME_PROFILE resolve เองหมด)
 _ENGINE_METHODS = (
     '_auto', '_search_all', '_wait_table_ready', '_wait_detail_ready',
     '_apply_filters', '_read_all_pages', '_dump_pager', '_read_table_page',
     '_go_next_page', '_run_deep_check', '_check_item_detail', '_go_back',
 )
-for _name in _ENGINE_METHODS:
-    setattr(HeadlessFinder, _name, getattr(item_finder.App, _name))
-del _name
+for _method_name in _ENGINE_METHODS:
+    setattr(HeadlessFinder, _method_name, getattr(item_finder.App, _method_name))
+del _method_name
 
 
-def build_search_data(game, criteria, web_mode='any'):
-    """สร้าง data dict แบบเดียวกับ App._start (โหมด multi) จาก template + ตัวเลือกแสดงผลบนเว็บ"""
+def build_search_data(game, criteria, web_mode=None, *, mode='event'):
+    """Build the same multi-search data as desktop, including mode policy."""
     if game not in item_finder.GAMES:
         raise ValueError('ไม่รู้จักเกม: %s' % game)
-    multi = [dict(r) for r in criteria]
+    policy = item_service.mode_policy(mode)
+    if policy['web_locked']:
+        web_mode = policy['web_mode']
+    elif web_mode is None:
+        web_mode = policy['web_mode']
+    if web_mode not in ('any', 'yes', 'no'):
+        raise ValueError('ค่าแสดงผลบนเว็บไม่ถูกต้อง: %s' % web_mode)
 
+    multi = [dict(row) for row in criteria]
     if web_mode in ('yes', 'no'):
-        def _needs_web(r):
-            return (r.get('trade', 'any') != 'any' or r.get('drill', 'any') != 'any'
-                    or str(r.get('qty_val', '') or '').strip()
-                    or str(r.get('crit_val', '') or '').strip())
-        for r in multi:
-            if web_mode == 'no' and _needs_web(r):
-                r['web'] = 'yes'
-            else:
-                r['web'] = web_mode
-        if web_mode == 'yes':
-            for r in multi:
-                r['_show_web_vals'] = True
+        def needs_web(row):
+            return (row.get('trade', 'any') != 'any'
+                    or row.get('drill', 'any') != 'any'
+                    or str(row.get('qty_val', '') or '').strip()
+                    or str(row.get('crit_val', '') or '').strip())
 
-    def _row_has_deep(r):
-        return (r.get('web', 'any') != 'any' or r.get('img', 'any') != 'any'
-                or r.get('qty_val', '') != '' or r.get('trade', 'any') != 'any'
-                or r.get('drill', 'any') != 'any' or r.get('crit_val', '') != '')
+        for row in multi:
+            row['web'] = 'yes' if web_mode == 'no' and needs_web(row) else web_mode
+            if web_mode == 'yes':
+                row['_show_web_vals'] = True
 
-    auto_deep = any(_row_has_deep(r) for r in multi)
+    def has_deep(row):
+        return (row.get('web', 'any') != 'any'
+                or row.get('img', 'any') != 'any'
+                or row.get('qty_val', '') != ''
+                or row.get('trade', 'any') != 'any'
+                or row.get('drill', 'any') != 'any'
+                or row.get('crit_val', '') != '')
+
     return {
-        'game': game, 'url': item_finder.GAMES[game], 'multi': multi,
-        'deep': auto_deep, 'web': 'any', 'img': 'any', 'qty_val': '',
-        'trade': 'any', 'drill': 'any', 'crit_val': '', 'batch': 10,
-        'headless': True, 'read_desc': False,
+        'game': game,
+        'url': item_finder.GAMES[game],
+        'multi': multi,
+        # Shop must visit every detail page to read textarea[name="detail"],
+        # even when every filter in a generic template is Any.
+        'deep': policy['read_desc'] or any(has_deep(row) for row in multi),
+        'web': 'any', 'img': 'any', 'qty_val': '', 'trade': 'any',
+        'drill': 'any', 'crit_val': '', 'batch': 10,
+        'headless': True,
+        'read_desc': policy['read_desc'],
     }
 
 
 def result_view(item):
-    """แปลง item ที่ผ่าน -> dict สำหรับโชว์บนเว็บ (คอลัมน์เหมือนตารางผลใน desktop)"""
     params = item_finder.deep_summary(item)
-    wv = item.get('_web_vals')
-    if wv:
-        params = (params + ' | ' + wv) if params and params != '-' else wv
+    web_values = item.get('_web_vals')
+    if web_values:
+        params = ((params + ' | ' + web_values)
+                  if params and params != '-' else web_values)
     return {
         'aztek_id': item.get('aztek_id', ''),
         'item_name': item.get('item_name', ''),
         'file_name': item.get('file_name', '') or '',
+        'item_kind': item.get('item_kind', '') or '',
+        'item_option': item.get('item_option', '') or '',
+        'duration_index': item.get('duration_index', '') or '',
+        'game': item.get('game', '') or '',
+        'notes': item.get('notes', '') or '',
+        'criteria_no': item.get('_ci', '') or '',
         'params': params,
-        'groups': ' , '.join(item.get('sources', []) or []),
+        'groups': ' , '.join(item.get('sources') or []),
         'desc': item.get('_desc', '') or '',
     }

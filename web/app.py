@@ -1,128 +1,317 @@
 # -*- coding: utf-8 -*-
-"""All for Cabal — Web (มินิมอล, รันในเครื่อง)
-สไลซ์แรก: เสิร์ฟหน้าเว็บ + อัปโหลด template แล้ว parse ด้วยตัวอ่านเดิม (item_finder.read_template)
-รัน:  python -m uvicorn web.app:app --reload --port 8000   (จาก root ของ repo)
-"""
+"""All for Cabal Web — local Item Finder application."""
+import asyncio
 import os
 import sys
 import tempfile
+from typing import Literal
 
-# ให้ import โมดูลใน repo root ได้ (item_finder / finder_core)
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+from fastapi import (FastAPI, File, Form, HTTPException, Response,
+                     UploadFile, WebSocket, WebSocketDisconnect)
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
 
-import asyncio  # noqa: E402
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect  # noqa: E402
-from fastapi.responses import HTMLResponse  # noqa: E402
-
-import item_finder  # reuse ตัว parse template เดิม (read_template)  # noqa: E402
 import aztek_core as core  # noqa: E402
-from web import search_runner  # noqa: E402
-
-app = FastAPI(title="All for Cabal — Web")
-
-_STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+import item_finder  # noqa: E402
+from web import item_service, search_runner  # noqa: E402
 
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    with open(os.path.join(_STATIC, "index.html"), encoding="utf-8") as f:
-        return f.read()
+app = FastAPI(title='All for Cabal — Web')
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+WORKSPACES = item_service.WorkspaceStore()
+Mode = Literal['event', 'itemcode', 'shop']
 
 
-@app.get("/api/health")
-def health():
-    return {"ok": True}
+class ApplyPlanRequest(BaseModel):
+    pending_id: str
+    selected_sheets: list[str]
 
 
-@app.post("/api/upload-template")
-async def upload_template(file: UploadFile = File(...)):
-    """รับไฟล์ template (.xlsx/.csv) -> parse เป็นรายการไอเทม (criteria) ส่งกลับเป็น JSON."""
-    suffix = os.path.splitext(file.filename or "")[1] or ".xlsx"
-    raw = await file.read()
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+class BundleRequest(BaseModel):
+    selected_indexes: list[int] = Field(default_factory=list)
+
+
+def _workspace_view(workspace):
+    return {
+        'workspace_id': workspace.id,
+        'mode': workspace.mode,
+        'filename': workspace.filename,
+        'count': len(workspace.criteria),
+        'items': workspace.criteria,
+        'occurrence_count': len(workspace.occurrences),
+        'skipped': workspace.skipped,
+        'result_count': len(workspace.results),
+        'results': [search_runner.result_view(row) for row in workspace.results],
+        'not_found': workspace.not_found,
+        'policy': item_service.mode_policy(workspace.mode),
+    }
+
+
+def _get_workspace(workspace_id):
     try:
-        tmp.write(raw)
-        tmp.close()
-        rows = item_finder.read_template(tmp.name)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="อ่าน template ไม่สำเร็จ: %s" % e)
-    finally:
+        return WORKSPACES.get(workspace_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail='ไม่พบงาน Item Finder นี้')
+
+
+async def _temporary_upload(file):
+    suffix = os.path.splitext(file.filename or '')[1] or '.xlsx'
+    raw = await file.read()
+    handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        handle.write(raw)
+        handle.close()
+    except Exception:
+        handle.close()
         try:
-            os.unlink(tmp.name)
+            os.unlink(handle.name)
         except OSError:
             pass
-    return {"filename": file.filename, "count": len(rows), "items": rows}
+        raise
+    return handle.name
 
 
-@app.get("/api/games")
+@app.get('/', response_class=HTMLResponse)
+def index():
+    with open(os.path.join(STATIC_DIR, 'index.html'), encoding='utf-8') as stream:
+        return stream.read()
+
+
+@app.get('/api/health')
+def health():
+    return {'ok': True}
+
+
+@app.get('/api/games')
 def games():
-    return {"games": list(item_finder.GAME_NAMES)}
+    return {'games': list(item_finder.GAME_NAMES)}
 
 
-@app.websocket("/ws/search")
+@app.get('/api/modes')
+def modes():
+    return {mode: item_service.mode_policy(mode)
+            for mode in ('event', 'itemcode', 'shop')}
+
+
+@app.get('/api/template')
+def download_template():
+    handle, path = tempfile.mkstemp(suffix='.xlsx')
+    os.close(handle)
+    try:
+        item_finder.download_template(path)
+        with open(path, 'rb') as stream:
+            content = stream.read()
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    return Response(
+        content,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename="item_finder_template.xlsx"'},
+    )
+
+
+@app.post('/api/import-template')
+async def import_template(file: UploadFile = File(...), mode: Mode = Form('event'),
+                          workspace_id: str = Form('')):
+    item_service.mode_policy(mode)
+    path = await _temporary_upload(file)
+    try:
+        rows = await asyncio.to_thread(
+            item_service.parse_workbook_locked, item_finder.read_template, path)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail='อ่าน template ไม่สำเร็จ: %s' % error)
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    if workspace_id:
+        workspace = _get_workspace(workspace_id)
+        if workspace.mode != mode:
+            raise HTTPException(status_code=400, detail='โหมดของงานไม่ตรงกับไฟล์ที่นำเข้า')
+        workspace = WORKSPACES.replace_template(
+            workspace.id, file.filename or 'template.xlsx', rows)
+    else:
+        workspace = WORKSPACES.create(mode, file.filename or 'template.xlsx', rows)
+    return _workspace_view(workspace)
+
+
+@app.post('/api/import-plan')
+async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
+                      workspace_id: str = Form('')):
+    parser = item_service.parser_for_mode(mode)
+    workspace = (_get_workspace(workspace_id) if workspace_id
+                 else WORKSPACES.create(mode, file.filename or 'plan.xlsx'))
+    if workspace.mode != mode:
+        raise HTTPException(status_code=400, detail='โหมดของงานไม่ตรงกับไฟล์ที่นำเข้า')
+    path = await _temporary_upload(file)
+    try:
+        sheets, skipped = await asyncio.to_thread(
+            item_service.parse_workbook_locked, parser, path)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail='อ่าน Event/Prize ไม่สำเร็จ: %s' % error)
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    if not sheets:
+        raise HTTPException(status_code=400, detail='ไม่พบตารางไอเทมในไฟล์นี้')
+    pending = WORKSPACES.add_pending(workspace.id, sheets, skipped)
+    return {
+        'workspace_id': workspace.id,
+        'pending_id': pending.id,
+        'needs_sheet_selection': True,
+        'sheets': [{'name': name, 'count': len(rows)} for name, rows in sheets],
+        'skipped': list(skipped or []),
+    }
+
+
+@app.post('/api/import-plan/apply')
+def apply_plan(payload: ApplyPlanRequest):
+    pending_id = payload.pending_id.strip()
+    selected = payload.selected_sheets
+    if not pending_id or not selected:
+        raise HTTPException(status_code=400, detail='กรุณาเลือกอย่างน้อย 1 sheet')
+    try:
+        workspace = WORKSPACES.apply_pending(pending_id, selected)
+    except KeyError:
+        raise HTTPException(status_code=404, detail='ไม่พบไฟล์นำเข้าที่รอเลือก sheet')
+    return _workspace_view(workspace)
+
+
+@app.get('/api/workspaces/{workspace_id}')
+def get_workspace(workspace_id: str):
+    return _workspace_view(_get_workspace(workspace_id))
+
+
+@app.delete('/api/workspaces/{workspace_id}', status_code=204)
+def delete_workspace(workspace_id: str):
+    _get_workspace(workspace_id)
+    WORKSPACES.delete(workspace_id)
+    return Response(status_code=204)
+
+
+@app.get('/api/workspaces/{workspace_id}/export.csv')
+def export_csv(workspace_id: str):
+    workspace = _get_workspace(workspace_id)
+    if not workspace.results:
+        raise HTTPException(status_code=400, detail='ยังไม่มีผลลัพธ์')
+    return Response(
+        item_service.export_csv_bytes(workspace.results),
+        media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment; filename="item_finder_results.csv"'},
+    )
+
+
+@app.get('/api/workspaces/{workspace_id}/export.xlsx')
+def export_xlsx(workspace_id: str):
+    workspace = _get_workspace(workspace_id)
+    if not workspace.results:
+        raise HTTPException(status_code=400, detail='ยังไม่มีผลลัพธ์')
+    return Response(
+        item_service.export_xlsx_bytes(workspace.results, workspace.game),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': 'attachment; filename="item_finder_results.xlsx"'},
+    )
+
+
+@app.post('/api/workspaces/{workspace_id}/bundles')
+def bundle_preview(workspace_id: str, payload: BundleRequest):
+    workspace = _get_workspace(workspace_id)
+    indexes = payload.selected_indexes
+    if indexes:
+        rows = [workspace.results[index] for index in sorted(set(indexes))
+                if isinstance(index, int) and 0 <= index < len(workspace.results)]
+    else:
+        rows = workspace.results
+    if not rows:
+        raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้รวมเป็นบันเดิล')
+    return {'bundles': item_service.build_bundles(rows, workspace.group_meta)}
+
+
+@app.websocket('/ws/search')
 async def ws_search(ws: WebSocket):
-    """รับ {game, web_mode, criteria} -> รันค้นหา headless แล้ว stream log/progress/result สด."""
+    """Run the existing Item Finder engine headlessly and stream events."""
     await ws.accept()
     try:
-        req = await ws.receive_json()
+        request = await ws.receive_json()
     except Exception:
         await ws.close()
         return
-    game = req.get("game") or ""
-    web_mode = req.get("web_mode") or "any"
-    criteria = req.get("criteria") or []
 
-    async def send(m):
-        await ws.send_json(m)
-
-    if not criteria:
-        await send({"type": "log", "msg": "ไม่มีรายการไอเทม (อัปโหลด template ก่อน)", "level": "ERROR"})
-        await send({"type": "done", "count": 0})
-        await ws.close()
-        return
+    workspace_id = str(request.get('workspace_id') or '')
     try:
-        data = search_runner.build_search_data(game, criteria, web_mode)
-    except Exception as e:
-        await send({"type": "log", "msg": str(e), "level": "ERROR"})
-        await send({"type": "done", "count": 0})
+        workspace = _get_workspace(workspace_id)
+    except HTTPException as error:
+        await ws.send_json({'type': 'log', 'msg': error.detail, 'level': 'ERROR'})
+        await ws.send_json({'type': 'done', 'count': 0, 'not_found': []})
+        await ws.close()
+        return
+    # A new search invalidates the previous result set even if validation,
+    # browser launch, or Playwright later fails.
+    workspace.results = []
+    workspace.not_found = []
+    game = request.get('game') or ''
+    web_mode = request.get('web_mode') or item_service.mode_policy(workspace.mode)['web_mode']
+
+    async def send(message):
+        await ws.send_json(message)
+
+    try:
+        data = search_runner.build_search_data(
+            game, workspace.criteria, web_mode, mode=workspace.mode)
+    except Exception as error:
+        await send({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
+        await send({'type': 'done', 'count': 0, 'not_found': []})
         await ws.close()
         return
 
-    q: asyncio.Queue = asyncio.Queue()
-    hf = search_runner.HeadlessFinder(
-        lambda msg, level="INFO": q.put_nowait({"type": "log", "msg": msg, "level": level}),
-        lambda item: q.put_nowait({"type": "result", "item": search_runner.result_view(item)}),
-        lambda cur, total, name: q.put_nowait(
-            {"type": "progress", "cur": cur, "total": total, "name": name}),
+    queue = asyncio.Queue()
+    finder = search_runner.HeadlessFinder(
+        lambda msg, level='INFO': queue.put_nowait(
+            {'type': 'log', 'msg': msg, 'level': level}),
+        lambda item: queue.put_nowait(
+            {'type': 'result', 'item': search_runner.result_view(item)}),
+        lambda current, total, name: queue.put_nowait(
+            {'type': 'progress', 'cur': current, 'total': total, 'name': name}),
+        occurrences=workspace.occurrences,
+        on_reset=lambda: queue.put_nowait({'type': 'reset_results'}),
     )
 
-    async def run():
+    async def run_search():
         try:
-            await hf._auto(data)
-            q.put_nowait({"type": "done", "count": len(hf._results)})
-        except core.BrowserBusy:
-            q.put_nowait({"type": "log",
-                          "msg": "✋ Browser ถูกใช้อยู่ — ปิดแอป desktop / รอบก่อนหน้าก่อน",
-                          "level": "ERROR"})
-            q.put_nowait({"type": "done", "count": 0})
-        except Exception as e:
-            q.put_nowait({"type": "log", "msg": "error: " + str(e), "level": "ERROR"})
-            q.put_nowait({"type": "done", "count": 0})
+            await finder._auto(data)
+            workspace.results = [dict(row) for row in finder._results]
+            workspace.not_found = list(finder._not_found)
+            workspace.game = game
+            queue.put_nowait({'type': 'done', 'count': len(workspace.results),
+                              'not_found': workspace.not_found})
+        except core.BrowserBusy as error:
+            queue.put_nowait({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
+            queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
+        except Exception as error:
+            queue.put_nowait({'type': 'log', 'msg': 'error: %s' % error, 'level': 'ERROR'})
+            queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
         finally:
-            q.put_nowait(None)
+            queue.put_nowait(None)
 
-    task = asyncio.create_task(run())
+    task = asyncio.create_task(run_search())
     try:
         while True:
-            m = await q.get()
-            if m is None:
+            message = await queue.get()
+            if message is None:
                 break
-            await send(m)
+            await send(message)
     except WebSocketDisconnect:
-        hf._cancel = True          # ผู้ใช้ปิดหน้า -> สั่งหยุดค้นหา
+        finder._cancel = True
     finally:
         await task
         try:

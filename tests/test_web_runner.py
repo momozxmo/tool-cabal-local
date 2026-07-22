@@ -19,6 +19,7 @@ def check(name, cond, extra=''):
     print(('PASS ' if cond else '*** FAIL *** ') + name + (('  ' + extra) if extra else ''))
     if not cond:
         FAIL.append(name)
+    assert cond, name + ((' — ' + extra) if extra else '')
 
 
 class FakePage:
@@ -44,6 +45,29 @@ def test_binding_and_callbacks():
     check('add_result_row -> callback', results == [{'x': 1}])
     check('set_progress -> callback', progs == [(1, 5, 'z')])
     check('_update_count/_regroup_results no-op', hf._update_count() is None and hf._regroup_results() is None)
+
+
+def test_regroup_callback_replaces_streamed_rows_in_document_order():
+    results, resets = [], []
+    occurrences = [
+        {'kind': '1', 'opt': '', 'dur': '', 'name': 'A', 'sources': ['G1']},
+        {'kind': '2', 'opt': '', 'dur': '', 'name': 'B', 'sources': ['G1']},
+        {'kind': '1', 'opt': '', 'dur': '', 'name': 'A', 'sources': ['G2']},
+    ]
+    hf = sr.HeadlessFinder(
+        lambda *a, **k: None, lambda row: results.append(row), lambda *a: None,
+        occurrences=occurrences, on_reset=lambda: resets.append(True))
+    hf._results = [
+        {'aztek_id': '10', 'item_kind': '1', 'item_option': '',
+         'duration_index': '', 'item_name': 'A web'},
+        {'aztek_id': '20', 'item_kind': '2', 'item_option': '',
+         'duration_index': '', 'item_name': 'B web'},
+    ]
+    hf._regroup_results()
+    check('regroup resets streamed table once', resets == [True])
+    check('regroup follows occurrence order',
+          [r['aztek_id'] for r in hf._results] == ['10', '20', '10'])
+    check('regroup re-emits final rows', results == hf._results)
 
 
 def test_engine_method_runs_on_fake_page():
@@ -77,6 +101,16 @@ def test_build_search_data():
     except ValueError:
         check('unknown game raises', True)
 
+    blank = [{'kind': '1', 'opt': '', 'dur': '', 'name': 'x',
+              'web': 'any', 'img': 'any', 'qty_val': '', 'trade': 'any',
+              'drill': 'any', 'crit_val': ''}]
+    shop = sr.build_search_data(game, blank, 'any', mode='shop')
+    check('shop defaults web=no and reads description',
+          shop['read_desc'] is True and shop['deep'] is True)
+    itemcode = sr.build_search_data(game, crit, 'yes', mode='itemcode')
+    check('itemcode locks web=no even if caller asks yes',
+          itemcode['multi'][0]['web'] == 'no' and itemcode['read_desc'] is False)
+
 
 def test_result_view():
     item = {'aztek_id': '221070', 'item_name': 'Force Wing', 'sources': ['Cash Shop'],
@@ -90,6 +124,7 @@ def test_result_view():
 
 if __name__ == '__main__':
     test_binding_and_callbacks()
+    test_regroup_callback_replaces_streamed_rows_in_document_order()
     test_engine_method_runs_on_fake_page()
     test_build_search_data()
     test_result_view()
