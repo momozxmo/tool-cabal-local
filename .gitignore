@@ -15,6 +15,7 @@ __pycache__/
 # Claude Code local settings/tooling artifacts
 .claude/
 .understand-anything/
+.worktrees/
 
 # Stray artifact folder (tool path-escaping bug, not project content)
 UserskoomoDocumentsCrazyall for cabal/
