@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>All for Cabal — Web</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --text:#e6edf3; --muted:#8b949e;
+          --accent:#1f6feb; --accent2:#238636; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font-family: 'Segoe UI', system-ui, sans-serif; }
+  header { background:var(--card); border-bottom:1px solid var(--line);
+           padding:14px 20px; display:flex; align-items:center; gap:10px; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header .tag { color:#39d0d8; font-size:13px; }
+  main { max-width:1100px; margin:0 auto; padding:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:16px 18px; margin-bottom:16px; }
+  .card h2 { font-size:14px; margin:0 0 12px; color:var(--muted); font-weight:600; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  input[type=file] { color:var(--text); font-size:13px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px;
+           padding:8px 16px; font-size:13px; cursor:pointer; }
+  button:hover { filter:brightness(1.1); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.ghost { background:var(--card); border:1px solid var(--line); color:var(--muted); }
+  #status { font-size:13px; color:var(--muted); margin-left:6px; }
+  .count { color:var(--accent2); font-weight:600; }
+  .err { color:#f85149; }
+  .tablewrap { overflow-x:auto; margin-top:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { border-bottom:1px solid var(--line); padding:7px 10px; text-align:left;
+           white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; background:#11161d; position:sticky; top:0; }
+  tbody tr:hover { background:#1b222b; }
+  .soon { color:var(--warn); font-size:13px; }
+  .hint { color:var(--muted); font-size:12px; margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>All for Cabal</h1><span class="tag">Web · Item Finder</span>
+</header>
+<main>
+  <div class="card">
+    <h2>1) อัปโหลด Template</h2>
+    <div class="row">
+      <input type="file" id="file" accept=".xlsx,.xlsm,.csv">
+      <button id="btnUpload">📂 อ่าน Template</button>
+      <span id="status"></span>
+    </div>
+    <div class="hint">รองรับ .xlsx / .xlsm / .csv (template เดียวกับที่ใช้ในแอป desktop)</div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>รายการไอเทมใน Template (<span id="count" class="count">0</span> รายการ)</h2>
+    <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>2) ค้นหาบน aztek</h2>
+    <div class="soon">🚧 กำลังทำต่อ — ขั้นถัดไป: กดค้นหาแล้วรัน Playwright (headless) + โชว์ log สด + ตารางผลลัพธ์</div>
+  </div>
+</main>
+
+<script>
+const LABELS = {
+  name:'ชื่อไอเทม', kind:'ItemKind', opt:'itemOption', dur:'durationIndex',
+  web:'เว็บ', img:'รูป', trade:'เทรด', drill:'เจาะ', qty_val:'จำนวน', crit_val:'คริต',
+  amt:'amount', sources:'กลุ่ม', group:'กลุ่ม'
+};
+const ORDER = ['name','kind','opt','dur','web','img','trade','drill','qty_val','crit_val','amt','sources','group'];
+
+const $ = id => document.getElementById(id);
+
+function renderTable(items) {
+  const thead = $('tbl').querySelector('thead');
+  const tbody = $('tbl').querySelector('tbody');
+  thead.innerHTML = ''; tbody.innerHTML = '';
+  if (!items.length) return;
+  // คอลัมน์ = คีย์ที่รู้จัก (เรียงตาม ORDER) เฉพาะที่มีค่าจริงในข้อมูล
+  const present = new Set();
+  items.forEach(it => Object.keys(it).forEach(k => {
+    const v = it[k];
+    if (v !== '' && v !== null && v !== undefined &&
+        !(Array.isArray(v) && v.length === 0)) present.add(k);
+  }));
+  const cols = ORDER.filter(k => present.has(k));
+  // เผื่อคีย์แปลกที่ไม่อยู่ใน ORDER
+  [...present].forEach(k => { if (!cols.includes(k)) cols.push(k); });
+
+  const trh = document.createElement('tr');
+  trh.innerHTML = '<th>#</th>' + cols.map(c => `<th>${LABELS[c] || c}</th>`).join('');
+  thead.appendChild(trh);
+
+  items.forEach((it, i) => {
+    const tr = document.createElement('tr');
+    const cells = cols.map(c => {
+      let v = it[c];
+      if (Array.isArray(v)) v = v.join(' , ');
+      return `<td>${v === null || v === undefined ? '' : String(v)}</td>`;
+    });
+    tr.innerHTML = `<td>${i + 1}</td>` + cells.join('');
+    tbody.appendChild(tr);
+  });
+}
+
+async function upload() {
+  const f = $('file').files[0];
+  if (!f) { $('status').innerHTML = '<span class="err">เลือกไฟล์ก่อน</span>'; return; }
+  $('btnUpload').disabled = true;
+  $('status').textContent = 'กำลังอ่าน...';
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    const r = await fetch('/api/upload-template', { method:'POST', body: fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'อ่านไม่สำเร็จ');
+    $('count').textContent = data.count;
+    renderTable(data.items || []);
+    $('resultCard').style.display = 'block';
+    $('status').innerHTML = `<span class="count">✓ อ่าน ${data.count} รายการ</span> จาก ${data.filename}`;
+  } catch (e) {
+    $('status').innerHTML = `<span class="err">✗ ${e.message}</span>`;
+  } finally {
+    $('btnUpload').disabled = false;
+  }
+}
+
+$('btnUpload').addEventListener('click', upload);
+</script>
+</body>
+</html>
