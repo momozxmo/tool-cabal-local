@@ -28,8 +28,8 @@ class UTCDateTime(TypeDecorator[datetime]):
     ) -> datetime | None:
         if value is None:
             return None
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError('UTCDateTime values must be timezone-aware')
         value = value.astimezone(timezone.utc)
         if dialect.name == 'sqlite':
             return value.replace(tzinfo=None)
@@ -85,7 +85,7 @@ class User(TimestampMixin, Base):
     pending_imports: Mapped[list[PendingImportRecord]] = relationship(
         back_populates='owner'
     )
-    jobs: Mapped[list[Job]] = relationship(back_populates='user')
+    jobs: Mapped[list[Job]] = relationship(back_populates='owner')
     audit_logs: Mapped[list[AuditLog]] = relationship(back_populates='user')
 
 
@@ -196,7 +196,7 @@ class Job(TimestampMixin, Base):
     __tablename__ = 'jobs'
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uuid_hex)
-    user_id: Mapped[str] = mapped_column(
+    owner_user_id: Mapped[str] = mapped_column(
         String(32), ForeignKey('users.id'), nullable=False, index=True
     )
     workspace_id: Mapped[str | None] = mapped_column(
@@ -210,7 +210,7 @@ class Job(TimestampMixin, Base):
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
-    user: Mapped[User] = relationship(back_populates='jobs')
+    owner: Mapped[User] = relationship(back_populates='jobs')
     workspace: Mapped[WorkspaceRecord | None] = relationship(back_populates='jobs')
 
 

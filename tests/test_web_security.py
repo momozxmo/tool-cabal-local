@@ -1,8 +1,11 @@
+from datetime import datetime
+
 import pytest
 from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError, StatementError
 
 from web.db import Database
-from web.models import User
+from web.models import User, WorkspaceRecord
 from web.settings import Settings
 
 
@@ -99,7 +102,10 @@ def test_schema_enforces_identity_and_ownership_constraints(test_database):
     assert (('owner_user_id',), 'users', ('id',)) in foreign_keys('workspaces')
     assert (('owner_user_id',), 'users', ('id',)) in foreign_keys('pending_imports')
     assert (('workspace_id',), 'workspaces', ('id',)) in foreign_keys('pending_imports')
-    assert (('user_id',), 'users', ('id',)) in foreign_keys('jobs')
+    job_columns = {column['name'] for column in schema.get_columns('jobs')}
+    assert 'owner_user_id' in job_columns
+    assert 'user_id' not in job_columns
+    assert (('owner_user_id',), 'users', ('id',)) in foreign_keys('jobs')
     assert (('workspace_id',), 'workspaces', ('id',)) in foreign_keys('jobs')
     assert (('user_id',), 'users', ('id',)) in foreign_keys('audit_logs')
     audit_user_id = next(
@@ -131,6 +137,17 @@ def test_database_session_commits_and_rolls_back(test_database):
         assert session.get(User, rolled_back_id) is None
 
 
+def test_sqlite_enforces_foreign_keys_for_orphan_records(test_database):
+    with pytest.raises(IntegrityError):
+        with test_database.session() as session:
+            session.add(WorkspaceRecord(
+                owner_user_id='9' * 32,
+                mode='event',
+                filename='orphan.xlsx',
+            ))
+            session.flush()
+
+
 def test_timestamps_round_trip_as_utc_aware_values(db_session):
     db_session.add(User(id='1' * 32, username='member', password_hash='hash'))
     db_session.flush()
@@ -140,3 +157,17 @@ def test_timestamps_round_trip_as_utc_aware_values(db_session):
     assert user is not None
     assert user.created_at.tzinfo is not None
     assert user.created_at.utcoffset().total_seconds() == 0
+
+
+def test_timestamps_reject_naive_input(test_database):
+    with pytest.raises(StatementError) as error:
+        with test_database.session() as session:
+            session.add(User(
+                id='4' * 32,
+                username='naive',
+                password_hash='hash',
+                password_changed_at=datetime(2026, 1, 1, 12, 0, 0),
+            ))
+            session.flush()
+    assert isinstance(error.value.orig, ValueError)
+    assert 'timezone-aware' in str(error.value.orig)
