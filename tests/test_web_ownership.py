@@ -1,23 +1,118 @@
 import pytest
+from starlette.websockets import WebSocketDisconnect
 
-from web.models import PendingImportRecord, User
+from web import app as web_app
+from web.models import PendingImportRecord, WorkspaceRecord
 from web.workspaces import PendingImportNotFound, WorkspaceNotFound, WorkspaceRepository
 
 
-@pytest.fixture
-def member(db_session):
-    user = User(username='workspace.member', password_hash='hash')
-    db_session.add(user)
-    db_session.flush()
-    return user
+def test_anonymous_item_finder_routes_return_json_401_and_health_is_public(
+    anonymous_client
+):
+    assert anonymous_client.get('/api/health').json() == {'ok': True}
+
+    responses = [
+        anonymous_client.get('/api/games'),
+        anonymous_client.get('/api/modes'),
+        anonymous_client.get('/api/template'),
+        anonymous_client.post('/api/import-template', files={
+            'file': ('template.xlsx', b'not-read', 'application/octet-stream'),
+        }),
+        anonymous_client.post('/api/import-plan', files={
+            'file': ('plan.xlsx', b'not-read', 'application/octet-stream'),
+        }),
+        anonymous_client.post('/api/import-plan/apply', json={
+            'pending_id': 'missing', 'selected_sheets': ['One'],
+        }),
+        anonymous_client.get('/api/workspaces/missing'),
+        anonymous_client.delete('/api/workspaces/missing'),
+        anonymous_client.get('/api/workspaces/missing/export.csv'),
+        anonymous_client.get('/api/workspaces/missing/export.xlsx'),
+        anonymous_client.post('/api/workspaces/missing/bundles', json={
+            'selected_indexes': [],
+        }),
+    ]
+
+    for response in responses:
+        assert response.status_code == 401
+        assert response.headers['content-type'].startswith('application/json')
+        assert response.json()['detail']
 
 
-@pytest.fixture
-def other_member(db_session):
-    user = User(username='workspace.other', password_hash='hash')
-    db_session.add(user)
-    db_session.flush()
-    return user
+def test_other_user_cannot_read_export_delete_or_bundle(
+    client_for, test_database, member, other_member
+):
+    legacy_workspace = web_app.WORKSPACES.create('event', 'owned.xlsx')
+    legacy_workspace.results = [
+        {'aztek_id': '1', 'item_name': 'owned', 'sources': ['G1']},
+    ]
+    with test_database.session() as db:
+        db.add(WorkspaceRecord(
+            id=legacy_workspace.id,
+            owner_user_id=member.id,
+            mode='event',
+            filename='owned.xlsx',
+            results=[{'aztek_id': '1', 'item_name': 'owned', 'sources': ['G1']}],
+        ))
+    outsider = client_for(other_member)
+    wid = legacy_workspace.id
+
+    assert outsider.get(f'/api/workspaces/{wid}').status_code == 404
+    assert outsider.get(f'/api/workspaces/{wid}/export.csv').status_code == 404
+    assert outsider.get(f'/api/workspaces/{wid}/export.xlsx').status_code == 404
+    assert outsider.delete(f'/api/workspaces/{wid}').status_code == 404
+    assert outsider.post(
+        f'/api/workspaces/{wid}/bundles', json={'selected_indexes': []}
+    ).status_code == 404
+
+
+def test_other_user_cannot_apply_a_pending_import(
+    client_for, test_database, member, other_member
+):
+    legacy_workspace = web_app.WORKSPACES.create('event', 'owned.xlsx')
+    legacy_pending = web_app.WORKSPACES.add_pending(
+        legacy_workspace.id, [('One', [{'kind': '1'}])], []
+    )
+    with test_database.session() as db:
+        db.add(WorkspaceRecord(
+            id=legacy_workspace.id,
+            owner_user_id=member.id,
+            mode='event',
+            filename='owned.xlsx',
+        ))
+        db.add(PendingImportRecord(
+            id=legacy_pending.id,
+            owner_user_id=member.id,
+            workspace_id=legacy_workspace.id,
+            sheets=[('One', [{'kind': '1'}])],
+            skipped=[],
+        ))
+
+    response = client_for(other_member).post('/api/import-plan/apply', json={
+        'pending_id': legacy_pending.id,
+        'selected_sheets': ['One'],
+    })
+
+    assert response.status_code == 404
+
+
+def test_unauthenticated_websocket_is_rejected(anonymous_client):
+    with pytest.raises(WebSocketDisconnect) as error:
+        with anonymous_client.websocket_connect('/ws/search'):
+            pass
+    assert error.value.code == 4401
+
+
+def test_websocket_rejects_unknown_and_foreign_workspaces(
+    client_for, other_member, workspace_for_member
+):
+    for workspace_id in ('missing-workspace', workspace_for_member.id):
+        client = client_for(other_member)
+        with client.websocket_connect('/ws/search') as websocket:
+            websocket.send_json({'workspace_id': workspace_id})
+            with pytest.raises(WebSocketDisconnect) as error:
+                websocket.receive_json()
+        assert error.value.code == 4404
 
 
 def test_workspace_repository_scopes_every_workspace_lookup_and_mutation(

@@ -371,10 +371,10 @@ def test_login_and_account_page_routes_follow_authentication_state(
     assert 'changePasswordForm' in authenticated_account.text
 
 
-def test_existing_item_finder_apis_remain_anonymous(test_settings, test_database):
+def test_item_finder_apis_require_authentication(test_settings, test_database):
     application = web_app.create_app(test_settings, test_database)
 
     response = _client(application).get('/api/modes')
 
-    assert response.status_code == 200
-    assert set(response.json()) == {'event', 'itemcode', 'shop'}
+    assert response.status_code == 401
+    assert response.headers['content-type'].startswith('application/json')

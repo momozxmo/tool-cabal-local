@@ -29,10 +29,13 @@ from web.db import Database  # noqa: E402
 from web.models import User, utc_now  # noqa: E402
 from web.security import hash_password, verify_password  # noqa: E402
 from web.settings import Settings  # noqa: E402
+from web.workspaces import (PendingImportNotFound, WorkspaceNotFound,
+                            WorkspaceRepository)  # noqa: E402
 
 
 router = APIRouter()
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+# Retained for compatibility with legacy callers; handlers never use it as data.
 WORKSPACES = item_service.WorkspaceStore()
 Mode = Literal['event', 'itemcode', 'shop']
 
@@ -154,10 +157,10 @@ def _workspace_view(workspace):
     }
 
 
-def _get_workspace(workspace_id):
+def _get_workspace(repository: WorkspaceRepository, user_id: str, workspace_id: str):
     try:
-        return WORKSPACES.get(workspace_id)
-    except KeyError:
+        return repository.get_owned(user_id, workspace_id)
+    except WorkspaceNotFound:
         raise HTTPException(status_code=404, detail='ไม่พบงาน Item Finder นี้')
 
 
@@ -284,18 +287,18 @@ def health():
 
 
 @router.get('/api/games')
-def games():
+def games(user: User = Depends(require_user)):
     return {'games': list(item_finder.GAME_NAMES)}
 
 
 @router.get('/api/modes')
-def modes():
+def modes(user: User = Depends(require_user)):
     return {mode: item_service.mode_policy(mode)
             for mode in ('event', 'itemcode', 'shop')}
 
 
 @router.get('/api/template')
-def download_template():
+def download_template(user: User = Depends(require_user)):
     handle, path = tempfile.mkstemp(suffix='.xlsx')
     os.close(handle)
     try:
@@ -316,7 +319,9 @@ def download_template():
 
 @router.post('/api/import-template')
 async def import_template(file: UploadFile = File(...), mode: Mode = Form('event'),
-                          workspace_id: str = Form('')):
+                          workspace_id: str = Form(''),
+                          user: User = Depends(require_user),
+                          db: Session = Depends(get_db)):
     item_service.mode_policy(mode)
     path = await _temporary_upload(file)
     try:
@@ -330,22 +335,27 @@ async def import_template(file: UploadFile = File(...), mode: Mode = Form('event
         except OSError:
             pass
     if workspace_id:
-        workspace = _get_workspace(workspace_id)
+        repository = WorkspaceRepository(db)
+        workspace = _get_workspace(repository, user.id, workspace_id)
         if workspace.mode != mode:
             raise HTTPException(status_code=400, detail='โหมดของงานไม่ตรงกับไฟล์ที่นำเข้า')
-        workspace = WORKSPACES.replace_template(
-            workspace.id, file.filename or 'template.xlsx', rows)
+        workspace = repository.replace_template(
+            user.id, workspace.id, file.filename or 'template.xlsx', rows)
     else:
-        workspace = WORKSPACES.create(mode, file.filename or 'template.xlsx', rows)
+        workspace = WorkspaceRepository(db).create(
+            user.id, mode, file.filename or 'template.xlsx', rows)
     return _workspace_view(workspace)
 
 
 @router.post('/api/import-plan')
 async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
-                      workspace_id: str = Form('')):
+                      workspace_id: str = Form(''),
+                      user: User = Depends(require_user),
+                      db: Session = Depends(get_db)):
     parser = item_service.parser_for_mode(mode)
-    workspace = (_get_workspace(workspace_id) if workspace_id
-                 else WORKSPACES.create(mode, file.filename or 'plan.xlsx'))
+    repository = WorkspaceRepository(db)
+    workspace = (_get_workspace(repository, user.id, workspace_id) if workspace_id
+                 else repository.create(user.id, mode, file.filename or 'plan.xlsx'))
     if workspace.mode != mode:
         raise HTTPException(status_code=400, detail='โหมดของงานไม่ตรงกับไฟล์ที่นำเข้า')
     path = await _temporary_upload(file)
@@ -361,7 +371,7 @@ async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
             pass
     if not sheets:
         raise HTTPException(status_code=400, detail='ไม่พบตารางไอเทมในไฟล์นี้')
-    pending = WORKSPACES.add_pending(workspace.id, sheets, skipped)
+    pending = repository.add_pending(user.id, workspace.id, sheets, skipped)
     return {
         'workspace_id': workspace.id,
         'pending_id': pending.id,
@@ -372,33 +382,39 @@ async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
 
 
 @router.post('/api/import-plan/apply')
-def apply_plan(payload: ApplyPlanRequest):
+def apply_plan(payload: ApplyPlanRequest, user: User = Depends(require_user),
+               db: Session = Depends(get_db)):
     pending_id = payload.pending_id.strip()
     selected = payload.selected_sheets
     if not pending_id or not selected:
         raise HTTPException(status_code=400, detail='กรุณาเลือกอย่างน้อย 1 sheet')
     try:
-        workspace = WORKSPACES.apply_pending(pending_id, selected)
-    except KeyError:
+        workspace = WorkspaceRepository(db).apply_pending(user.id, pending_id, selected)
+    except (PendingImportNotFound, WorkspaceNotFound):
         raise HTTPException(status_code=404, detail='ไม่พบไฟล์นำเข้าที่รอเลือก sheet')
     return _workspace_view(workspace)
 
 
 @router.get('/api/workspaces/{workspace_id}')
-def get_workspace(workspace_id: str):
-    return _workspace_view(_get_workspace(workspace_id))
+def get_workspace(workspace_id: str, user: User = Depends(require_user),
+                  db: Session = Depends(get_db)):
+    return _workspace_view(
+        _get_workspace(WorkspaceRepository(db), user.id, workspace_id))
 
 
 @router.delete('/api/workspaces/{workspace_id}', status_code=204)
-def delete_workspace(workspace_id: str):
-    _get_workspace(workspace_id)
-    WORKSPACES.delete(workspace_id)
+def delete_workspace(workspace_id: str, user: User = Depends(require_user),
+                     db: Session = Depends(get_db)):
+    repository = WorkspaceRepository(db)
+    _get_workspace(repository, user.id, workspace_id)
+    repository.delete_owned(user.id, workspace_id)
     return Response(status_code=204)
 
 
 @router.get('/api/workspaces/{workspace_id}/export.csv')
-def export_csv(workspace_id: str):
-    workspace = _get_workspace(workspace_id)
+def export_csv(workspace_id: str, user: User = Depends(require_user),
+               db: Session = Depends(get_db)):
+    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     if not workspace.results:
         raise HTTPException(status_code=400, detail='ยังไม่มีผลลัพธ์')
     return Response(
@@ -409,8 +425,9 @@ def export_csv(workspace_id: str):
 
 
 @router.get('/api/workspaces/{workspace_id}/export.xlsx')
-def export_xlsx(workspace_id: str):
-    workspace = _get_workspace(workspace_id)
+def export_xlsx(workspace_id: str, user: User = Depends(require_user),
+                db: Session = Depends(get_db)):
+    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     if not workspace.results:
         raise HTTPException(status_code=400, detail='ยังไม่มีผลลัพธ์')
     return Response(
@@ -421,8 +438,9 @@ def export_xlsx(workspace_id: str):
 
 
 @router.post('/api/workspaces/{workspace_id}/bundles')
-def bundle_preview(workspace_id: str, payload: BundleRequest):
-    workspace = _get_workspace(workspace_id)
+def bundle_preview(workspace_id: str, payload: BundleRequest,
+                   user: User = Depends(require_user), db: Session = Depends(get_db)):
+    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     indexes = payload.selected_indexes
     if indexes:
         rows = [workspace.results[index] for index in sorted(set(indexes))
@@ -437,6 +455,13 @@ def bundle_preview(workspace_id: str, payload: BundleRequest):
 @router.websocket('/ws/search')
 async def ws_search(ws: WebSocket):
     """Run the existing Item Finder engine headlessly and stream events."""
+    application = ws.scope['app']
+    raw_session = ws.cookies.get('afc_session', '')
+    with application.state.database.session() as db:
+        user = application.state.auth_service.resolve_session(db, raw_session)
+    if user is None:
+        await ws.close(code=4401)
+        return
     await ws.accept()
     try:
         request = await ws.receive_json()
@@ -445,17 +470,17 @@ async def ws_search(ws: WebSocket):
         return
 
     workspace_id = str(request.get('workspace_id') or '')
-    try:
-        workspace = _get_workspace(workspace_id)
-    except HTTPException as error:
-        await ws.send_json({'type': 'log', 'msg': error.detail, 'level': 'ERROR'})
-        await ws.send_json({'type': 'done', 'count': 0, 'not_found': []})
-        await ws.close()
-        return
-    # A new search invalidates the previous result set even if validation,
-    # browser launch, or Playwright later fails.
-    workspace.results = []
-    workspace.not_found = []
+    with application.state.database.session() as db:
+        repository = WorkspaceRepository(db)
+        try:
+            workspace = repository.get_owned(user.id, workspace_id)
+        except WorkspaceNotFound:
+            await ws.close(code=4404)
+            return
+        # A new search invalidates the previous result set even if validation,
+        # browser launch, or Playwright later fails.
+        repository.save_results(
+            user.id, workspace_id, game=workspace.game or '', results=[], not_found=[])
     game = request.get('game') or ''
     web_mode = request.get('web_mode') or item_service.mode_policy(workspace.mode)['web_mode']
 
@@ -486,11 +511,14 @@ async def ws_search(ws: WebSocket):
     async def run_search():
         try:
             await finder._auto(data)
-            workspace.results = [dict(row) for row in finder._results]
-            workspace.not_found = list(finder._not_found)
-            workspace.game = game
-            queue.put_nowait({'type': 'done', 'count': len(workspace.results),
-                              'not_found': workspace.not_found})
+            results = [dict(row) for row in finder._results]
+            not_found = list(finder._not_found)
+            with application.state.database.session() as db:
+                WorkspaceRepository(db).save_results(
+                    user.id, workspace_id, game=game, results=results,
+                    not_found=not_found)
+            queue.put_nowait({'type': 'done', 'count': len(results),
+                              'not_found': not_found})
         except core.BrowserBusy as error:
             queue.put_nowait({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
             queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
