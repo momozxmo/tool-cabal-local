@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 import shutil
 import tempfile
@@ -25,7 +26,7 @@ def test_settings() -> Iterator[Settings]:
             app_env='test',
             database_url=db_url,
             app_secret_key='test-secret',
-            aztek_encryption_key='test-encryption-key',
+            aztek_encryption_key=base64.urlsafe_b64encode(b'k' * 32).decode('ascii'),
             bootstrap_admin_username='admin',
             bootstrap_admin_password='bootstrap-password',
             session_cookie_secure=False,
