@@ -191,6 +191,32 @@ def index(
         return stream.read()
 
 
+@router.get('/login', response_class=HTMLResponse)
+def login_page(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is not None:
+        return RedirectResponse('/')
+    with open(os.path.join(STATIC_DIR, 'login.html'), encoding='utf-8') as stream:
+        return stream.read()
+
+
+@router.get('/account', response_class=HTMLResponse)
+def account_page(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is None:
+        return RedirectResponse('/login')
+    with open(os.path.join(STATIC_DIR, 'account.html'), encoding='utf-8') as stream:
+        return stream.read()
+
+
 @router.post('/api/auth/login')
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     client_ip = request.client.host if request.client else 'unknown'

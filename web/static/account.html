@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>บัญชีผู้ใช้ | All for Cabal</title>
+  <style>
+    :root{color-scheme:dark;--bg:#111820;--panel:#18222e;--line:#314152;--text:#e8eef5;--muted:#9dabb9;--blue:#2878bf;--green:#167d5c;--red:#f1838b;--shadow:0 12px 32px #0006}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}.shell{width:min(100%,820px);margin:auto;padding:24px 20px}.topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}.topbar h1{font-size:25px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted)}.button,button{border:1px solid var(--line);border-radius:7px;background:#202b38;color:var(--text);padding:9px 12px;font:inherit;font-weight:600;cursor:pointer}.primary{background:var(--blue);border-color:#3c94df;color:#fff}.danger{background:#8d2d37;border-color:#b64b58;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}.card h2{font-size:17px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.card-body{padding:16px}.profile{display:grid;gap:10px}.profile dt{color:var(--muted)}.profile dd{margin:2px 0 0;font-weight:700}.profile div{padding-bottom:10px;border-bottom:1px solid #283747}.profile div:last-child{border:0;padding:0}.fields{display:grid;gap:12px}label{display:grid;gap:6px;font-weight:600}input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}input:focus{outline:2px solid #5fa8e8;outline-offset:1px}.message{min-height:1.5em;color:var(--red);margin:13px 0 0}.notice{margin-top:14px;border-color:#2b715a}.notice p{margin:0;color:var(--muted)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}@media(max-width:620px){.shell{padding:16px 12px}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions button{flex:1 1 100%}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><h1>บัญชีผู้ใช้</h1><p>All for Cabal</p></div>
+      <a class="button" href="/">กลับไป Item Finder</a>
+    </header>
+    <div class="grid">
+      <section class="card" aria-labelledby="profileTitle">
+        <h2 id="profileTitle">ข้อมูลบัญชี</h2>
+        <div class="card-body"><dl class="profile"><div><dt>ชื่อผู้ใช้</dt><dd id="accountUsername">กำลังโหลด…</dd></div><div><dt>บทบาท</dt><dd id="accountRole">กำลังโหลด…</dd></div></dl><div class="actions"><button id="logoutButton" class="danger" type="button">ออกจากระบบ</button></div></div>
+      </section>
+      <section class="card" aria-labelledby="passwordTitle">
+        <h2 id="passwordTitle">เปลี่ยนรหัสผ่าน</h2>
+        <div class="card-body"><form id="changePasswordForm"><div class="fields"><label for="current_password">รหัสผ่านปัจจุบัน<input id="current_password" name="current_password" type="password" autocomplete="current-password" required></label><label for="new_password">รหัสผ่านใหม่<input id="new_password" name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><button id="changePasswordButton" class="primary" type="submit">บันทึกรหัสผ่านใหม่</button></div><p id="accountMessage" class="message" role="alert" aria-live="polite"></p></form></div>
+      </section>
+    </div>
+    <section class="card notice" aria-label="สถานะการเชื่อม Aztek"><div class="card-body"><p>ระบบเชื่อม Aztek จะเปิดในขั้นถัดไป</p></div></section>
+  </main>
+  <script>
+    const accountUsername = document.getElementById('accountUsername');
+    const accountRole = document.getElementById('accountRole');
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    const currentPasswordInput = document.getElementById('current_password');
+    const newPasswordInput = document.getElementById('new_password');
+    const changePasswordButton = document.getElementById('changePasswordButton');
+    const accountMessage = document.getElementById('accountMessage');
+    const logoutButton = document.getElementById('logoutButton');
+
+    async function errorMessage(response, fallback) {
+      try {
+        const data = await response.json();
+        return data.detail || fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    async function loadAccount() {
+      const response = await fetch('/api/auth/me');
+      if (!response.ok) {
+        window.location.replace('/login');
+        return;
+      }
+      const data = await response.json();
+      accountUsername.textContent = data.username;
+      accountRole.textContent = data.role;
+    }
+
+    changePasswordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const current_password = currentPasswordInput.value;
+      const new_password = newPasswordInput.value;
+      accountMessage.textContent = '';
+      changePasswordButton.disabled = true;
+      try {
+        const response = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({current_password,new_password}),
+        });
+        if (!response.ok) {
+          accountMessage.textContent = await errorMessage(response, 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+          return;
+        }
+        window.location.assign('/login');
+      } catch (error) {
+        accountMessage.textContent = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้';
+      } finally {
+        changePasswordButton.disabled = false;
+      }
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      logoutButton.disabled = true;
+      try {
+        await fetch('/api/auth/logout', {method: 'POST'});
+      } finally {
+        window.location.assign('/login');
+      }
+    });
+
+    loadAccount().catch(() => {
+      accountMessage.textContent = 'ไม่สามารถโหลดข้อมูลบัญชีได้';
+    });
+  </script>
+</body>
+</html>

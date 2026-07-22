@@ -348,6 +348,29 @@ def test_root_redirects_anonymous_but_serves_existing_item_finder_after_login(
     assert 'All for Cabal' in authenticated.text
 
 
+def test_login_and_account_page_routes_follow_authentication_state(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    _create_user(application, test_database)
+    client = _client(application)
+
+    anonymous_login = client.get('/login')
+    anonymous_account = client.get('/account')
+    assert _login(client).status_code == 200
+    authenticated_login = client.get('/login')
+    authenticated_account = client.get('/account')
+
+    assert anonymous_login.status_code == 200
+    assert 'loginForm' in anonymous_login.text
+    assert anonymous_account.status_code in (302, 303, 307)
+    assert anonymous_account.headers['location'] == '/login'
+    assert authenticated_login.status_code in (302, 303, 307)
+    assert authenticated_login.headers['location'] == '/'
+    assert authenticated_account.status_code == 200
+    assert 'changePasswordForm' in authenticated_account.text
+
+
 def test_existing_item_finder_apis_remain_anonymous(test_settings, test_database):
     application = web_app.create_app(test_settings, test_database)
 

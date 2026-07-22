@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เข้าสู่ระบบ | All for Cabal</title>
+  <style>
+    :root{color-scheme:dark;--bg:#111820;--panel:#18222e;--line:#314152;--text:#e8eef5;--muted:#9dabb9;--blue:#2878bf;--red:#f1838b;--shadow:0 12px 32px #0006}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;display:grid;place-items:center;padding:20px}
+    .card{width:min(100%,430px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:28px}.eyebrow{color:#69e0b5;font-weight:700;font-size:13px}.brand{margin:3px 0 6px;font-size:26px}.muted{color:var(--muted);margin:0 0 24px}.fields{display:grid;gap:14px}label{display:grid;gap:6px;font-weight:600}input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}input:focus{outline:2px solid #5fa8e8;outline-offset:1px}button{width:100%;border:1px solid #3c94df;border-radius:7px;background:var(--blue);color:#fff;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.error{min-height:1.5em;color:var(--red);margin:16px 0 0}@media(max-width:480px){body{padding:12px}.card{padding:22px 18px}.brand{font-size:23px}}
+  </style>
+</head>
+<body>
+  <main class="card" aria-labelledby="pageTitle">
+    <div class="eyebrow">ALL FOR CABAL</div>
+    <h1 id="pageTitle" class="brand">เข้าสู่ระบบ</h1>
+    <p class="muted">เข้าสู่ Item Finder ด้วยบัญชีที่ได้รับอนุญาต</p>
+    <form id="loginForm">
+      <div class="fields">
+        <label for="username">ชื่อผู้ใช้<input id="username" name="username" autocomplete="username" required></label>
+        <label for="password">รหัสผ่าน<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+        <button id="loginButton" type="submit">เข้าสู่ระบบ</button>
+      </div>
+      <p id="loginError" class="error" role="alert" aria-live="polite"></p>
+    </form>
+  </main>
+  <script>
+    const form = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loginButton = document.getElementById('loginButton');
+    const loginError = document.getElementById('loginError');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+      loginError.textContent = '';
+      loginButton.disabled = true;
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username,password}),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          loginError.textContent = data.detail || 'เข้าสู่ระบบไม่สำเร็จ';
+          return;
+        }
+        window.location.assign('/');
+      } catch (error) {
+        loginError.textContent = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้';
+      } finally {
+        loginButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

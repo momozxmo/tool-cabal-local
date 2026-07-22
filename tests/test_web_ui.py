@@ -39,6 +39,32 @@ def test_ui_has_all_result_columns_and_shop_description():
         assert label in HTML, label
 
 
+def test_login_and_account_pages_use_the_approved_auth_api_contract_safely():
+    static_dir = os.path.join(ROOT, 'web', 'static')
+    login_path = os.path.join(static_dir, 'login.html')
+    account_path = os.path.join(static_dir, 'account.html')
+
+    assert os.path.exists(login_path), login_path
+    assert os.path.exists(account_path), account_path
+    login_html = open(login_path, encoding='utf-8').read()
+    account_html = open(account_path, encoding='utf-8').read()
+
+    for fragment in (
+        'loginForm', 'username', 'password', '/api/auth/login',
+        'JSON.stringify({username,password})', 'textContent',
+    ):
+        assert fragment in login_html, fragment
+    for fragment in (
+        '/api/auth/me', '/api/auth/change-password', '/api/auth/logout',
+        'changePasswordForm', 'current_password', 'new_password',
+        'logoutButton', 'textContent', 'ระบบเชื่อม Aztek จะเปิดในขั้นถัดไป',
+    ):
+        assert fragment in account_html, fragment
+    for html in (login_html, account_html):
+        assert 'innerHTML' not in html
+        assert 'insertAdjacentHTML' not in html
+
+
 if __name__ == '__main__':
     tests = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for test in tests:
