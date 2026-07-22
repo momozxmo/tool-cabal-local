@@ -1,0 +1,16 @@
+# Never bake local runtime data, secrets, or the desktop build into the image.
+.git
+.gitignore
+dist/
+.worktrees/
+.cabal_chrome_profile/
+*.chrome_profile/
+.env
+*.env
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.pyc
+.pytest_cache/
+extension/config.local.js
