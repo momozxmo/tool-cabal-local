@@ -1,14 +1,19 @@
+import base64
+from dataclasses import replace
 from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.exc import IntegrityError, StatementError
 
+from web import security
+from web.auth_service import AuthService
 from web.db import Database
-from web.models import User, WorkspaceRecord
+from web.models import User, WebSession, WorkspaceRecord, utc_now
 from web.settings import Settings
 
 
@@ -23,6 +28,268 @@ APPLICATION_TABLES = {
     'users', 'web_sessions', 'pairing_tokens', 'aztek_sessions',
     'workspaces', 'pending_imports', 'jobs', 'audit_logs',
 }
+
+
+@pytest.fixture
+def settings(test_database):
+    return Settings(
+        app_env='test',
+        database_url=str(test_database.engine.url),
+        app_secret_key='task-3-test-secret',
+        aztek_encryption_key=base64.urlsafe_b64encode(
+            b'k' * 32
+        ).decode('ascii'),
+        bootstrap_admin_username='Bootstrap.Admin',
+        bootstrap_admin_password='bootstrap password',
+        session_cookie_secure=False,
+        session_ttl_seconds=3600,
+    )
+
+
+@pytest.fixture
+def auth_service(settings):
+    return AuthService(settings)
+
+
+@pytest.fixture
+def member(auth_service, db_session):
+    return auth_service.create_user(
+        db_session, ' Member.Name ', 'correct horse', role='member'
+    )
+
+
+def test_password_and_encryption_never_store_plaintext(settings):
+    encoded = security.hash_password('correct horse')
+    assert 'correct horse' not in encoded
+    assert security.verify_password('correct horse', encoded)
+    assert not security.verify_password('wrong', encoded)
+
+    state = {
+        'cookies': [{'name': 'token', 'value': 'secret'}],
+        'origins': [],
+    }
+    ciphertext = security.encrypt_storage_state(state, settings)
+    assert 'secret' not in ciphertext
+    assert security.decrypt_storage_state(ciphertext, settings) == state
+
+
+def test_storage_encryption_uses_random_nonce_and_stable_json(
+    monkeypatch, settings
+):
+    nonce_sizes = []
+
+    def fixed_random(size):
+        nonce_sizes.append(size)
+        return b'n' * size
+
+    monkeypatch.setattr(security.os, 'urandom', fixed_random)
+    first = security.encrypt_storage_state({'b': 2, 'a': 1}, settings)
+    second = security.encrypt_storage_state({'a': 1, 'b': 2}, settings)
+
+    assert first == second
+    assert nonce_sizes == [12, 12]
+
+
+def test_storage_decryption_rejects_malformed_and_tampered_state(settings):
+    ciphertext = security.encrypt_storage_state({'cookies': []}, settings)
+    tampered = bytearray(base64.urlsafe_b64decode(ciphertext.encode('ascii')))
+    tampered[-1] ^= 1
+    tampered_ciphertext = base64.urlsafe_b64encode(tampered).decode('ascii')
+
+    with pytest.raises(security.InvalidEncryptedState):
+        security.decrypt_storage_state('not valid base64!', settings)
+    with pytest.raises(security.InvalidEncryptedState):
+        security.decrypt_storage_state(tampered_ciphertext, settings)
+
+
+def test_storage_encryption_requires_decoded_32_byte_key(settings):
+    invalid_settings = replace(
+        settings,
+        aztek_encryption_key=base64.urlsafe_b64encode(b'x' * 31).decode('ascii'),
+    )
+
+    with pytest.raises(ValueError, match='32-byte'):
+        security.encrypt_storage_state({}, invalid_settings)
+
+
+def test_storage_encryption_rejects_non_urlsafe_base64_key(settings):
+    standard_base64_key = base64.b64encode(b'\xfb' * 32).decode('ascii')
+    assert '+' in standard_base64_key or '/' in standard_base64_key
+    invalid_settings = replace(
+        settings, aztek_encryption_key=standard_base64_key
+    )
+
+    with pytest.raises(ValueError, match='URL-safe base64'):
+        security.encrypt_storage_state({}, invalid_settings)
+
+
+def test_create_user_normalizes_identity_and_hashes_password(
+    auth_service, db_session
+):
+    user = auth_service.create_user(
+        db_session, ' Mixed.Case-User_1 ', 'ten letters!', role='admin'
+    )
+
+    assert user.username == 'mixed.case-user_1'
+    assert user.role == 'admin'
+    assert user.password_hash != 'ten letters!'
+    assert 'ten letters!' not in user.password_hash
+
+
+@pytest.mark.parametrize(
+    'username',
+    ['ab', 'a' * 81, 'white space', 'slash/name', 'ภาษาไทย'],
+)
+def test_create_user_rejects_invalid_username(auth_service, db_session, username):
+    with pytest.raises(ValueError, match='username'):
+        auth_service.create_user(db_session, username, 'correct horse')
+
+
+def test_create_user_rejects_short_password_and_unknown_role(
+    auth_service, db_session
+):
+    with pytest.raises(ValueError, match='password'):
+        auth_service.create_user(db_session, 'shortpass', 'too short')
+    with pytest.raises(ValueError, match='role'):
+        auth_service.create_user(
+            db_session, 'unknownrole', 'correct horse', role='owner'
+        )
+
+
+def test_create_user_rejects_non_string_role(auth_service, db_session):
+    with pytest.raises(ValueError, match='role'):
+        auth_service.create_user(
+            db_session, 'invalidrole', 'correct horse', role=[]
+        )
+
+
+def test_create_user_rejects_duplicate_normalized_username(
+    auth_service, db_session
+):
+    auth_service.create_user(
+        db_session, 'Member.Name', 'correct horse'
+    )
+
+    with pytest.raises(IntegrityError):
+        auth_service.create_user(
+            db_session, ' member.name ', 'correct horse'
+        )
+    db_session.rollback()
+
+
+def test_authenticate_accepts_valid_credentials_and_rejects_invalid_or_disabled(
+    auth_service, db_session, member
+):
+    assert member.last_login_at is None
+    assert auth_service.authenticate(
+        db_session, ' MEMBER.NAME ', 'correct horse'
+    ) is member
+    assert member.last_login_at is not None
+    assert auth_service.authenticate(
+        db_session, 'member.name', 'wrong password'
+    ) is None
+
+    member.is_active = False
+    db_session.flush()
+    assert auth_service.authenticate(
+        db_session, 'member.name', 'correct horse'
+    ) is None
+
+
+def test_session_token_is_stored_as_hmac_hash(
+    auth_service, db_session, member, settings
+):
+    raw = auth_service.create_session(db_session, member)
+    record = db_session.scalar(
+        select(WebSession).where(WebSession.user_id == member.id)
+    )
+
+    assert record is not None
+    assert raw != record.token_hash
+    assert record.token_hash == security.hash_token(raw, settings)
+    assert record.expires_at > utc_now() + timedelta(minutes=59)
+    assert auth_service.resolve_session(db_session, raw).id == member.id
+    assert record.last_seen_at is not None
+
+
+def test_expired_revoked_and_disabled_sessions_do_not_resolve(
+    auth_service, db_session, member
+):
+    expired_token = auth_service.create_session(db_session, member)
+    expired_record = db_session.scalar(
+        select(WebSession).where(
+            WebSession.token_hash == security.hash_token(
+                expired_token, auth_service.settings
+            )
+        )
+    )
+    expired_record.expires_at = utc_now() - timedelta(seconds=1)
+    db_session.flush()
+    assert auth_service.resolve_session(db_session, expired_token) is None
+
+    revoked_token = auth_service.create_session(db_session, member)
+    auth_service.revoke_session(db_session, revoked_token)
+    assert auth_service.resolve_session(db_session, revoked_token) is None
+
+    disabled_token = auth_service.create_session(db_session, member)
+    member.is_active = False
+    db_session.flush()
+    assert auth_service.resolve_session(db_session, disabled_token) is None
+
+
+def test_revoke_session_revokes_only_the_supplied_token(
+    auth_service, db_session, member
+):
+    revoked_token = auth_service.create_session(db_session, member)
+    remaining_token = auth_service.create_session(db_session, member)
+
+    auth_service.revoke_session(db_session, revoked_token)
+
+    assert auth_service.resolve_session(db_session, revoked_token) is None
+    assert (
+        auth_service.resolve_session(db_session, remaining_token).id == member.id
+    )
+
+
+def test_revoke_all_sessions_revokes_only_selected_user(
+    auth_service, db_session, member
+):
+    other = auth_service.create_user(
+        db_session, 'other.member', 'correct horse'
+    )
+    member_tokens = [
+        auth_service.create_session(db_session, member),
+        auth_service.create_session(db_session, member),
+    ]
+    other_token = auth_service.create_session(db_session, other)
+
+    auth_service.revoke_all_sessions(db_session, member.id)
+
+    assert all(
+        auth_service.resolve_session(db_session, token) is None
+        for token in member_tokens
+    )
+    assert auth_service.resolve_session(db_session, other_token).id == other.id
+
+
+def test_bootstrap_admin_requires_credentials_and_an_empty_user_table(
+    settings, db_session
+):
+    missing_credentials = AuthService(
+        replace(settings, bootstrap_admin_password='')
+    )
+    assert missing_credentials.bootstrap_admin(db_session) is None
+    missing_username = AuthService(
+        replace(settings, bootstrap_admin_username='   ')
+    )
+    assert missing_username.bootstrap_admin(db_session) is None
+
+    service = AuthService(settings)
+    admin = service.bootstrap_admin(db_session)
+    assert admin is not None
+    assert admin.username == 'bootstrap.admin'
+    assert admin.role == 'admin'
+    assert service.bootstrap_admin(db_session) is None
 
 
 def configure_production(monkeypatch):
