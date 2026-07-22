@@ -1,4 +1,5 @@
 from collections import Counter
+from dataclasses import replace
 
 from fastapi import Depends
 from fastapi.testclient import TestClient
@@ -6,6 +7,33 @@ from fastapi.testclient import TestClient
 from web import app as web_app
 from web.auth_service import AuthService
 from web.models import User
+
+
+AUTH_FAILURE_MESSAGE = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+
+
+class MonotonicClock:
+    def __init__(self):
+        self.value = 0.0
+
+    def __call__(self):
+        return self.value
+
+
+def _client(application):
+    return TestClient(application, follow_redirects=False)
+
+
+def _create_user(application, database, username='member.user', password='correct horse'):
+    with database.session() as db:
+        return application.state.auth_service.create_user(db, username, password)
+
+
+def _login(client, username='member.user', password='correct horse'):
+    return client.post('/api/auth/login', json={
+        'username': username,
+        'password': password,
+    })
 
 
 def test_create_app_uses_injected_dependencies(test_settings, test_database):
@@ -109,3 +137,192 @@ def test_require_admin_allows_admin_and_rejects_member(
     assert admin_response.json() == {'username': 'admin.user'}
     assert member_response.status_code == 403
     assert member_response.json() == {'detail': 'ไม่มีสิทธิ์ใช้งานส่วนนี้'}
+
+
+def test_login_returns_safe_user_and_session_cookie(test_settings, test_database):
+    application = web_app.create_app(test_settings, test_database)
+    user = _create_user(application, test_database)
+
+    response = _login(_client(application))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'id': user.id,
+        'username': 'member.user',
+        'role': 'member',
+        'is_active': True,
+    }
+    cookie = response.headers['set-cookie'].lower()
+    assert 'afc_session=' in cookie
+    assert 'httponly' in cookie
+    assert 'path=/' in cookie
+    assert 'samesite=lax' in cookie
+    assert 'max-age=604800' in cookie
+    assert 'secure' not in cookie
+
+
+def test_login_uses_one_generic_failure_for_unknown_wrong_and_disabled(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    user = _create_user(application, test_database)
+    with test_database.session() as db:
+        db.get(User, user.id).is_active = False
+    client = _client(application)
+
+    responses = [
+        _login(client, 'unknown.user'),
+        _login(client, password='wrong password'),
+        _login(client),
+    ]
+
+    assert [response.status_code for response in responses] == [401, 401, 401]
+    assert [response.json() for response in responses] == [
+        {'detail': AUTH_FAILURE_MESSAGE},
+        {'detail': AUTH_FAILURE_MESSAGE},
+        {'detail': AUTH_FAILURE_MESSAGE},
+    ]
+
+
+def test_login_cookie_is_secure_when_settings_require_it(test_settings, test_database):
+    settings = replace(test_settings, app_env='production', session_cookie_secure=True)
+    application = web_app.create_app(settings, test_database)
+    _create_user(application, test_database)
+
+    response = _login(_client(application))
+
+    assert response.status_code == 200
+    assert 'secure' in response.headers['set-cookie'].lower()
+
+
+def test_login_throttle_allows_five_failures_then_returns_429_and_success_resets(
+    test_settings, test_database
+):
+    clock = MonotonicClock()
+    application = web_app.create_app(test_settings, test_database, monotonic_clock=clock)
+    _create_user(application, test_database)
+    client = _client(application)
+
+    for _ in range(4):
+        assert _login(client, password='wrong password').status_code == 401
+    assert _login(client).status_code == 200
+    for _ in range(5):
+        assert _login(client, password='wrong password').status_code == 401
+    limited = _login(client, password='wrong password')
+
+    assert limited.status_code == 429
+    assert limited.json() == {'detail': 'ลองใหม่ภายหลัง'}
+
+
+def test_me_requires_a_session_and_returns_only_safe_user_fields(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    user = _create_user(application, test_database)
+    client = _client(application)
+
+    missing = client.get('/api/auth/me')
+    logged_in = _login(client)
+    authenticated = client.get('/api/auth/me')
+
+    assert missing.status_code == 401
+    assert logged_in.status_code == 200
+    assert authenticated.json() == {
+        'id': user.id,
+        'username': user.username,
+        'role': 'member',
+        'is_active': True,
+    }
+
+
+def test_logout_revokes_session_and_clears_cookie(test_settings, test_database):
+    application = web_app.create_app(test_settings, test_database)
+    _create_user(application, test_database)
+    client = _client(application)
+    assert _login(client).status_code == 200
+
+    response = client.post('/api/auth/logout')
+
+    assert response.status_code == 204
+    assert 'afc_session=""' in response.headers['set-cookie'].lower()
+    assert 'max-age=0' in response.headers['set-cookie'].lower()
+    assert client.get('/api/auth/me').status_code == 401
+
+
+def test_change_password_rejects_wrong_password_and_revokes_all_sessions(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    user = _create_user(application, test_database)
+    service = application.state.auth_service
+    with test_database.session() as db:
+        first_token = service.create_session(db, db.get(User, user.id))
+        second_token = service.create_session(db, db.get(User, user.id))
+        password_changed_at = db.get(User, user.id).password_changed_at
+    client = _client(application)
+    client.cookies.set('afc_session', first_token)
+
+    wrong = client.post('/api/auth/change-password', json={
+        'current_password': 'wrong password',
+        'new_password': 'a better password',
+    })
+    changed = client.post('/api/auth/change-password', json={
+        'current_password': 'correct horse',
+        'new_password': 'a better password',
+    })
+
+    assert wrong.status_code == 400
+    assert wrong.json() == {'detail': 'ไม่สามารถเปลี่ยนรหัสผ่านได้'}
+    assert changed.status_code == 204
+    assert 'max-age=0' in changed.headers['set-cookie'].lower()
+    with test_database.session() as db:
+        updated = db.get(User, user.id)
+        assert updated.password_hash != user.password_hash
+        assert updated.password_changed_at > password_changed_at
+        assert service.resolve_session(db, first_token) is None
+        assert service.resolve_session(db, second_token) is None
+    assert _login(_client(application), password='correct horse').status_code == 401
+    assert _login(_client(application), password='a better password').status_code == 200
+
+
+def test_bootstrap_runs_only_for_an_empty_migrated_user_table(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    with TestClient(application):
+        pass
+    with test_database.session() as db:
+        users = list(db.query(User).order_by(User.username))
+        assert [(user.username, user.role) for user in users] == [('admin', 'admin')]
+
+    existing = web_app.create_app(test_settings, test_database)
+    with TestClient(existing):
+        pass
+    with test_database.session() as db:
+        assert db.query(User).count() == 1
+
+
+def test_root_redirects_anonymous_but_serves_existing_item_finder_after_login(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    _create_user(application, test_database)
+    client = _client(application)
+
+    anonymous = client.get('/')
+    assert _login(client).status_code == 200
+    authenticated = client.get('/')
+
+    assert anonymous.status_code in (302, 303, 307)
+    assert anonymous.headers['location'] == '/login'
+    assert authenticated.status_code == 200
+    assert 'All for Cabal' in authenticated.text
+
+
+def test_existing_item_finder_apis_remain_anonymous(test_settings, test_database):
+    application = web_app.create_app(test_settings, test_database)
+
+    response = _client(application).get('/api/modes')
+
+    assert response.status_code == 200
+    assert set(response.json()) == {'event', 'itemcode', 'shop'}

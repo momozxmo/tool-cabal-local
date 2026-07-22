@@ -4,12 +4,16 @@ import asyncio
 import os
 import sys
 import tempfile
+import threading
+import time
+from collections.abc import Callable
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import (APIRouter, Cookie, Depends, FastAPI, File, Form,
                      HTTPException, Request, Response, UploadFile, WebSocket,
                      WebSocketDisconnect)
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -22,7 +26,8 @@ import item_finder  # noqa: E402
 from web import item_service, search_runner  # noqa: E402
 from web.auth_service import AuthService  # noqa: E402
 from web.db import Database  # noqa: E402
-from web.models import User  # noqa: E402
+from web.models import User, utc_now  # noqa: E402
+from web.security import hash_password, verify_password  # noqa: E402
 from web.settings import Settings  # noqa: E402
 
 
@@ -39,6 +44,70 @@ class ApplyPlanRequest(BaseModel):
 
 class BundleRequest(BaseModel):
     selected_indexes: list[int] = Field(default_factory=list)
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class LoginThrottle:
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
+        self._clock = clock
+        self._failures: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def is_limited(self, client_ip: str) -> bool:
+        with self._lock:
+            return len(self._recent_failures(client_ip)) >= 5
+
+    def record_failure(self, client_ip: str) -> None:
+        with self._lock:
+            self._recent_failures(client_ip).append(self._clock())
+
+    def clear(self, client_ip: str) -> None:
+        with self._lock:
+            self._failures.pop(client_ip, None)
+
+    def _recent_failures(self, client_ip: str) -> list[float]:
+        cutoff = self._clock() - 600
+        failures = [
+            occurred_at
+            for occurred_at in self._failures.get(client_ip, [])
+            if occurred_at > cutoff
+        ]
+        self._failures[client_ip] = failures
+        return failures
+
+
+def _safe_user(user: User) -> dict[str, str | bool]:
+    return {
+        'id': user.id,
+        'username': user.username,
+        'role': user.role,
+        'is_active': user.is_active,
+    }
+
+
+def _set_session_cookie(response: Response, raw_token: str, settings: Settings) -> None:
+    response.set_cookie(
+        'afc_session',
+        raw_token,
+        max_age=settings.session_ttl_seconds,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite='lax',
+        path='/',
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    response.delete_cookie('afc_session', path='/', httponly=True, samesite='lax')
 
 
 def get_db(request: Request):
@@ -104,9 +173,77 @@ async def _temporary_upload(file):
 
 
 @router.get('/', response_class=HTMLResponse)
-def index():
+def index(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is None:
+        return RedirectResponse('/login')
     with open(os.path.join(STATIC_DIR, 'index.html'), encoding='utf-8') as stream:
         return stream.read()
+
+
+@router.post('/api/auth/login')
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else 'unknown'
+    throttle: LoginThrottle = request.app.state.login_throttle
+    if throttle.is_limited(client_ip):
+        raise HTTPException(status_code=429, detail='ลองใหม่ภายหลัง')
+    user = request.app.state.auth_service.authenticate(
+        db, payload.username, payload.password
+    )
+    if user is None:
+        throttle.record_failure(client_ip)
+        raise HTTPException(
+            status_code=401, detail='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+        )
+    throttle.clear(client_ip)
+    response = JSONResponse(_safe_user(user))
+    _set_session_cookie(
+        response,
+        request.app.state.auth_service.create_session(db, user),
+        request.app.state.settings,
+    )
+    return response
+
+
+@router.post('/api/auth/logout', status_code=204)
+def logout(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    request.app.state.auth_service.revoke_session(db, afc_session)
+    response = Response(status_code=204)
+    _clear_session_cookie(response)
+    return response
+
+
+@router.get('/api/auth/me')
+def me(user: User = Depends(require_user)):
+    return _safe_user(user)
+
+
+@router.post('/api/auth/change-password', status_code=204)
+def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    if (
+        not verify_password(payload.current_password, user.password_hash)
+        or len(payload.new_password) < 10
+    ):
+        raise HTTPException(status_code=400, detail='ไม่สามารถเปลี่ยนรหัสผ่านได้')
+    user.password_hash = hash_password(payload.new_password)
+    user.password_changed_at = utc_now()
+    request.app.state.auth_service.revoke_all_sessions(db, user.id)
+    response = Response(status_code=204)
+    _clear_session_cookie(response)
+    return response
 
 
 @router.get('/api/health')
@@ -351,15 +488,23 @@ async def ws_search(ws: WebSocket):
 def create_app(
     settings: Settings | None = None,
     database: Database | None = None,
+    monotonic_clock: Callable[[], float] = time.monotonic,
 ) -> FastAPI:
     resolved_settings = settings or Settings.from_env()
     resolved_database = database or Database(resolved_settings)
     auth_service = AuthService(resolved_settings)
 
-    application = FastAPI(title='All for Cabal — Web')
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        with application.state.database.session() as db:
+            application.state.auth_service.bootstrap_admin(db)
+        yield
+
+    application = FastAPI(title='All for Cabal — Web', lifespan=lifespan)
     application.state.settings = resolved_settings
     application.state.database = resolved_database
     application.state.auth_service = auth_service
+    application.state.login_throttle = LoginThrottle(monotonic_clock)
     application.include_router(router)
     return application
 
