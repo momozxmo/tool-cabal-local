@@ -23,7 +23,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-import aztek_core as core  # noqa: E402
 import item_finder  # noqa: E402
 from web import item_service, search_runner  # noqa: E402
 from web.audit import write_audit  # noqa: E402
@@ -32,6 +31,7 @@ from web.aztek_sessions import (AztekSessionService, InvalidStorageState,  # noq
                                 PairingTokenNotFound, PairingTokenUnavailable)
 from web.db import Database  # noqa: E402
 from web.models import User, utc_now  # noqa: E402
+from web.search_coordinator import SearchCoordinator  # noqa: E402
 from web.security import hash_password, hash_token, verify_password  # noqa: E402
 from web.settings import Settings  # noqa: E402
 from web.workspaces import (PendingImportNotFound, WorkspaceNotFound,
@@ -654,7 +654,7 @@ def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
 
 @router.websocket('/ws/search')
 async def ws_search(ws: WebSocket):
-    """Run the existing Item Finder engine headlessly and stream events."""
+    """Authenticate and own-check, then delegate to the search coordinator."""
     application = ws.scope['app']
     raw_session = ws.cookies.get('afc_session', '')
     with application.state.database.session() as db:
@@ -670,75 +670,23 @@ async def ws_search(ws: WebSocket):
         return
 
     workspace_id = str(request.get('workspace_id') or '')
+    user_id = user.id
     with application.state.database.session() as db:
-        repository = WorkspaceRepository(db)
         try:
-            workspace = repository.get_owned(user.id, workspace_id)
+            WorkspaceRepository(db).get_owned(user_id, workspace_id)
         except WorkspaceNotFound:
             await ws.close(code=4404)
             return
-        # A new search invalidates the previous result set even if validation,
-        # browser launch, or Playwright later fails.
-        repository.save_results(
-            user.id, workspace_id, game=workspace.game or '', results=[], not_found=[])
-    game = request.get('game') or ''
-    web_mode = request.get('web_mode') or item_service.mode_policy(workspace.mode)['web_mode']
 
     async def send(message):
         await ws.send_json(message)
 
     try:
-        data = search_runner.build_search_data(
-            game, workspace.criteria, web_mode, mode=workspace.mode)
-    except Exception as error:
-        await send({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
-        await send({'type': 'done', 'count': 0, 'not_found': []})
-        await ws.close()
-        return
-
-    queue = asyncio.Queue()
-    finder = search_runner.HeadlessFinder(
-        lambda msg, level='INFO': queue.put_nowait(
-            {'type': 'log', 'msg': msg, 'level': level}),
-        lambda item: queue.put_nowait(
-            {'type': 'result', 'item': search_runner.result_view(item)}),
-        lambda current, total, name: queue.put_nowait(
-            {'type': 'progress', 'cur': current, 'total': total, 'name': name}),
-        occurrences=workspace.occurrences,
-        on_reset=lambda: queue.put_nowait({'type': 'reset_results'}),
-    )
-
-    async def run_search():
-        try:
-            await finder._auto(data)
-            results = [dict(row) for row in finder._results]
-            not_found = list(finder._not_found)
-            with application.state.database.session() as db:
-                WorkspaceRepository(db).save_results(
-                    user.id, workspace_id, game=game, results=results,
-                    not_found=not_found)
-            queue.put_nowait({'type': 'done', 'count': len(results),
-                              'not_found': not_found})
-        except core.BrowserBusy as error:
-            queue.put_nowait({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
-            queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
-        except Exception as error:
-            queue.put_nowait({'type': 'log', 'msg': 'error: %s' % error, 'level': 'ERROR'})
-            queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
-        finally:
-            queue.put_nowait(None)
-
-    task = asyncio.create_task(run_search())
-    try:
-        while True:
-            message = await queue.get()
-            if message is None:
-                break
-            await send(message)
+        await application.state.search_coordinator.run(
+            user_id, workspace_id, request, send)
     except WebSocketDisconnect:
-        finder._cancel = True
+        pass
     finally:
-        await task
         try:
             await ws.close()
         except Exception:
@@ -754,6 +702,8 @@ def create_app(
     resolved_database = database or Database(resolved_settings)
     auth_service = AuthService(resolved_settings)
     aztek_session_service = AztekSessionService(resolved_settings)
+    search_coordinator = SearchCoordinator(
+        resolved_database, resolved_settings, aztek_session_service)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -766,6 +716,7 @@ def create_app(
     application.state.database = resolved_database
     application.state.auth_service = auth_service
     application.state.aztek_session_service = aztek_session_service
+    application.state.search_coordinator = search_coordinator
     application.state.login_throttle = LoginThrottle(monotonic_clock)
     application.state.pairing_throttle = LoginThrottle(monotonic_clock)
     application.include_router(router)

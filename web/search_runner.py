@@ -1,7 +1,31 @@
 # -*- coding: utf-8 -*-
 """Callback-driven host for the existing Item Finder Playwright engine."""
+from playwright.async_api import async_playwright
+
 import item_finder
 from web import item_service
+
+
+class AztekSessionExpired(Exception):
+    """The stored Aztek session no longer authenticates against the site."""
+
+
+async def is_login_page(page):
+    """Heuristic: is this the Aztek login screen rather than the app shell?
+
+    Uses the URL path and the presence of a password field — never an empty
+    result table, which is a legitimate search outcome, not an expired session.
+    """
+    url = (getattr(page, 'url', '') or '').lower()
+    if any(part in url for part in ('/login', '/signin', '/sign-in', '/auth')):
+        return True
+    try:
+        has_password = await page.evaluate(
+            "() => !!document.querySelector("
+            "'input[type=\"password\"], input[name=\"password\"]')")
+    except Exception:
+        has_password = False
+    return bool(has_password)
 
 
 class _StubNotebook:
@@ -56,6 +80,28 @@ class HeadlessFinder:
             self._on_result(row)
         self.log('เรียงผลลัพธ์ตามชุด (เอกสาร) — %d แถว' % len(rows), 'SUCCESS')
         return None
+
+    async def run(self, data, storage_state):
+        """Run one search in a fresh, non-persistent context for this user.
+
+        Unlike the desktop ``_auto`` (which reuses a shared persistent Chrome
+        profile), the web path launches a throwaway browser seeded only with the
+        caller's decrypted Aztek storage state, so users never share a session.
+        """
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(headless=True)
+            context = await browser.new_context(storage_state=storage_state)
+            page = await context.new_page()
+            try:
+                await page.goto(data['url'], wait_until='domcontentloaded',
+                                timeout=30000)
+                await page.wait_for_timeout(2000)  # let the SPA settle
+                if await is_login_page(page):
+                    raise AztekSessionExpired('Aztek session หมดอายุ')
+                await self._search_all(page, data)
+            finally:
+                await context.close()
+                await browser.close()
 
 
 _ENGINE_METHODS = (

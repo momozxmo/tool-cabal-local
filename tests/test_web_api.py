@@ -25,6 +25,22 @@ def make_template_bytes():
         os.unlink(path)
 
 
+def _connect_aztek(client):
+    """Attach a valid encrypted Aztek session so /ws/search can run."""
+    token = client.post('/api/aztek/pairing-token').json()['pairing_token']
+    response = client.post('/api/aztek/pair', json={
+        'pairing_token': token,
+        'storage_state': {
+            'cookies': [{
+                'name': 'session', 'value': 'cookie-value',
+                'domain': '.combo-interactive.com', 'path': '/',
+            }],
+            'origins': [],
+        },
+    })
+    assert response.status_code == 200
+
+
 def test_modes_and_template_download(client):
     response = client.get('/api/modes')
     assert response.status_code == 200
@@ -138,7 +154,9 @@ def test_search_websocket_persists_results_not_found_and_regroups(
         ]
         workspace_id = workspace.id
 
-    async def fake_auto(finder, data):
+    _connect_aztek(client)
+
+    async def fake_run(finder, data, storage_state):
         row = {
             'aztek_id': '10', 'item_name': 'A web', 'item_kind': '1',
             'item_option': '', 'duration_index': '', 'game': data['game'],
@@ -148,7 +166,7 @@ def test_search_websocket_persists_results_not_found_and_regroups(
         finder._not_found = [['#2 Kind=404', 'missing row']]
         finder._regroup_results()
 
-    monkeypatch.setattr(search_runner.HeadlessFinder, '_auto', fake_auto)
+    monkeypatch.setattr(search_runner.HeadlessFinder, 'run', fake_run)
     messages = []
     with client.websocket_connect('/ws/search') as websocket:
         websocket.send_json({
@@ -180,6 +198,7 @@ def test_failed_search_clears_previous_workspace_results(client, member, test_da
         workspace.not_found = [['old', 'old']]
         workspace_id = workspace.id
 
+    _connect_aztek(client)
     with client.websocket_connect('/ws/search') as websocket:
         websocket.send_json({
             'workspace_id': workspace_id, 'game': 'INVALID GAME', 'web_mode': 'any',
