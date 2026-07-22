@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import shutil
+import tempfile
 from collections.abc import Iterator
 
 import pytest
@@ -13,17 +16,22 @@ from web.workspaces import WorkspaceRepository
 
 
 @pytest.fixture
-def test_settings(tmp_path) -> Settings:
-    db_path = tmp_path / 'test.db'
-    return Settings(
-        app_env='test',
-        database_url=f'sqlite:///{db_path.as_posix()}',
-        app_secret_key='test-secret',
-        aztek_encryption_key='test-encryption-key',
-        bootstrap_admin_username='admin',
-        bootstrap_admin_password='bootstrap-password',
-        session_cookie_secure=False,
-    )
+def test_settings() -> Iterator[Settings]:
+    # Own temp dir — pytest's tmp_path base can hit Windows scandir permission errors.
+    tmpdir = tempfile.mkdtemp(prefix='afc_test_')
+    db_url = 'sqlite:///%s' % os.path.join(tmpdir, 'test.db').replace('\\', '/')
+    try:
+        yield Settings(
+            app_env='test',
+            database_url=db_url,
+            app_secret_key='test-secret',
+            aztek_encryption_key='test-encryption-key',
+            bootstrap_admin_username='admin',
+            bootstrap_admin_password='bootstrap-password',
+            session_cookie_secure=False,
+        )
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 @pytest.fixture

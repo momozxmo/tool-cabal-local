@@ -1,4 +1,7 @@
 import base64
+import os
+import shutil
+import tempfile
 from dataclasses import replace
 from datetime import datetime
 from datetime import timedelta
@@ -336,10 +339,9 @@ def test_malformed_browser_concurrency_is_rejected(monkeypatch):
             Settings.from_env()
 
 
-def test_alembic_migration_creates_and_removes_application_schema(
-    monkeypatch, tmp_path
-):
-    database_url = f"sqlite:///{(tmp_path / 'migration.db').as_posix()}"
+def test_alembic_migration_creates_and_removes_application_schema(monkeypatch):
+    tmpdir = tempfile.mkdtemp(prefix='afc_test_')
+    database_url = 'sqlite:///%s' % os.path.join(tmpdir, 'migration.db').replace('\\', '/')
     configure_production(monkeypatch)
     monkeypatch.setenv('DATABASE_URL', database_url)
     config = Config(str(Path(__file__).parents[1] / 'alembic.ini'))
@@ -388,6 +390,7 @@ def test_alembic_migration_creates_and_removes_application_schema(
         assert not (APPLICATION_TABLES & set(inspect(engine).get_table_names()))
     finally:
         engine.dispose()
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def test_schema_creates_all_security_and_job_tables(test_database):
