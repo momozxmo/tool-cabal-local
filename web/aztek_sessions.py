@@ -1,0 +1,264 @@
+"""Pairing tokens and encrypted per-user Aztek browser sessions.
+
+A logged-in web user asks for a short-lived, single-use *pairing token* and
+pastes it into the private browser extension. The extension posts the captured
+Playwright ``storage_state`` back with that token to ``/api/aztek/pair`` — the
+only endpoint that authenticates with the pairing token instead of a web
+session cookie. The storage state is validated against the Aztek origin and
+stored AES-GCM encrypted, one row per user.
+
+Security invariants enforced here:
+
+* Pairing tokens live at most ``settings.pairing_ttl_seconds`` and may be
+  consumed once; issuing a new token supersedes any still-pending token.
+* Only the HMAC hash of a pairing token is ever stored.
+* Every cookie domain must equal or be a dot-aligned parent of the Aztek host,
+  and every origin must equal ``settings.aztek_origin``.
+* Storage state is size/shape bounded before encryption.
+* Ciphertext never leaves this module except to the search coordinator.
+"""
+from __future__ import annotations
+
+import json
+import secrets
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any
+from urllib.parse import urlsplit
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from web.models import AztekSession, PairingToken, User, utc_now
+from web.security import (decrypt_storage_state, encrypt_storage_state,
+                          hash_token)
+from web.settings import Settings
+
+
+_PAIRING_TOKEN_BYTES = 32
+_MAX_STORAGE_STATE_BYTES = 256 * 1024
+_MAX_COOKIES = 200
+_MAX_LOCAL_STORAGE = 500
+
+
+class PairingTokenNotFound(Exception):
+    """The supplied pairing token is unknown (maps to HTTP 404)."""
+
+
+class PairingTokenUnavailable(Exception):
+    """The pairing token was already used or has expired (maps to HTTP 410)."""
+
+
+class InvalidStorageState(ValueError):
+    """The browser storage state failed validation (maps to HTTP 422)."""
+
+
+@dataclass(frozen=True)
+class PairingIssue:
+    raw_token: str
+    expires_at: datetime
+
+
+def _aztek_host(settings: Settings) -> str:
+    return (urlsplit(settings.aztek_origin).hostname or '').lower()
+
+
+def _base_domain(host: str) -> str:
+    labels = host.split('.')
+    return '.'.join(labels[-2:]) if len(labels) >= 2 else host
+
+
+def _cookie_domain_allowed(domain: Any, host: str) -> bool:
+    """True when ``domain`` scopes a cookie to the Aztek host or a parent of it.
+
+    Blocks over-broad public suffixes (``.com``) by requiring the normalized
+    domain to still contain the Aztek registrable base domain.
+    """
+    if not isinstance(domain, str):
+        return False
+    norm = domain.strip().lstrip('.').lower()
+    if not norm:
+        return False
+    if norm == host:
+        return True
+    if not host.endswith('.' + norm):
+        return False
+    base = _base_domain(host)
+    return norm == base or norm.endswith('.' + base)
+
+
+def validate_storage_state(storage_state: Any, settings: Settings) -> None:
+    """Reject storage state that is malformed, oversized, or off-origin."""
+    if not isinstance(storage_state, dict):
+        raise InvalidStorageState('storage_state must be an object')
+
+    cookies = storage_state.get('cookies')
+    origins = storage_state.get('origins')
+    if not isinstance(cookies, list) or not isinstance(origins, list):
+        raise InvalidStorageState(
+            'storage_state must include cookies and origins lists'
+        )
+    if not cookies:
+        raise InvalidStorageState('storage_state must include at least one cookie')
+    if len(cookies) > _MAX_COOKIES:
+        raise InvalidStorageState('storage_state has too many cookies')
+
+    try:
+        serialized = json.dumps(storage_state, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise InvalidStorageState('storage_state is not serializable') from exc
+    if len(serialized.encode('utf-8')) > _MAX_STORAGE_STATE_BYTES:
+        raise InvalidStorageState('storage_state payload is too large')
+
+    host = _aztek_host(settings)
+    for cookie in cookies:
+        if not isinstance(cookie, dict):
+            raise InvalidStorageState('each cookie must be an object')
+        if not _cookie_domain_allowed(cookie.get('domain', ''), host):
+            raise InvalidStorageState('cookie domain is not allowed')
+
+    local_storage_total = 0
+    for origin in origins:
+        if not isinstance(origin, dict):
+            raise InvalidStorageState('each origin must be an object')
+        if origin.get('origin') != settings.aztek_origin:
+            raise InvalidStorageState('origin is not allowed')
+        entries = origin.get('localStorage', [])
+        if not isinstance(entries, list):
+            raise InvalidStorageState('localStorage must be a list')
+        local_storage_total += len(entries)
+    if local_storage_total > _MAX_LOCAL_STORAGE:
+        raise InvalidStorageState('storage_state has too many localStorage entries')
+
+
+class AztekSessionService:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    def create_pairing_token(self, db: Session, user: User) -> PairingIssue:
+        """Issue a fresh pairing token, superseding the user's pending ones."""
+        now = utc_now()
+        pending = db.scalars(
+            select(PairingToken).where(
+                PairingToken.user_id == user.id,
+                PairingToken.status == 'pending',
+            )
+        ).all()
+        for token in pending:
+            token.status = 'superseded'
+
+        raw_token = secrets.token_urlsafe(_PAIRING_TOKEN_BYTES)
+        expires_at = now + timedelta(seconds=self.settings.pairing_ttl_seconds)
+        db.add(PairingToken(
+            user_id=user.id,
+            token_hash=hash_token(raw_token, self.settings),
+            status='pending',
+            expires_at=expires_at,
+        ))
+        db.flush()
+        return PairingIssue(raw_token=raw_token, expires_at=expires_at)
+
+    def consume_pairing_token(
+        self,
+        db: Session,
+        raw_token: str,
+        storage_state: Any,
+        account_label: str | None = None,
+    ) -> AztekSession:
+        """Validate and store an encrypted session, marking the token used."""
+        record = db.scalar(
+            select(PairingToken).where(
+                PairingToken.token_hash == hash_token(raw_token, self.settings)
+            )
+        )
+        if record is None:
+            raise PairingTokenNotFound()
+
+        now = utc_now()
+        if record.status != 'pending' or record.used_at is not None:
+            raise PairingTokenUnavailable()
+        if record.expires_at <= now:
+            record.status = 'expired'
+            db.flush()
+            raise PairingTokenUnavailable()
+
+        # Raises InvalidStorageState before any state is persisted.
+        validate_storage_state(storage_state, self.settings)
+        ciphertext = encrypt_storage_state(storage_state, self.settings)
+        clean_label = (account_label or '').strip() or None
+
+        session = db.scalar(
+            select(AztekSession).where(AztekSession.user_id == record.user_id)
+        )
+        if session is None:
+            session = AztekSession(
+                user_id=record.user_id,
+                encrypted_state=ciphertext,
+                account_label=clean_label,
+                status='active',
+            )
+            db.add(session)
+        else:
+            session.encrypted_state = ciphertext
+            session.account_label = clean_label
+            session.status = 'active'
+            session.last_validated_at = None
+
+        record.status = 'used'
+        record.used_at = now
+        db.flush()
+        return session
+
+    def get_status(self, db: Session, user: User) -> dict[str, Any]:
+        """Return connection status only — never the ciphertext."""
+        session = db.scalar(
+            select(AztekSession).where(AztekSession.user_id == user.id)
+        )
+        if session is None:
+            return {
+                'connected': False,
+                'status': 'disconnected',
+                'account_label': None,
+                'updated_at': None,
+                'last_validated_at': None,
+            }
+        return {
+            'connected': session.status == 'active',
+            'status': session.status,
+            'account_label': session.account_label,
+            'updated_at': (
+                session.updated_at.isoformat() if session.updated_at else None
+            ),
+            'last_validated_at': (
+                session.last_validated_at.isoformat()
+                if session.last_validated_at else None
+            ),
+        }
+
+    def disconnect(self, db: Session, user: User) -> bool:
+        session = db.scalar(
+            select(AztekSession).where(AztekSession.user_id == user.id)
+        )
+        if session is None:
+            return False
+        db.delete(session)
+        db.flush()
+        return True
+
+    def load_storage_state(self, db: Session, user: User) -> dict[str, Any] | None:
+        """Decrypt the active storage state for the search coordinator."""
+        session = db.scalar(
+            select(AztekSession).where(AztekSession.user_id == user.id)
+        )
+        if session is None or session.status != 'active':
+            return None
+        return decrypt_storage_state(session.encrypted_state, self.settings)
+
+    def mark_expired(self, db: Session, user: User) -> None:
+        """Flag the stored session as expired (e.g. Aztek rejected the cookies)."""
+        session = db.scalar(
+            select(AztekSession).where(AztekSession.user_id == user.id)
+        )
+        if session is not None and session.status != 'expired':
+            session.status = 'expired'
+            db.flush()

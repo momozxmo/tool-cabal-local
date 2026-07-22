@@ -28,9 +28,11 @@ import item_finder  # noqa: E402
 from web import item_service, search_runner  # noqa: E402
 from web.audit import write_audit  # noqa: E402
 from web.auth_service import AuthService  # noqa: E402
+from web.aztek_sessions import (AztekSessionService, InvalidStorageState,  # noqa: E402
+                                PairingTokenNotFound, PairingTokenUnavailable)
 from web.db import Database  # noqa: E402
 from web.models import User, utc_now  # noqa: E402
-from web.security import hash_password, verify_password  # noqa: E402
+from web.security import hash_password, hash_token, verify_password  # noqa: E402
 from web.settings import Settings  # noqa: E402
 from web.workspaces import (PendingImportNotFound, WorkspaceNotFound,
                             WorkspaceRepository)  # noqa: E402
@@ -60,6 +62,12 @@ class LoginRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+class StorageStatePayload(BaseModel):
+    pairing_token: str = Field(min_length=20, max_length=200)
+    account_label: str | None = Field(default=None, max_length=120)
+    storage_state: dict
 
 
 class LoginThrottle:
@@ -335,6 +343,71 @@ def change_password(
     response = Response(status_code=204)
     _clear_session_cookie(response, request.app.state.settings)
     return response
+
+
+@router.post('/api/aztek/pairing-token')
+def create_pairing_token(request: Request, user: User = Depends(require_user),
+                         db: Session = Depends(get_db)):
+    issue = request.app.state.aztek_session_service.create_pairing_token(db, user)
+    write_audit(
+        db, user_id=user.id, action='aztek.pairing_requested', status='success',
+        tool='aztek', resource_type='aztek_session', resource_id=user.id,
+        request=request,
+    )
+    return {'pairing_token': issue.raw_token, 'expires_at': issue.expires_at.isoformat()}
+
+
+@router.post('/api/aztek/pair')
+def pair_aztek_session(payload: StorageStatePayload, request: Request,
+                       db: Session = Depends(get_db)):
+    # The only endpoint authenticated by pairing token instead of a cookie.
+    client_ip = request.client.host if request.client else 'unknown'
+    settings: Settings = request.app.state.settings
+    throttle: LoginThrottle = request.app.state.pairing_throttle
+    throttle_key = '%s|%s' % (
+        client_ip, hash_token(payload.pairing_token, settings))
+    if throttle.is_limited(throttle_key):
+        return JSONResponse({'detail': 'ลองใหม่ภายหลัง'}, status_code=429)
+
+    service: AztekSessionService = request.app.state.aztek_session_service
+    try:
+        session = service.consume_pairing_token(
+            db, payload.pairing_token, payload.storage_state, payload.account_label)
+    except PairingTokenNotFound:
+        throttle.record_failure(throttle_key)
+        raise HTTPException(status_code=404, detail='ไม่พบรหัสจับคู่')
+    except PairingTokenUnavailable:
+        throttle.record_failure(throttle_key)
+        raise HTTPException(status_code=410, detail='รหัสจับคู่หมดอายุหรือถูกใช้ไปแล้ว')
+    except InvalidStorageState:
+        throttle.record_failure(throttle_key)
+        raise HTTPException(status_code=422, detail='ข้อมูลเซสชันไม่ถูกต้อง')
+    throttle.clear(throttle_key)
+    write_audit(
+        db, user_id=session.user_id, action='aztek.connected', status='success',
+        tool='aztek', resource_type='aztek_session', resource_id=session.user_id,
+        request=request,
+    )
+    return {'status': 'connected', 'account_label': session.account_label}
+
+
+@router.get('/api/aztek/status')
+def aztek_status(request: Request, user: User = Depends(require_user),
+                 db: Session = Depends(get_db)):
+    return request.app.state.aztek_session_service.get_status(db, user)
+
+
+@router.delete('/api/aztek/session', status_code=204)
+def disconnect_aztek_session(request: Request, user: User = Depends(require_user),
+                             db: Session = Depends(get_db)):
+    removed = request.app.state.aztek_session_service.disconnect(db, user)
+    if removed:
+        write_audit(
+            db, user_id=user.id, action='aztek.disconnected', status='success',
+            tool='aztek', resource_type='aztek_session', resource_id=user.id,
+            request=request,
+        )
+    return Response(status_code=204)
 
 
 @router.get('/api/health')
@@ -680,6 +753,7 @@ def create_app(
     resolved_settings = settings or Settings.from_env()
     resolved_database = database or Database(resolved_settings)
     auth_service = AuthService(resolved_settings)
+    aztek_session_service = AztekSessionService(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -691,7 +765,9 @@ def create_app(
     application.state.settings = resolved_settings
     application.state.database = resolved_database
     application.state.auth_service = auth_service
+    application.state.aztek_session_service = aztek_session_service
     application.state.login_throttle = LoginThrottle(monotonic_clock)
+    application.state.pairing_throttle = LoginThrottle(monotonic_clock)
     application.include_router(router)
     return application
 
