@@ -40,6 +40,7 @@ except ImportError:
 # ธีม/ฟอนต์/ไอคอน จากของกลาง (re-export ชื่อเดิมไว้ให้ launcher/ส่วนอื่นใช้ต่อได้)
 from ui_common import C, FM, FB, F9, _find_icon, _set_window_icon
 import aztek_core as core
+import finder_core
 
 # ---------------------------------------------------------------------------
 # เกม/เซิร์ฟ + Chrome + prefs ใช้จาก aztek_core (แหล่งเดียว) — GAMES = URL หน้า items
@@ -1646,10 +1647,8 @@ class App:
         def _run():
             async def _open():
                 chrome_exe = find_chrome_exe()
-                kw = dict(user_data_dir=CHROME_PROFILE, headless=False,
-                          args=['--start-maximized'], no_viewport=True)
-                if chrome_exe:
-                    kw['executable_path'] = chrome_exe
+                kw = finder_core.build_launch_kwargs(headless=False,
+                                                     user_data_dir=CHROME_PROFILE, chrome_exe=chrome_exe)
                 async with async_playwright() as pw:
                     browser = await pw.chromium.launch_persistent_context(**kw)
                     page = browser.pages[0] if browser.pages else await browser.new_page()
@@ -1797,11 +1796,9 @@ class App:
     # ---- async engine -------------------------------------------------------
     async def _auto(self, data):
         chrome_exe = find_chrome_exe()
-        kw = dict(user_data_dir=CHROME_PROFILE, headless=data['headless'],
-                  args=['--start-maximized'], no_viewport=True)
-        if chrome_exe:
-            kw['executable_path'] = chrome_exe
-        else:
+        kw = finder_core.build_launch_kwargs(headless=data['headless'],
+                                             user_data_dir=CHROME_PROFILE, chrome_exe=chrome_exe)
+        if not chrome_exe:
             self.log('Chrome not found — using Playwright Chromium', 'WARNING')
         # ใช้ profile ร่วมกับ tool อื่น -> จอง browser ก่อน (อาจ raise BrowserBusy) แล้วคืนเสมอ
         core.acquire_browser('Item Finder')
