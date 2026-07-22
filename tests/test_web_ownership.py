@@ -1,6 +1,6 @@
 import pytest
 
-from web.models import User
+from web.models import PendingImportRecord, User
 from web.workspaces import PendingImportNotFound, WorkspaceNotFound, WorkspaceRepository
 
 
@@ -71,51 +71,62 @@ def test_pending_import_cannot_cross_users_or_attach_to_foreign_workspace(
         repo.add_pending(member.id, 'missing-workspace', [], [])
 
     pending = repo.add_pending(
-        member.id, workspace.id, [('One', [{'kind': '1', 'sources': ['A']}])], ['skip']
+        member.id,
+        workspace.id,
+        [
+            ('Selected', [{'kind': '1', 'sources': ['A']}]),
+            ('Not selected', [{'kind': '2', 'sources': ['B']}]),
+        ],
+        ['skip'],
     )
     for owner_id, pending_id in (
         (other_member.id, pending.id),
         (member.id, 'missing-pending'),
     ):
         with pytest.raises(PendingImportNotFound):
-            repo.apply_pending(owner_id, pending_id, ['One'])
+            repo.apply_pending(owner_id, pending_id, ['Selected'])
 
-    applied = repo.apply_pending(member.id, pending.id, ['One'])
+    applied = repo.apply_pending(member.id, pending.id, ['Selected'])
     assert applied.criteria == [{'kind': '1', 'sources': ['A']}]
     assert applied.occurrences == [{'kind': '1', 'sources': ['A']}]
     assert applied.skipped == ['skip']
     with pytest.raises(PendingImportNotFound):
-        repo.apply_pending(member.id, pending.id, ['One'])
+        repo.apply_pending(member.id, pending.id, ['Selected'])
 
 
-def test_apply_pending_merges_then_deletes_atomically(db_session, member, monkeypatch):
+def test_apply_pending_rolls_back_workspace_and_pending_if_delete_fails(
+    db_session, test_database, member, monkeypatch
+):
     repo = WorkspaceRepository(db_session)
     workspace = repo.create(member.id, 'event')
     pending = repo.add_pending(
         member.id, workspace.id, [('One', [{'kind': '1', 'sources': ['A']}])], []
     )
+    db_session.commit()
 
-    def fail_merge(*_args, **_kwargs):
-        raise RuntimeError('merge failed')
+    def fail_pending_delete(model):
+        if model is PendingImportRecord:
+            raise RuntimeError('pending delete failed')
+        raise AssertionError(f'unexpected delete target: {model}')
 
-    monkeypatch.setattr('web.workspaces.merge_imported', fail_merge)
-    with pytest.raises(RuntimeError, match='merge failed'):
+    monkeypatch.setattr('web.workspaces.delete', fail_pending_delete)
+    with pytest.raises(RuntimeError, match='pending delete failed'):
         repo.apply_pending(member.id, pending.id, ['One'])
 
-    unchanged = repo.get_owned(member.id, workspace.id)
-    assert unchanged.criteria == []
-    assert unchanged.occurrences == []
+    with test_database.session() as fresh_session:
+        fresh_repo = WorkspaceRepository(fresh_session)
+        unchanged = fresh_repo.get_owned(member.id, workspace.id)
+        persisted_pending = fresh_session.get(PendingImportRecord, pending.id)
 
-    from web.item_service import merge_imported
-
-    monkeypatch.setattr('web.workspaces.merge_imported', merge_imported)
-    applied = repo.apply_pending(member.id, pending.id, ['One'])
-    assert applied.criteria == [{'kind': '1', 'sources': ['A']}]
-    with pytest.raises(PendingImportNotFound):
-        repo.apply_pending(member.id, pending.id, ['One'])
+        assert unchanged.criteria == []
+        assert unchanged.occurrences == []
+        assert persisted_pending is not None
+        assert persisted_pending.sheets == [['One', [{'kind': '1', 'sources': ['A']}]]]
 
 
-def test_two_pending_imports_preserve_both_merges(db_session, member):
+def test_two_pending_imports_persist_both_merges_across_fresh_sessions(
+    db_session, test_database, member
+):
     repo = WorkspaceRepository(db_session)
     workspace = repo.create(member.id, 'event')
     first = repo.add_pending(
@@ -124,9 +135,16 @@ def test_two_pending_imports_preserve_both_merges(db_session, member):
     second = repo.add_pending(
         member.id, workspace.id, [('Two', [{'kind': '2', 'sources': ['B']}])], []
     )
+    db_session.commit()
 
-    repo.apply_pending(member.id, first.id, ['One'])
-    applied = repo.apply_pending(member.id, second.id, ['Two'])
+    with test_database.session() as first_session:
+        WorkspaceRepository(first_session).apply_pending(member.id, first.id, ['One'])
 
-    assert [row['kind'] for row in applied.criteria] == ['1', '2']
-    assert [row['kind'] for row in applied.occurrences] == ['1', '2']
+    with test_database.session() as second_session:
+        WorkspaceRepository(second_session).apply_pending(member.id, second.id, ['Two'])
+
+    with test_database.session() as final_session:
+        persisted = WorkspaceRepository(final_session).get_owned(member.id, workspace.id)
+
+        assert [row['kind'] for row in persisted.criteria] == ['1', '2']
+        assert [row['kind'] for row in persisted.occurrences] == ['1', '2']
