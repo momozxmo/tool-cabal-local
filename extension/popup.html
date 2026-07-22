@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=340, initial-scale=1">
+  <title>All for Cabal — เชื่อม Aztek</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+    }
+    h1 { font-size: 16px; margin: 0 0 8px; }
+    p.hint { margin: 0 0 12px; opacity: 0.75; line-height: 1.4; }
+    label { display: block; margin: 10px 0 4px; font-weight: 600; }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid #999;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px;
+      border: 0;
+      border-radius: 6px;
+      background: #2d6cdf;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: default; }
+    p#status { margin: 12px 0 0; min-height: 1.2em; line-height: 1.4; }
+    p#status[data-kind="ok"] { color: #1a7f37; }
+    p#status[data-kind="error"] { color: #cf222e; }
+  </style>
+</head>
+<body>
+  <h1>เชื่อมเซสชัน Aztek</h1>
+  <p class="hint">
+    เปิดแท็บ Aztek แล้วล็อกอินให้เรียบร้อยก่อน จากนั้นคัดลอกรหัสจับคู่จากหน้า
+    /account ในเว็บ All for Cabal มาวางที่นี่
+  </p>
+
+  <label for="token">รหัสจับคู่ (pairing token)</label>
+  <input id="token" type="text" autocomplete="off" spellcheck="false"
+         placeholder="วางรหัสที่นี่">
+
+  <label for="label">ชื่อบัญชี (ไม่บังคับ)</label>
+  <input id="label" type="text" autocomplete="off" maxlength="120"
+         placeholder="เช่น บัญชีหลัก">
+
+  <button id="connect" type="button">เชื่อมต่อ</button>
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
