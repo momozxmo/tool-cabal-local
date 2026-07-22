@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """All for Cabal Web — local Item Finder application."""
 import asyncio
+import hashlib
+import hmac
 import os
 import sys
 import tempfile
@@ -24,6 +26,7 @@ if ROOT not in sys.path:
 import aztek_core as core  # noqa: E402
 import item_finder  # noqa: E402
 from web import item_service, search_runner  # noqa: E402
+from web.audit import write_audit  # noqa: E402
 from web.auth_service import AuthService  # noqa: E402
 from web.db import Database  # noqa: E402
 from web.models import User, utc_now  # noqa: E402
@@ -95,6 +98,12 @@ def _safe_user(user: User) -> dict[str, str | bool]:
         'role': user.role,
         'is_active': user.is_active,
     }
+
+
+def _login_username_fingerprint(username: str, request: Request) -> str:
+    key = request.app.state.settings.app_secret_key.encode('utf-8')
+    normalized = username.strip().casefold().encode('utf-8')
+    return hmac.new(key, normalized, hashlib.sha256).hexdigest()[:32]
 
 
 def _set_session_cookie(response: Response, raw_token: str, settings: Settings) -> None:
@@ -225,14 +234,38 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     client_ip = request.client.host if request.client else 'unknown'
     throttle: LoginThrottle = request.app.state.login_throttle
     if throttle.is_limited(client_ip):
-        raise HTTPException(status_code=429, detail='ลองใหม่ภายหลัง')
+        write_audit(
+            db,
+            user_id=None,
+            action='auth.login_failed',
+            status='failure',
+            summary={
+                'reason': 'throttled',
+                'target_username': _login_username_fingerprint(payload.username, request),
+            },
+            tool='auth',
+            request=request,
+        )
+        return JSONResponse({'detail': 'ลองใหม่ภายหลัง'}, status_code=429)
     user = request.app.state.auth_service.authenticate(
         db, payload.username, payload.password
     )
     if user is None:
         throttle.record_failure(client_ip)
-        raise HTTPException(
-            status_code=401, detail='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+        write_audit(
+            db,
+            user_id=None,
+            action='auth.login_failed',
+            status='failure',
+            summary={
+                'reason': 'invalid_credentials',
+                'target_username': _login_username_fingerprint(payload.username, request),
+            },
+            tool='auth',
+            request=request,
+        )
+        return JSONResponse(
+            {'detail': 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'}, status_code=401
         )
     throttle.clear(client_ip)
     response = JSONResponse(_safe_user(user))
@@ -240,6 +273,17 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         response,
         request.app.state.auth_service.create_session(db, user),
         request.app.state.settings,
+    )
+    write_audit(
+        db,
+        user_id=user.id,
+        action='auth.login_succeeded',
+        status='success',
+        summary={'role': user.role},
+        tool='auth',
+        resource_type='user',
+        resource_id=user.id,
+        request=request,
     )
     return response
 
@@ -250,7 +294,19 @@ def logout(
     afc_session: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
 ):
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
     request.app.state.auth_service.revoke_session(db, afc_session)
+    write_audit(
+        db,
+        user_id=user.id if user is not None else None,
+        action='auth.logout',
+        status='success',
+        summary={'role': user.role} if user is not None else {},
+        tool='auth',
+        resource_type='user' if user is not None else '',
+        resource_id=user.id if user is not None else '',
+        request=request,
+    )
     response = Response(status_code=204)
     _clear_session_cookie(response, request.app.state.settings)
     return response
@@ -318,7 +374,7 @@ def download_template(user: User = Depends(require_user)):
 
 
 @router.post('/api/import-template')
-async def import_template(file: UploadFile = File(...), mode: Mode = Form('event'),
+async def import_template(request: Request, file: UploadFile = File(...), mode: Mode = Form('event'),
                           workspace_id: str = Form(''),
                           user: User = Depends(require_user),
                           db: Session = Depends(get_db)):
@@ -344,11 +400,27 @@ async def import_template(file: UploadFile = File(...), mode: Mode = Form('event
     else:
         workspace = WorkspaceRepository(db).create(
             user.id, mode, file.filename or 'template.xlsx', rows)
+    if not workspace_id:
+        write_audit(
+            db, user_id=user.id, action='workspace.created', status='success',
+            summary={'mode': mode, 'filename': file.filename or 'template.xlsx'},
+            tool='item_finder', resource_type='workspace',
+            resource_id=workspace.id, request=request,
+        )
+    write_audit(
+        db, user_id=user.id, action='template.imported', status='success',
+        summary={
+            'count': len(rows), 'mode': mode,
+            'filename': file.filename or 'template.xlsx',
+        },
+        tool='item_finder', resource_type='workspace', resource_id=workspace.id,
+        request=request,
+    )
     return _workspace_view(workspace)
 
 
 @router.post('/api/import-plan')
-async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
+async def import_plan(request: Request, file: UploadFile = File(...), mode: Mode = Form('event'),
                       workspace_id: str = Form(''),
                       user: User = Depends(require_user),
                       db: Session = Depends(get_db)):
@@ -372,6 +444,22 @@ async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
     if not sheets:
         raise HTTPException(status_code=400, detail='ไม่พบตารางไอเทมในไฟล์นี้')
     pending = repository.add_pending(user.id, workspace.id, sheets, skipped)
+    if not workspace_id:
+        write_audit(
+            db, user_id=user.id, action='workspace.created', status='success',
+            summary={'mode': mode, 'filename': file.filename or 'plan.xlsx'},
+            tool='item_finder', resource_type='workspace',
+            resource_id=workspace.id, request=request,
+        )
+    write_audit(
+        db, user_id=user.id, action='plan.imported', status='success',
+        summary={
+            'count': sum(len(rows) for _name, rows in sheets), 'mode': mode,
+            'filename': file.filename or 'plan.xlsx',
+        },
+        tool='item_finder', resource_type='workspace', resource_id=workspace.id,
+        request=request,
+    )
     return {
         'workspace_id': workspace.id,
         'pending_id': pending.id,
@@ -382,7 +470,8 @@ async def import_plan(file: UploadFile = File(...), mode: Mode = Form('event'),
 
 
 @router.post('/api/import-plan/apply')
-def apply_plan(payload: ApplyPlanRequest, user: User = Depends(require_user),
+def apply_plan(payload: ApplyPlanRequest, request: Request,
+               user: User = Depends(require_user),
                db: Session = Depends(get_db)):
     pending_id = payload.pending_id.strip()
     selected = payload.selected_sheets
@@ -392,6 +481,12 @@ def apply_plan(payload: ApplyPlanRequest, user: User = Depends(require_user),
         workspace = WorkspaceRepository(db).apply_pending(user.id, pending_id, selected)
     except (PendingImportNotFound, WorkspaceNotFound):
         raise HTTPException(status_code=404, detail='ไม่พบไฟล์นำเข้าที่รอเลือก sheet')
+    write_audit(
+        db, user_id=user.id, action='plan.applied', status='success',
+        summary={'count': len(selected), 'mode': workspace.mode},
+        tool='item_finder', resource_type='workspace', resource_id=workspace.id,
+        request=request,
+    )
     return _workspace_view(workspace)
 
 
@@ -403,20 +498,36 @@ def get_workspace(workspace_id: str, user: User = Depends(require_user),
 
 
 @router.delete('/api/workspaces/{workspace_id}', status_code=204)
-def delete_workspace(workspace_id: str, user: User = Depends(require_user),
+def delete_workspace(workspace_id: str, request: Request,
+                     user: User = Depends(require_user),
                      db: Session = Depends(get_db)):
     repository = WorkspaceRepository(db)
-    _get_workspace(repository, user.id, workspace_id)
+    workspace = _get_workspace(repository, user.id, workspace_id)
     repository.delete_owned(user.id, workspace_id)
+    write_audit(
+        db, user_id=user.id, action='workspace.deleted', status='success',
+        summary={'mode': workspace.mode, 'filename': workspace.filename},
+        tool='item_finder', resource_type='workspace', resource_id=workspace_id,
+        request=request,
+    )
     return Response(status_code=204)
 
 
 @router.get('/api/workspaces/{workspace_id}/export.csv')
-def export_csv(workspace_id: str, user: User = Depends(require_user),
+def export_csv(workspace_id: str, request: Request,
+               user: User = Depends(require_user),
                db: Session = Depends(get_db)):
     workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     if not workspace.results:
         raise HTTPException(status_code=400, detail='ยังไม่มีผลลัพธ์')
+    write_audit(
+        db, user_id=user.id, action='workspace.exported_csv', status='success',
+        summary={
+            'count': len(workspace.results), 'format': 'csv', 'game': workspace.game,
+        },
+        tool='item_finder', resource_type='workspace', resource_id=workspace_id,
+        request=request,
+    )
     return Response(
         item_service.export_csv_bytes(workspace.results),
         media_type='text/csv; charset=utf-8',
@@ -425,11 +536,20 @@ def export_csv(workspace_id: str, user: User = Depends(require_user),
 
 
 @router.get('/api/workspaces/{workspace_id}/export.xlsx')
-def export_xlsx(workspace_id: str, user: User = Depends(require_user),
+def export_xlsx(workspace_id: str, request: Request,
+                user: User = Depends(require_user),
                 db: Session = Depends(get_db)):
     workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     if not workspace.results:
         raise HTTPException(status_code=400, detail='ยังไม่มีผลลัพธ์')
+    write_audit(
+        db, user_id=user.id, action='workspace.exported_xlsx', status='success',
+        summary={
+            'count': len(workspace.results), 'format': 'xlsx', 'game': workspace.game,
+        },
+        tool='item_finder', resource_type='workspace', resource_id=workspace_id,
+        request=request,
+    )
     return Response(
         item_service.export_xlsx_bytes(workspace.results, workspace.game),
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -438,7 +558,7 @@ def export_xlsx(workspace_id: str, user: User = Depends(require_user),
 
 
 @router.post('/api/workspaces/{workspace_id}/bundles')
-def bundle_preview(workspace_id: str, payload: BundleRequest,
+def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
                    user: User = Depends(require_user), db: Session = Depends(get_db)):
     workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     indexes = payload.selected_indexes
@@ -449,7 +569,14 @@ def bundle_preview(workspace_id: str, payload: BundleRequest,
         rows = workspace.results
     if not rows:
         raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้รวมเป็นบันเดิล')
-    return {'bundles': item_service.build_bundles(rows, workspace.group_meta)}
+    bundles = item_service.build_bundles(rows, workspace.group_meta)
+    write_audit(
+        db, user_id=user.id, action='bundle.previewed', status='success',
+        summary={'count': len(rows), 'mode': workspace.mode},
+        tool='item_finder', resource_type='workspace', resource_id=workspace_id,
+        request=request,
+    )
+    return {'bundles': bundles}
 
 
 @router.websocket('/ws/search')

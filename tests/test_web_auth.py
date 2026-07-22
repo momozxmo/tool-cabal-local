@@ -1,12 +1,14 @@
 from collections import Counter
 from dataclasses import replace
+import json
 
 from fastapi import Depends
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from web import app as web_app
 from web.auth_service import AuthService
-from web.models import User
+from web.models import AuditLog, User
 
 
 AUTH_FAILURE_MESSAGE = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
@@ -247,6 +249,36 @@ def test_logout_revokes_session_and_clears_cookie(test_settings, test_database):
     assert 'afc_session=""' in response.headers['set-cookie'].lower()
     assert 'max-age=0' in response.headers['set-cookie'].lower()
     assert client.get('/api/auth/me').status_code == 401
+
+
+def test_login_and_logout_audit_without_raw_failed_credentials(
+    test_settings, test_database
+):
+    application = web_app.create_app(test_settings, test_database)
+    user = _create_user(application, test_database)
+    client = _client(application)
+
+    failed = _login(client, 'private.username', 'private password')
+    succeeded = _login(client)
+    logged_out = client.post('/api/auth/logout')
+
+    assert [failed.status_code, succeeded.status_code, logged_out.status_code] == [401, 200, 204]
+    with test_database.session() as db:
+        rows = db.scalars(
+            select(AuditLog).where(AuditLog.action.in_([
+                'auth.login_failed', 'auth.login_succeeded', 'auth.logout',
+            ]))
+        ).all()
+
+    by_action = {row.action: row for row in rows}
+    failed_row = by_action['auth.login_failed']
+    assert failed_row.user_id is None
+    assert failed_row.status == 'failure'
+    assert 'private.username' not in failed_row.summary
+    assert 'private password' not in failed_row.summary
+    assert json.loads(failed_row.summary)['target_username'] != 'private.username'
+    assert by_action['auth.login_succeeded'].user_id == user.id
+    assert by_action['auth.logout'].user_id == user.id
 
 
 def test_production_cookie_deletion_is_secure_for_logout_and_password_change(
