@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """GUI-free core ของ Item Finder — ห้าม import tkinter (ใช้ร่วมทั้ง desktop และ web backend)."""
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 
 _CONFIG_KEYS = ('game', 'url', 'multi', 'deep', 'web', 'img', 'qty_val',
                 'trade', 'drill', 'crit_val', 'batch', 'headless', 'read_desc')

@@ -42,10 +42,24 @@ def test_build_launch_kwargs_no_chrome():
     check('headless True', kw['headless'] is True)
     check('no executable_path key when chrome_exe None', 'executable_path' not in kw)
 
+def test_launch_kwargs_match_legacy_shapes():
+    # _auto: headless from config, profile dir, chrome_exe present
+    legacy_auto = dict(user_data_dir='PROF', headless=True,
+                       args=['--start-maximized'], no_viewport=True)
+    legacy_auto['executable_path'] = 'CHROME'
+    check('_auto shape matches',
+          fc.build_launch_kwargs(headless=True, user_data_dir='PROF', chrome_exe='CHROME') == legacy_auto)
+    # _open_login: headless False, no chrome_exe
+    legacy_login = dict(user_data_dir='PROF', headless=False,
+                        args=['--start-maximized'], no_viewport=True)
+    check('_open_login shape matches',
+          fc.build_launch_kwargs(headless=False, user_data_dir='PROF') == legacy_login)
+
 if __name__ == '__main__':
     test_searchconfig_from_dict_roundtrip()
     test_searchconfig_defaults()
     test_build_launch_kwargs_with_chrome()
     test_build_launch_kwargs_no_chrome()
+    test_launch_kwargs_match_legacy_shapes()
     print('\n' + ('ALL PASS' if not FAIL else 'FAIL: ' + ', '.join(FAIL)))
     sys.exit(1 if FAIL else 0)
