@@ -755,120 +755,33 @@ class App:
 
         self.nb = ttk.Notebook(self.container)
         self.nb.pack(fill='both', expand=True, padx=8, pady=8)
-        self.tf = tk.Frame(self.nb, bg=C['bg_dark'])
         self.tm = tk.Frame(self.nb, bg=C['bg_dark'])
         self.tr = tk.Frame(self.nb, bg=C['bg_dark'])
         self.tl = tk.Frame(self.nb, bg=C['bg_dark'])
-        self.nb.add(self.tf, text='  ค้นหา  ')
-        self.nb.add(self.tm, text='  หลายชิ้น  ')
+        self.nb.add(self.tm, text='  ค้นหา  ')
         self.nb.add(self.tr, text='  ผลลัพธ์  ')
         self.nb.add(self.tl, text='  Log  ')
-        self._form_tab()
+        self._init_search_vars()   # ตัวแปรค้นหา/Deep Check (เดิมอยู่แท็บ 'ค้นหาชิ้นเดียว' ที่เอา UI ออกแล้ว)
         self._multi_tab()
         self._results_tab()
         self._log_tab()
 
-    def _form_tab(self):
-        wrap = tk.Frame(self.tf, bg=C['bg_dark'])
-        wrap.pack(fill='both', expand=True, padx=12, pady=10)
-
-        # --- เกม ---
+    def _init_search_vars(self):
+        """ตัวแปรค้นหา/Deep Check (เดิมอยู่แท็บ 'ค้นหาชิ้นเดียว' ที่เอา UI ออกแล้ว)
+        โหมดหลายชิ้นใช้ค่าพวกนี้: vgame (เกม), vbatch/vhdl (มี UI ในแท็บหลายชิ้น),
+        และ global deep (vweb/vimg/…) เป็นค่า default กลาง — ค่าจริงของแต่ละไอเทมมาจาก template แล้ว override ทับ"""
         self.vgame = self._game_var if self._game_var is not None else tk.StringVar(value='CabalPC SEA')
-        gf = _LF(wrap, ' เกม ')
-        gf.pack(fill='x', pady=(0, 10))
-        _L(gf, text='เลือกเกม :').grid(row=0, column=0, sticky='w', padx=8, pady=8)
-        if not self._embedded:
-            # รันเดี่ยว -> มี dropdown เกม + ปุ่ม Login
-            ttk.Combobox(gf, textvariable=self.vgame, values=GAME_NAMES,
-                         state='readonly', width=20).grid(row=0, column=1, sticky='w', padx=4)
-            tk.Button(gf, text='🔓  Open for Login', command=self._open_login,
-                      bg=C['bg_card'], fg=C['text'], font=FM, relief='flat',
-                      padx=10, pady=4, cursor='hand2').grid(row=0, column=2, padx=8)
-        else:
-            # เปิดผ่าน launcher -> เกม/Login อยู่แถบบน แสดงแค่ชื่อเกมปัจจุบัน
-            tk.Label(gf, textvariable=self.vgame, bg=C['bg_med'], fg=C['teal'], font=FB).grid(
-                row=0, column=1, sticky='w', padx=4)
-            _L(gf, text='(เลือก/Login บนแถบบน)', fg=C['muted'], font=F9).grid(
-                row=0, column=2, sticky='w', padx=8)
-
-        # --- ค้นหาชิ้นเดียว ---
-        sf = _LF(wrap, ' ค้นหาชิ้นเดียว  (เว้นว่าง = ทั้งหมด) ')
-        sf.pack(fill='x', pady=(0, 10))
-        self.vkind = tk.StringVar()
-        self.vopt = tk.StringVar()
-        self.vdur = tk.StringVar()
-        self.vname = tk.StringVar()
-        for i, (lab, var) in enumerate((('ItemKind :', self.vkind),
-                                        ('itemOption :', self.vopt),
-                                        ('durationIndex :', self.vdur),
-                                        ('ItemName :', self.vname))):
-            _L(sf, text=lab).grid(row=i, column=0, sticky='w', padx=8, pady=5)
-            _E(sf, textvariable=var, width=24).grid(row=i, column=1, sticky='w', padx=4, pady=5)
-        _L(sf, text='(ไม่ได้ใช้ค้นหา — ไว้เทียบชื่อเฉย ๆ)', fg=C['muted'], font=F9).grid(
-            row=3, column=2, sticky='w', padx=4)
-
-        # --- การประมวลผล ---
-        pf = _LF(wrap, ' การประมวลผล ')
-        pf.pack(fill='x', pady=(0, 10))
+        # global Deep Check — คงไว้เป็น default (หลายชิ้น override รายไอเทมจาก template)
         self.vdeep = tk.BooleanVar(value=False)
-        tk.Checkbutton(pf, text='เปิดใช้ Deep Check', variable=self.vdeep,
-                       command=self._toggle_deep, bg=C['bg_med'], fg=C['text'],
-                       selectcolor=C['bg_inp'], activebackground=C['bg_med'],
-                       font=FM).grid(row=0, column=0, columnspan=2, sticky='w', padx=8, pady=6)
-
-        self.deep_frame = tk.Frame(pf, bg=C['bg_med'])
-        self.deep_frame.grid(row=1, column=0, columnspan=3, sticky='ew', padx=8)
         self.vweb = tk.StringVar(value='any')
         self.vimg = tk.StringVar(value='any')
         self.vqty_val = tk.StringVar()
         self.vtrade = tk.StringVar(value='any')
         self.vdrill = tk.StringVar(value='any')
         self.vcrit_val = tk.StringVar()
-
-        combo_rows = (('เปิดใช้งานบนเว็บ :', self.vweb),
-                      ('มีรูปภาพ :', self.vimg),
-                      ('แลกเปลี่ยนได้ :', self.vtrade),
-                      ('Socket (เจาะรูได้) :', self.vdrill))
-        rr = 0
-        for lab, var in combo_rows:
-            _L(self.deep_frame, text=lab).grid(row=rr, column=0, sticky='w', pady=4)
-            ttk.Combobox(self.deep_frame, textvariable=var, values=DEEP_OPTS,
-                         state='readonly', width=8).grid(row=rr, column=1, sticky='w', padx=4)
-            rr += 1
-        for lab, var in (('จำนวน :', self.vqty_val), ('คริติคอล :', self.vcrit_val)):
-            _L(self.deep_frame, text=lab).grid(row=rr, column=0, sticky='w', pady=4)
-            _E(self.deep_frame, textvariable=var, width=10).grid(row=rr, column=1, sticky='w', padx=4)
-            _L(self.deep_frame, text='เว้นว่าง = Any', fg=C['muted'], font=F9).grid(
-                row=rr, column=2, sticky='w', padx=4)
-            rr += 1
-        _L(self.deep_frame, text='Batch size :').grid(row=rr, column=0, sticky='w', pady=4)
+        # ตั้งค่าประมวลผล (มี UI ในแท็บหลายชิ้น)
         self.vbatch = tk.IntVar(value=10)
-        _E(self.deep_frame, textvariable=self.vbatch, width=6).grid(row=rr, column=1, sticky='w', padx=4)
-        rr += 1
         self.vhdl = tk.BooleanVar(value=False)
-        tk.Checkbutton(self.deep_frame, text='Headless (ซ่อน browser)', variable=self.vhdl,
-                       bg=C['bg_med'], fg=C['text'], selectcolor=C['bg_inp'],
-                       activebackground=C['bg_med'], font=FM).grid(
-            row=rr, column=0, columnspan=2, sticky='w', pady=4)
-        self.deep_frame.grid_remove()  # ซ่อนจนกว่าจะเปิด deep
-
-        # --- buttons ---
-        bf = tk.Frame(wrap, bg=C['bg_dark'])
-        bf.pack(fill='x', pady=8)
-        self.run_btn = tk.Button(bf, text='🔍  ค้นหา', command=lambda: self._start('single'),
-                                 bg=C['accent'], fg='#fff', font=FB, relief='flat',
-                                 padx=18, pady=7, cursor='hand2')
-        self.run_btn.pack(side='left')
-        self.cancel_btn = tk.Button(bf, text='⏹  หยุด', command=self._cancel_run,
-                                    bg=C['danger'], fg='#fff', font=FM, relief='flat',
-                                    padx=14, pady=7, cursor='hand2', state='disabled')
-        self.cancel_btn.pack(side='left', padx=8)
-
-    def _toggle_deep(self):
-        if self.vdeep.get():
-            self.deep_frame.grid()
-        else:
-            self.deep_frame.grid_remove()
 
     def _multi_tab(self):
         wrap = tk.Frame(self.tm, bg=C['bg_dark'])
@@ -877,14 +790,20 @@ class App:
         top = _LF(wrap, ' หลายชิ้น (จาก Template) ')
         top.pack(fill='x', pady=(0, 8))
         _L(top, text='เซิร์ฟเวอร์ :').grid(row=0, column=0, sticky='w', padx=8, pady=8)
-        # ใช้ StringVar เกมตัวเดียวกับแท็บค้นหาเดี่ยว -> เลือกที่ไหนก็ sync กันหมด
+        # ตัวแปรเกมเดียวกับ launcher/prefs -> เลือกที่ไหนก็ sync กันหมด
         self.vmulti_game = self.vgame
         if not self._embedded:
+            # รันเดี่ยว -> มี dropdown เกม + ปุ่ม Login (เดิมอยู่แท็บค้นหาเดี่ยว)
             ttk.Combobox(top, textvariable=self.vmulti_game, values=GAME_NAMES,
                          state='readonly', width=20).grid(row=0, column=1, sticky='w', padx=4)
+            tk.Button(top, text='🔓  Open for Login', command=self._open_login,
+                      bg=C['bg_card'], fg=C['text'], font=FM, relief='flat',
+                      padx=10, pady=4, cursor='hand2').grid(row=0, column=2, sticky='w', padx=8)
         else:
             tk.Label(top, textvariable=self.vgame, bg=C['bg_med'], fg=C['teal'], font=FB).grid(
                 row=0, column=1, sticky='w', padx=4)
+            _L(top, text='(เลือก/Login บนแถบบน)', fg=C['muted'], font=F9).grid(
+                row=0, column=2, sticky='w', padx=8)
 
         # โหมดงาน: Event (เดิม จบที่ Create Bundle) / Item Code (ไป Create Item Code)
         _L(top, text='โหมด :').grid(row=1, column=0, sticky='w', padx=8, pady=(0, 8))
@@ -915,6 +834,17 @@ class App:
         self.multi_hint = _L(top, text='(มี/ไม่มี = เข้าไปเช็คทีละไอเทม จะช้ากว่า)',
                              fg=C['muted'], font=F9)
         self.multi_hint.grid(row=3, column=1, columnspan=3, sticky='w', padx=4, pady=(0, 6))
+
+        # ตั้งค่าประมวลผล (เดิมอยู่แท็บค้นหาเดี่ยว) — Batch size / Headless
+        _L(top, text='ตั้งค่า :').grid(row=4, column=0, sticky='w', padx=8, pady=(0, 8))
+        srow = tk.Frame(top, bg=C['bg_med'])
+        srow.grid(row=4, column=1, columnspan=3, sticky='w', padx=4, pady=(0, 8))
+        _L(srow, text='Batch size').pack(side='left')
+        _E(srow, textvariable=self.vbatch, width=5).pack(side='left', padx=(4, 14), ipady=2)
+        tk.Checkbutton(srow, text='Headless (ซ่อน browser)', variable=self.vhdl,
+                       bg=C['bg_med'], fg=C['text'], selectcolor=C['bg_inp'],
+                       activebackground=C['bg_med'], activeforeground=C['text'],
+                       font=FM).pack(side='left')
 
         ext = 'xlsx' if XLSX_OK else 'csv'
         bf = tk.Frame(wrap, bg=C['bg_dark'])
@@ -951,11 +881,17 @@ class App:
         hsb.pack(side='bottom', fill='x')          # ชื่อ/กลุ่มยาว -> เลื่อนดูได้จนจบบรรทัด
         self.multi_list.pack(side='left', fill='both', expand=True)
 
-        self.multi_run_btn = tk.Button(wrap, text='🔍  ค้นหาทั้งหมด',
+        runbar = tk.Frame(wrap, bg=C['bg_dark'])
+        runbar.pack(anchor='w', pady=8)
+        self.multi_run_btn = tk.Button(runbar, text='🔍  ค้นหาทั้งหมด',
                                        command=lambda: self._start('multi'),
                                        bg=C['accent'], fg='#fff', font=FB, relief='flat',
                                        padx=18, pady=7, cursor='hand2')
-        self.multi_run_btn.pack(anchor='w', pady=8)
+        self.multi_run_btn.pack(side='left')
+        self.cancel_btn = tk.Button(runbar, text='⏹  หยุด', command=self._cancel_run,
+                                    bg=C['danger'], fg='#fff', font=FM, relief='flat',
+                                    padx=14, pady=7, cursor='hand2', state='disabled')
+        self.cancel_btn.pack(side='left', padx=8)
 
     def _download_template(self):
         ext = 'xlsx' if XLSX_OK else 'csv'
@@ -1263,9 +1199,6 @@ class App:
         tk.Button(selbar, text='เลือกทั้งหมด', command=self._select_all_results,
                   bg=C['bg_card'], fg=C['text'], font=F9, relief='flat',
                   padx=8, pady=2, cursor='hand2').pack(side='right', padx=(0, 6))
-        tk.Button(selbar, text='↕ เรียงตามชุด', command=self._regroup_results,
-                  bg=C['bg_card'], fg=C['teal'], font=F9, relief='flat',
-                  padx=8, pady=2, cursor='hand2').pack(side='right', padx=(0, 6))
 
         lf2 = tk.Frame(self.tr, bg=C['bg_dark'])
         lf2.pack(fill='both', expand=True, padx=8)
@@ -1277,14 +1210,17 @@ class App:
                      font=FB, relief='flat')
         st.map('Result.Treeview', background=[('selected', C['accent'])],
                foreground=[('selected', '#ffffff')])
-        cols = ('id', 'name', 'fname', 'params', 'groups')
+        cols = ('id', 'name', 'fname', 'params', 'groups', 'desc')
         self.result_tree = ttk.Treeview(lf2, columns=cols, show='headings',
                                         selectmode='extended', style='Result.Treeview')
         self.result_tree.heading('id', text='Aztek ID')
         self.result_tree.heading('name', text='ชื่อในเว็บ')
         self.result_tree.heading('fname', text='ชื่อในไฟล์ (ไม่ได้ใช้ค้นหา)')
+        self.result_tree.heading('desc', text='คำอธิบายไอเทม')
         self.result_tree.heading('params', text='พารามิเตอร์ที่เช็ค')
         self.result_tree.heading('groups', text='กลุ่ม / ตาราง')
+        # 'desc' โผล่เฉพาะโหมด Shop (คุมด้วย displaycolumns ใน _set_desc_col)
+        self.result_tree.configure(displaycolumns=('id', 'name', 'fname', 'params', 'groups'))
         # ทุกคอลัมน์ stretch=False: ถ้าตั้งให้ยืด Tk จะบีบทุกคอลัมน์ให้พอดีจอเสมอ
         # -> รวมกันไม่เคยเกินความกว้างจอ = แถบเลื่อนแนวนอนเลื่อนไม่ได้
         # ความกว้างจะโตตามเนื้อหาจริงใน _fit_result_cols() แล้วค่อยเลื่อนดูส่วนที่เกิน
@@ -1412,8 +1348,17 @@ class App:
         self.root.after(0, _do)
 
     # ความกว้างเริ่มต้นของคอลัมน์ผลลัพธ์ (px) — จะโตตามเนื้อหาจริงทีหลัง
-    _COL_MIN = {'id': 80, 'name': 260, 'fname': 260, 'params': 165, 'groups': 200}
+    _COL_MIN = {'id': 80, 'name': 260, 'fname': 260, 'desc': 240, 'params': 165, 'groups': 200}
     _COL_MAX = 640          # เพดานต่อคอลัมน์ ที่เกินจากนี้ใช้เลื่อนแนวนอนเอา
+
+    def _set_desc_col(self, show):
+        """โชว์/ซ่อนคอลัมน์ 'คำอธิบายไอเทม' — โผล่เฉพาะโหมด Shop"""
+        cols = (('id', 'name', 'fname', 'params', 'groups', 'desc') if show
+                else ('id', 'name', 'fname', 'params', 'groups'))
+        try:
+            self.result_tree.configure(displaycolumns=cols)
+        except Exception:
+            pass
 
     def _fit_result_cols(self, values):
         """ขยายคอลัมน์ให้พอดีเนื้อหาที่ยาวสุดเท่าที่เคยเจอ (เรียกตอนเพิ่มแถว)
@@ -1448,7 +1393,8 @@ class App:
         tags = ()
         if fname and _norm_name(fname) not in _norm_name(name):
             fname, tags = '≠ ' + fname, ('diff',)
-        vals = (aid, name, fname, params, groups)
+        desc = item.get('_desc', '') or ''   # โหมด Shop: คำอธิบายไอเทม (โหมดอื่นว่าง+คอลัมน์ถูกซ่อน)
+        vals = (aid, name, fname, params, groups, desc)
         self.root.after(0, lambda: (self.result_tree.insert('', 'end', values=vals, tags=tags),
                                     self._fit_result_cols(vals)))
 
@@ -1532,7 +1478,9 @@ class App:
     def _review_bundles(self):
         """รวมผลค้นหาเป็นบันเดิลรายกลุ่ม (1 กลุ่มในคอลัมน์ "กลุ่ม" = 1 บันเดิล)
         ชื่อบันเดิล = 'ชื่อแท็บ - ชื่อตาราง' แล้วเปิดฟอร์ม Bundle ทีละกลุ่มให้เติม/แก้ก่อนเก็บเข้าคิว
-        เลือกแถวไว้ = เฉพาะที่เลือก, ไม่เลือก = ทั้งหมด"""
+        เลือกแถวไว้ = เฉพาะที่เลือก, ไม่เลือก = ทั้งหมด
+        ไอเทมที่ใช้ร่วมหลายบันเดิล (sources มีมากกว่า 1 กลุ่ม) จะถูกดันไป 'ล่างสุด' เสมอในทุกบันเดิล
+        ที่มันอยู่ — ไม่งั้นตำแหน่งจะขึ้นกับลำดับดิบในเอกสาร ซึ่งบางกลุ่มอาจดันมันขึ้นไปอยู่บนได้"""
         if not self._on_queue_bundles:
             return
         if not self._results:
@@ -1542,6 +1490,20 @@ class App:
         # เรียง index ตามลำดับในตาราง (=ลำดับเอกสาร) เสมอ — selection คืนมาไม่เรียงก็ได้
         # ลำดับไอเทมในบันเดิลสำคัญ ต้องตรงกับลำดับที่เห็นในผลค้นหา
         idxs = sorted(sel) if sel else list(range(len(self._results)))
+
+        # รอบแรก: หาว่าไอเทมตัวไหน (aid) ถูกใช้ร่วมกันมากกว่า 1 กลุ่ม (รวม sources ของทุก occurrence)
+        aid_groups = {}
+        for i in idxs:
+            if not (0 <= i < len(self._results)):
+                continue
+            r = self._results[i]
+            aid = str(r.get('aztek_id', '') or '').strip()
+            if not aid:
+                continue
+            gs = aid_groups.setdefault(aid, set())
+            for g in (r.get('sources') or ['(ไม่มีกลุ่ม)']):
+                gs.add(str(g or '').strip() or '(ไม่มีกลุ่ม)')
+
         order, groups = [], {}
         for i in idxs:
             if not (0 <= i < len(self._results)):
@@ -1551,19 +1513,21 @@ class App:
             if not aid:
                 continue
             nm = r.get('item_name', '') or ''
+            shared = len(aid_groups.get(aid, ())) > 1     # ใช้ร่วมหลายกลุ่ม -> ดันไปท้ายทุกบันเดิล
             for g in (r.get('sources') or ['(ไม่มีกลุ่ม)']):
                 g = str(g or '').strip() or '(ไม่มีกลุ่ม)'
                 if g not in groups:
                     groups[g] = {'name': self._bundle_name_for_group(g), 'group': g,
-                                 'seen': set(), 'items': []}
+                                 'seen': set(), 'items': [], 'shared_items': []}
                     order.append(g)
                 gd = groups[g]
                 if aid in gd['seen']:            # ไอเทมซ้ำในกลุ่มเดียว -> ใส่ครั้งเดียว
                     continue
                 gd['seen'].add(aid)
-                gd['items'].append({'id': aid, 'name': nm})
+                (gd['shared_items'] if shared else gd['items']).append({'id': aid, 'name': nm})
         bundles = [{'name': groups[g]['name'], 'group': groups[g]['group'],
-                    'items': groups[g]['items']} for g in order if groups[g]['items']]
+                    'items': groups[g]['items'] + groups[g]['shared_items']} for g in order
+                   if groups[g]['items'] or groups[g]['shared_items']]
         if not bundles:
             messagebox.showinfo('รวมเป็นบันเดิล', 'ไม่มีไอเทมให้รวม')
             return
@@ -1621,15 +1585,16 @@ class App:
             f'พบทั้งหมด {len(self._results)} items  |  สร้างโดย item_finder.py',
             '',
         ]
-        COLS = 10
+        COLS = 11
         for r, line in enumerate(summary_lines, 1):
             c = ws.cell(row=r, column=1, value=line)
             c.font = Font(italic=True, color='8B949E', size=9)
             c.fill = gray_fill
             ws.merge_cells(f'A{r}:{chr(64 + COLS)}{r}')
         headers = ['#', 'Aztek ID', 'Item Name', 'ItemKind', 'itemOption',
-                   'durationIndex', 'Game', 'Notes', 'Criteria #', 'Groups (อยู่ตารางไหนบ้าง)']
-        col_w = [5, 12, 30, 12, 14, 16, 14, 24, 10, 42]
+                   'durationIndex', 'Game', 'Notes', 'Criteria #', 'Groups (อยู่ตารางไหนบ้าง)',
+                   'คำอธิบายไอเทม']
+        col_w = [5, 12, 30, 12, 14, 16, 14, 24, 10, 42, 40]
         for col, (h, w) in enumerate(zip(headers, col_w), 1):
             cell = ws.cell(row=4, column=col, value=h)
             cell.fill = hdr_fill
@@ -1641,7 +1606,7 @@ class App:
                    item.get('item_kind', ''), item.get('item_option', ''),
                    item.get('duration_index', ''), item.get('game', ''),
                    item.get('notes', 'passed'), item.get('_ci', ''),
-                   ' | '.join(item.get('sources', []))]
+                   ' | '.join(item.get('sources', [])), item.get('_desc', '')]
             ws.append(row)
             r = 4 + i
             for col in range(1, COLS + 1):
@@ -1656,7 +1621,7 @@ class App:
 
     def _export_csv(self, path):
         headers = ['#', 'aztek_id', 'item_name', 'item_kind', 'item_option',
-                   'duration_index', 'game', 'notes', 'criteria_no', 'groups']
+                   'duration_index', 'game', 'notes', 'criteria_no', 'groups', 'description']
         with open(path, 'w', newline='', encoding='utf-8-sig') as f:
             w = csv.writer(f)
             w.writerow(headers)
@@ -1665,7 +1630,7 @@ class App:
                             item.get('item_kind', ''), item.get('item_option', ''),
                             item.get('duration_index', ''), item.get('game', ''),
                             item.get('notes', 'passed'), item.get('_ci', ''),
-                            ' | '.join(item.get('sources', []))])
+                            ' | '.join(item.get('sources', [])), item.get('_desc', '')])
 
     # ---- login --------------------------------------------------------------
     def _open_login(self):
@@ -1675,7 +1640,7 @@ class App:
             return
         game = self.vgame.get()
         url = GAMES.get(game, list(GAMES.values())[0])
-        self.nb.select(3)
+        self.nb.select(2)              # แท็บ Log (index 2 หลังเอาแท็บค้นหาเดี่ยวออก)
         self.log(f'Opening Chrome for login ({game})...', 'STEP')
 
         def _run():
@@ -1695,12 +1660,22 @@ class App:
                     except Exception:
                         pass
                     self.log('  Profile saved', 'SUCCESS')
-            asyncio.run(_open())
+            # ใช้ profile ร่วมกับ tool อื่น -> จอง browser ก่อนเปิด login แล้วคืนเสมอ
+            try:
+                core.acquire_browser('Item Finder')
+            except core.BrowserBusy as ex:
+                self.log('✋ Browser กำลังถูกใช้โดย tool อื่น — ปิด browser เดิมก่อน', 'ERROR')
+                self.log(str(ex), 'WARNING')
+                return
+            try:
+                asyncio.run(_open())
+            finally:
+                core.release_browser()
 
         threading.Thread(target=_run, daemon=True).start()
 
     # ---- run control --------------------------------------------------------
-    def _start(self, mode='single'):
+    def _start(self, mode='multi'):
         if not PW_OK:
             messagebox.showerror('No Playwright',
                                  'pip install playwright\npython -m playwright install chromium')
@@ -1711,7 +1686,7 @@ class App:
 
         if mode == 'multi':
             if not self._imported:
-                messagebox.showwarning('หลายชิ้น', 'ยัง import template ไม่ได้ หรือ template ว่างเปล่า')
+                messagebox.showwarning('ค้นหา', 'ยัง import template ไม่ได้ หรือ template ว่างเปล่า')
                 return
             multi_game = self.vmulti_game.get()
             multi = [dict(r) for r in self._imported]
@@ -1752,18 +1727,16 @@ class App:
 
             auto_deep = any(_row_has_deep(r) for r in multi)
         else:
-            multi_game = game
-            multi = [{'kind': self.vkind.get().strip(),
-                      'opt': self.vopt.get().strip(),
-                      'dur': self.vdur.get().strip(),
-                      'name': self.vname.get().strip()}]
+            return   # โหมดค้นหาชิ้นเดียวถูกถอดออกแล้ว (เหลือเฉพาะค้นหาจาก template)
 
-        use_game = multi_game if mode == 'multi' else game
+        use_game = multi_game
+        # โหมด Shop -> อ่าน "คำอธิบายไอเทม" จากหน้ารายละเอียดมาโชว์เพิ่ม (โหมดอื่นไม่อ่าน/ไม่โชว์)
+        read_desc = (getattr(self, 'vmode', None) is not None and self.vmode.get() == 'shop')
         data = {
             'game': use_game,
             'url': GAMES[use_game],
             'multi': multi,
-            'deep': self.vdeep.get() or (mode == 'multi' and auto_deep),
+            'deep': self.vdeep.get() or auto_deep,
             'web': self.vweb.get(),
             'img': self.vimg.get(),
             'qty_val': self.vqty_val.get().strip(),
@@ -1772,35 +1745,32 @@ class App:
             'crit_val': self.vcrit_val.get().strip(),
             'batch': self.vbatch.get(),
             'headless': self.vhdl.get(),
+            'read_desc': read_desc,
         }
 
         self._results.clear()
         self.result_tree.delete(*self.result_tree.get_children())
         self._reset_result_cols()      # เริ่มรอบใหม่ -> คอลัมน์กลับไปขนาดเริ่มต้น
+        self._set_desc_col(read_desc)  # โชว์คอลัมน์ "คำอธิบายไอเทม" เฉพาะโหมด Shop
         self.progress_var.set(0)
         self.progress_lbl.config(text='')
         self.count_lbl.config(text='พบ 0 items')
         self._cancel = False
         self._running = True
-        for btn in (self.run_btn, self.multi_run_btn):
-            btn.config(state='disabled', text='Running...')
+        self.multi_run_btn.config(state='disabled', text='Running...')
         self.cancel_btn.config(state='normal')
         self._save_prefs()
-        self.nb.select(3)
+        self.nb.select(2)              # แท็บ Log (index 2 หลังเอาแท็บค้นหาเดี่ยวออก)
         self.log('=' * 52)
-        if mode == 'multi':
-            self.log(f'Mode : multi  Items : {len(multi)}  Server : {multi_game}', 'STEP')
-        else:
-            self.log(f'Game : {game}  Mode : single', 'STEP')
+        self.log(f'Items : {len(multi)}  Server : {multi_game}', 'STEP')
 
         if data['deep']:
-            if mode == 'multi' and not self.vdeep.get():
+            if not self.vdeep.get():
                 self.log('  Deep Check เปิดอัตโนมัติ (พบค่า deep check ใน template)', 'INFO')
             self.log(f"  Global deep — web:{data['web']} img:{data['img']} "
                      f"qty:{data['qty_val']!r} trade:{data['trade']} "
                      f"drill:{data['drill']} crit:{data['crit_val']!r}", 'INFO')
-            if mode == 'multi':
-                self.log('  (แต่ละแถวใช้ค่า deep check ของตัวเองจาก template)', 'INFO')
+            self.log('  (แต่ละแถวใช้ค่า deep check ของตัวเองจาก template)', 'INFO')
 
         threading.Thread(target=self._run_thread, args=(data,), daemon=True).start()
 
@@ -1810,11 +1780,13 @@ class App:
 
     def _run_thread(self, data):
         def _rst():
-            self.run_btn.config(state='normal', text='🔍  ค้นหา')
             self.multi_run_btn.config(state='normal', text='🔍  ค้นหาทั้งหมด')
             self.cancel_btn.config(state='disabled')
         try:
             asyncio.run(self._auto(data))
+        except core.BrowserBusy as ex:
+            self.log('✋ Browser กำลังถูกใช้โดย tool อื่น — ปิด browser เดิมก่อนแล้วค้นใหม่', 'ERROR')
+            self.log(str(ex), 'WARNING')
         except Exception as ex:
             self.log(str(ex), 'ERROR')
             self.log(traceback.format_exc(), 'ERROR')
@@ -1831,20 +1803,25 @@ class App:
             kw['executable_path'] = chrome_exe
         else:
             self.log('Chrome not found — using Playwright Chromium', 'WARNING')
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch_persistent_context(**kw)
-            page = browser.pages[0] if browser.pages else await browser.new_page()
-            try:
-                await self._search_all(page, data)
-            finally:
-                await browser.close()
+        # ใช้ profile ร่วมกับ tool อื่น -> จอง browser ก่อน (อาจ raise BrowserBusy) แล้วคืนเสมอ
+        core.acquire_browser('Item Finder')
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch_persistent_context(**kw)
+                page = browser.pages[0] if browser.pages else await browser.new_page()
+                try:
+                    await self._search_all(page, data)
+                finally:
+                    await browser.close()
+        finally:
+            core.release_browser()
 
     async def _search_all(self, page, data):
         all_items = []
         total_passed = 0
         not_found = []
         multi = data['multi']
-        self.nb.select(2)
+        self.nb.select(1)              # แท็บ ผลลัพธ์ (index 1 หลังเอาแท็บค้นหาเดี่ยวออก)
         base_url = data['url']
 
         def _clabel(i, cr):
@@ -2298,7 +2275,11 @@ class App:
 
             detail = await page.evaluate("""()=>{
                 let webEnabled=null,qty='',tradeable=null,drillable=null,critVal='';
-                let hasImage=false;
+                let hasImage=false,desc='';
+
+                // คำอธิบายไอเทม (textarea name="detail") — โหมด Shop เอามาโชว์เพิ่มในตาราง
+                const dta=document.querySelector('textarea[name="detail"]');
+                if(dta) desc=(dta.value||dta.textContent||'').trim();
 
                 // Image check — look for item image that actually loaded
                 const imgs=[...document.querySelectorAll('img')];
@@ -2353,12 +2334,19 @@ class App:
                     if(!critVal&&txt.includes('คริติคอล')) critVal=(inp.value||'').trim();
                 }
 
-                return {webEnabled,qty,tradeable,drillable,critVal,hasImage,cbInfo};
+                return {webEnabled,qty,tradeable,drillable,critVal,hasImage,desc,cbInfo};
             }""")
 
             self.log(f"    web:{detail.get('webEnabled')} img:{detail.get('hasImage')} "
                      f"qty:{detail.get('qty')!r} trade:{detail.get('tradeable')} "
                      f"drill:{detail.get('drillable')} crit:{detail.get('critVal')!r}", 'INFO')
+
+            # โหมด Shop: เก็บ "คำอธิบายไอเทม" ไว้โชว์เพิ่มในตาราง (ไม่กระทบผ่าน/ตก)
+            # ยุบช่องว่าง/ขึ้นบรรทัดใหม่ให้เป็นช่องเดียว -> โชว์ในเซลล์แถวเดียวได้สวย
+            if data.get('read_desc'):
+                item['_desc'] = ' '.join((detail.get('desc') or '').split())
+                if item['_desc']:
+                    self.log(f"    คำอธิบาย: {item['_desc']}", 'INFO')
 
             notes_parts = []
 

@@ -1260,7 +1260,8 @@ class App:
     def _open_login(self):
         self._save_prefs()
         s = core.AztekSession(log=self.log, should_cancel=lambda: self._cancel)
-        self._run_async(lambda: s.open_login(core.build_url(self.vgame.get(), LIST_PATH)))
+        url = core.build_url(self.vgame.get(), LIST_PATH)   # อ่าน StringVar บน main thread ก่อน (thread-safe)
+        self._run_async(lambda: s.open_login(url))
 
     def _clear_session(self):
         ok = core.clear_profile()
@@ -1433,8 +1434,14 @@ class App:
                         self.log("ข้าม #%d (%s): %s" % (i, it.get("name_th"), err), "WARNING"); failed += 1; continue
                     self.log("========== [%d/%d] %s ==========" % (i, len(items), it.get("name_th")), "STEP")
                     try:
-                        await create_itemcode(page, self.log, it)
-                        done += 1
+                        ok = await create_itemcode(page, self.log, it)
+                        if ok:
+                            done += 1
+                        else:
+                            # คืน False = กรอกไม่ครบ/หาปุ่มบันทึกไม่เจอ -> ยังไม่ได้ถูกสร้างบนเว็บจริง
+                            failed += 1
+                            self.log("ไม่สำเร็จ #%d: %s (กรอกไม่ครบ/บันทึกไม่ได้ — ไม่ถูกสร้างบนเว็บ)"
+                                     % (i, it.get("name_th")), "WARNING")
                     except Exception:
                         failed += 1
                         self.log("พลาด #%d: %s" % (i, it.get("name_th")), "ERROR")

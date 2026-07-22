@@ -1120,7 +1120,8 @@ class App:
     def _open_login(self):
         self._save_prefs()
         s = core.AztekSession(log=self.log, should_cancel=lambda: self._cancel)
-        self._run_async(lambda: s.open_login(core.build_url(self.vgame.get(), LIST_PATH)))
+        url = core.build_url(self.vgame.get(), LIST_PATH)   # อ่าน StringVar บน main thread ก่อน (thread-safe)
+        self._run_async(lambda: s.open_login(url))
 
     def _preview_one(self):
         self._run_form(submit=False)
