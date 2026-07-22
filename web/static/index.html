@@ -36,6 +36,14 @@
   tbody tr:hover { background:#1b222b; }
   .soon { color:var(--warn); font-size:13px; }
   .hint { color:var(--muted); font-size:12px; margin-top:6px; }
+  select { background:#0d1117; color:var(--text); border:1px solid var(--line);
+           border-radius:6px; padding:5px 8px; font-size:13px; }
+  label { font-size:13px; color:var(--muted); }
+  #log { max-height:300px; overflow:auto; margin:0; font-size:12px; line-height:1.55;
+         white-space:pre-wrap; word-break:break-word; }
+  .lg-INFO { color:var(--muted); } .lg-STEP { color:#58a6ff; }
+  .lg-SUCCESS { color:var(--accent2); } .lg-WARNING { color:var(--warn); }
+  .lg-ERROR { color:#f85149; }
 </style>
 </head>
 <body>
@@ -58,9 +66,32 @@
     <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="searchCard" style="display:none">
     <h2>2) ค้นหาบน aztek</h2>
-    <div class="soon">🚧 กำลังทำต่อ — ขั้นถัดไป: กดค้นหาแล้วรัน Playwright (headless) + โชว์ log สด + ตารางผลลัพธ์</div>
+    <div class="row">
+      <label>เกม:</label>
+      <select id="game"></select>
+      <span style="margin-left:12px">แสดงผลบนเว็บ:</span>
+      <label><input type="radio" name="wm" value="any" checked> ทั้งหมด</label>
+      <label><input type="radio" name="wm" value="yes"> มี</label>
+      <label><input type="radio" name="wm" value="no"> ไม่มี</label>
+      <button id="btnSearch">🔍 ค้นหาทั้งหมด</button>
+      <button id="btnStop" class="ghost" disabled>⏹ หยุด</button>
+    </div>
+    <div class="hint">ต้องเคย login aztek ผ่านแอป desktop มาก่อน (ใช้ session เดิม) · ห้ามเปิด desktop พร้อมกัน (โปรไฟล์ถูกล็อก)</div>
+    <div id="prog" class="hint"></div>
+  </div>
+
+  <div class="card" id="resultsSearchCard" style="display:none">
+    <h2>ผลลัพธ์ (<span id="rcount" class="count">0</span>)</h2>
+    <div class="tablewrap"><table id="rtbl">
+      <thead><tr><th>#</th><th>Aztek ID</th><th>ชื่อในเว็บ</th><th>พารามิเตอร์ที่เช็ค</th><th>กลุ่ม</th><th>คำอธิบาย</th></tr></thead>
+      <tbody></tbody></table></div>
+  </div>
+
+  <div class="card" id="logCard" style="display:none">
+    <h2>Log</h2>
+    <pre id="log"></pre>
   </div>
 </main>
 
@@ -119,7 +150,10 @@ async function upload() {
     if (!r.ok) throw new Error(data.detail || 'อ่านไม่สำเร็จ');
     $('count').textContent = data.count;
     renderTable(data.items || []);
+    window._criteria = data.items || [];
     $('resultCard').style.display = 'block';
+    $('searchCard').style.display = data.count ? 'block' : 'none';
+    loadGames();
     $('status').innerHTML = `<span class="count">✓ อ่าน ${data.count} รายการ</span> จาก ${data.filename}`;
   } catch (e) {
     $('status').innerHTML = `<span class="err">✗ ${e.message}</span>`;
@@ -129,6 +163,83 @@ async function upload() {
 }
 
 $('btnUpload').addEventListener('click', upload);
+
+// ---- ค้นหา ----
+let _gamesLoaded = false;
+async function loadGames() {
+  if (_gamesLoaded) return;
+  try {
+    const r = await fetch('/api/games');
+    const d = await r.json();
+    $('game').innerHTML = (d.games || []).map(g =>
+      `<option>${g.replace(/</g, '&lt;')}</option>`).join('');
+    _gamesLoaded = true;
+  } catch (e) { /* เงียบไว้ */ }
+}
+
+function logLine(msg, level) {
+  const pre = $('log');
+  const span = document.createElement('span');
+  span.className = 'lg-' + (level || 'INFO');
+  span.textContent = msg + '\n';
+  pre.appendChild(span);
+  pre.scrollTop = pre.scrollHeight;
+}
+
+function tdText(t) {
+  const td = document.createElement('td');
+  td.textContent = (t === null || t === undefined) ? '' : String(t);
+  return td;
+}
+
+let _ws = null;
+function finishSearch() { $('btnSearch').disabled = false; $('btnStop').disabled = true; }
+
+function runSearch() {
+  const criteria = window._criteria || [];
+  if (!criteria.length) return;
+  const game = $('game').value;
+  const web_mode = document.querySelector('input[name=wm]:checked').value;
+  $('log').innerHTML = '';
+  $('rtbl').querySelector('tbody').innerHTML = '';
+  $('rcount').textContent = '0';
+  $('logCard').style.display = 'block';
+  $('resultsSearchCard').style.display = 'block';
+  $('prog').textContent = 'กำลังเชื่อมต่อ...';
+  $('btnSearch').disabled = true; $('btnStop').disabled = false;
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  _ws = new WebSocket(proto + '//' + location.host + '/ws/search');
+  let n = 0;
+  _ws.onopen = () => { $('prog').textContent = 'กำลังค้นหา...';
+    _ws.send(JSON.stringify({ game, web_mode, criteria })); };
+  _ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === 'log') logLine(m.msg, m.level);
+    else if (m.type === 'progress')
+      $('prog').textContent = `กำลังตรวจ ${m.cur}/${m.total} — ${m.name || ''}`;
+    else if (m.type === 'result') {
+      n++;
+      const it = m.item, tr = document.createElement('tr');
+      [n, it.aztek_id, it.item_name, it.params, it.groups, it.desc]
+        .forEach(v => tr.appendChild(tdText(v)));
+      $('rtbl').querySelector('tbody').appendChild(tr);
+      $('rcount').textContent = n;
+    } else if (m.type === 'done') {
+      $('prog').textContent = `เสร็จ — พบ ${m.count} รายการ`; finishSearch();
+    }
+  };
+  _ws.onerror = () => logLine('WebSocket error', 'ERROR');
+  _ws.onclose = () => finishSearch();
+}
+
+function stopSearch() {
+  if (_ws) { try { _ws.close(); } catch (e) {} }
+  $('prog').textContent = 'หยุดแล้ว'; finishSearch();
+}
+
+$('btnSearch').addEventListener('click', runSearch);
+$('btnStop').addEventListener('click', stopSearch);
 </script>
 </body>
 </html>
