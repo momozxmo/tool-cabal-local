@@ -2017,15 +2017,28 @@ class App:
             return
         # รอช่องค้นหาโผล่จริง
         box = None
-        for sel in ('input[placeholder*="Aztek Item Id"]',
-                    'input[placeholder*="Item Name"]',
-                    'input[placeholder*="ItemKind"]',
-                    'input[placeholder*="ค้นหา"]'):
+        selectors = (
+            'input[placeholder*="Aztek Item Id"]',
+            'input[placeholder*="Item Name"]',
+            'input[placeholder*="ItemKind"]',
+            'input[placeholder*="Item ID"]',
+            'input[placeholder*="Item"]',
+            'input[placeholder*="Search"]',
+            'input[placeholder*="search"]',
+            'input[placeholder*="ค้นหา"]',
+            'input[name*="search"]',
+            'input[name*="item"]',
+            'input[type="search"]',
+            'input[type="text"]',
+            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])',
+        )
+        for sel in selectors:
             loc = page.locator(sel).first
             try:
-                await loc.wait_for(state='visible', timeout=5000)
-                box = loc
-                break
+                if await loc.count() > 0:
+                    await loc.wait_for(state='visible', timeout=1500)
+                    box = loc
+                    break
             except Exception:
                 continue
         if box is None:
