@@ -18,6 +18,9 @@ class Settings:
     pairing_ttl_seconds: int = 300
     browser_concurrency: int = 1
     aztek_origin: str = 'https://aztek-tools.combo-interactive.com'
+    # Shared SSO login host used by all four game servers; its cookies/origins
+    # are equally valid parts of a captured Aztek session.
+    aztek_auth_origin: str = 'https://auth.combo-interactive.com'
 
     @classmethod
     def from_env(cls) -> 'Settings':
@@ -25,8 +28,8 @@ class Settings:
         production = app_env == 'production'
         app_secret = os.getenv('APP_SECRET_KEY', '').strip()
         encryption_key = os.getenv('AZTEK_SESSION_ENCRYPTION_KEY', '').strip()
-        admin_user = os.getenv('BOOTSTRAP_ADMIN_USERNAME', '').strip()
-        admin_password = os.getenv('BOOTSTRAP_ADMIN_PASSWORD', '')
+        admin_user = os.getenv('BOOTSTRAP_ADMIN_USERNAME', '' if production else 'admin').strip()
+        admin_password = os.getenv('BOOTSTRAP_ADMIN_PASSWORD', '' if production else 'admin123456')
         if production:
             missing = [name for name, value in (
                 ('APP_SECRET_KEY', app_secret),
