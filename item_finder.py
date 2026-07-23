@@ -2015,36 +2015,43 @@ class App:
         kind = criteria.get('kind', '')
         if not kind:
             return
-        # รอช่องค้นหาโผล่จริง
-        box = None
-        selectors = (
-            'input[name="searchBox"]',
-            'input[name="searchbox"]',
-            'input[placeholder*="Aztek Item Id"]',
-            'input[placeholder*="Item Name"]',
-            'input[placeholder*="ItemKind"]',
-            'input[placeholder*="Item ID"]',
-            'input[placeholder*="Item"]',
-            'input[placeholder*="Search"]',
-            'input[placeholder*="search"]',
-            'input[placeholder*="ค้นหา"]',
-            'input[name*="search"]',
-            'input[name*="item"]',
-            'input[type="search"]',
-            'input[type="text"]',
-            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])',
+
+        main_selector = (
+            'input[name="searchBox"], '
+            'input[name="searchbox"], '
+            'input[placeholder*="Aztek Item Id"], '
+            'input[placeholder*="Item Name"], '
+            'input[placeholder*="ItemKind"], '
+            'input[placeholder*="Item ID"], '
+            'input[placeholder*="Item"], '
+            'input[placeholder*="Search"], '
+            'input[placeholder*="search"], '
+            'input[placeholder*="ค้นหา"], '
+            'input[name*="search"], '
+            'input[type="text"]'
         )
-        for sel in selectors:
-            loc = page.locator(sel).first
-            try:
-                if await loc.count() > 0:
-                    await loc.wait_for(state='visible', timeout=1500)
-                    box = loc
-                    break
-            except Exception:
-                continue
+        box = None
+        # 1. Wait for selector to attach/render on main page (up to 10 seconds)
+        try:
+            loc = page.locator(main_selector).first
+            await loc.wait_for(state='attached', timeout=10000)
+            box = loc
+        except Exception:
+            pass
+
+        # 2. Check frames as fallback if not found in main document
         if box is None:
-            self.log('  หาช่องค้นหาไม่เจอ', 'WARNING')
+            for frame in page.frames:
+                try:
+                    loc = frame.locator(main_selector).first
+                    if await loc.count() > 0:
+                        box = loc
+                        break
+                except Exception:
+                    continue
+
+        if box is None:
+            self.log(f'  หาช่องค้นหาไม่เจอ (หน้าปัจจุบัน: {page.url})', 'WARNING')
             return
         try:
             await box.fill(kind)
