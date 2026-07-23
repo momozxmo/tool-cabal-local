@@ -81,12 +81,21 @@ function isLoginUrl(url) {
   }
 }
 
+function isAllowedDomain(domain) {
+  if (!domain || typeof domain !== 'string') return false;
+  const norm = domain.trim().toLowerCase().replace(/^\./, '');
+  return norm === 'combo-interactive.com' || norm.endsWith('.combo-interactive.com');
+}
+
 async function collectCookies() {
   // Gather cookies from the app host, shared SSO host, and parent domain,
   // queried by both exact URL and domain filter, de-duplicated by (domain, path, name).
   const seen = new Set();
   const cookies = [];
   const addCookie = (cookie) => {
+    if (!isAllowedDomain(cookie.domain)) {
+      return;
+    }
     const key = cookie.domain + '|' + (cookie.path || '/') + '|' + cookie.name;
     if (!seen.has(key)) {
       seen.add(key);
