@@ -2018,6 +2018,8 @@ class App:
         # รอช่องค้นหาโผล่จริง
         box = None
         selectors = (
+            'input[name="searchBox"]',
+            'input[name="searchbox"]',
             'input[placeholder*="Aztek Item Id"]',
             'input[placeholder*="Item Name"]',
             'input[placeholder*="ItemKind"]',
