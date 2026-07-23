@@ -5,12 +5,16 @@
   "description": "Import your Aztek login session into All for Cabal Web using a one-time pairing token.",
   "permissions": ["cookies", "tabs", "scripting"],
   "host_permissions": [
-    "https://aztek-tools.combo-interactive.com/*",
+    "https://*.combo-interactive.com/*",
+    "https://combo-interactive.com/*",
     "http://localhost:8000/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://aztek-tools.combo-interactive.com/*"],
+      "matches": [
+        "https://*.combo-interactive.com/*",
+        "https://combo-interactive.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

@@ -4,7 +4,20 @@
 'use strict';
 
 const AZTEK_ORIGIN = 'https://aztek-tools.combo-interactive.com';
-const AZTEK_COOKIE_DOMAIN = 'aztek-tools.combo-interactive.com';
+const AZTEK_AUTH_ORIGIN = 'https://auth.combo-interactive.com';
+const ALLOWED_ORIGINS = [AZTEK_ORIGIN, AZTEK_AUTH_ORIGIN];
+// Cookies for the app host plus the shared SSO login host; both are valid
+// parts of one logged-in Aztek session.
+const COOKIE_DOMAINS = [
+  'aztek-tools.combo-interactive.com',
+  'auth.combo-interactive.com',
+  'combo-interactive.com',
+  '.combo-interactive.com',
+];
+const COOKIE_URLS = [
+  AZTEK_ORIGIN,
+  AZTEK_AUTH_ORIGIN,
+];
 
 function setStatus(message, kind) {
   const el = document.getElementById('status');
@@ -51,10 +64,54 @@ async function findActiveAztekTab() {
     return null;
   }
   try {
-    return new URL(tab.url).origin === AZTEK_ORIGIN ? tab : null;
+    return ALLOWED_ORIGINS.indexOf(new URL(tab.url).origin) !== -1 ? tab : null;
   } catch (error) {
     return null;
   }
+}
+
+function isLoginUrl(url) {
+  // The shared SSO login tab is not yet authenticated; pairing from it would
+  // capture a pre-login cookie set that the headless search cannot replay.
+  try {
+    return /\/(login|signin|sign-in)([/?#]|$)/.test(
+      new URL(url).pathname.toLowerCase());
+  } catch (error) {
+    return false;
+  }
+}
+
+async function collectCookies() {
+  // Gather cookies from the app host, shared SSO host, and parent domain,
+  // queried by both exact URL and domain filter, de-duplicated by (domain, path, name).
+  const seen = new Set();
+  const cookies = [];
+  const addCookie = (cookie) => {
+    const key = cookie.domain + '|' + (cookie.path || '/') + '|' + cookie.name;
+    if (!seen.has(key)) {
+      seen.add(key);
+      cookies.push(cookie);
+    }
+  };
+
+  for (const url of COOKIE_URLS) {
+    try {
+      const found = await chrome.cookies.getAll({ url: url });
+      for (const cookie of found) {
+        addCookie(cookie);
+      }
+    } catch (err) {}
+  }
+
+  for (const domain of COOKIE_DOMAINS) {
+    try {
+      const found = await chrome.cookies.getAll({ domain: domain });
+      for (const cookie of found) {
+        addCookie(cookie);
+      }
+    } catch (err) {}
+  }
+  return cookies;
 }
 
 async function readLocalStorage(tabId) {
@@ -85,16 +142,21 @@ async function connect() {
   try {
     const tab = await findActiveAztekTab();
     if (!tab) {
-      setStatus('เปิดแท็บ Aztek ที่ล็อกอินแล้วให้อยู่หน้าปัจจุบัน แล้วลองใหม่', 'error');
+      setStatus('เปิดหน้า Aztek หรือหน้าล็อกอินที่ล็อกอินแล้วให้อยู่หน้าปัจจุบัน แล้วลองใหม่', 'error');
+      return;
+    }
+    if (isLoginUrl(tab.url)) {
+      setStatus('ล็อกอิน Aztek ให้เสร็จก่อน (อย่าเชื่อมค้างไว้ที่หน้าล็อกอิน) แล้วค่อยกดเชื่อม', 'error');
       return;
     }
 
-    const cookies = await chrome.cookies.getAll({ domain: AZTEK_COOKIE_DOMAIN });
+    const cookies = await collectCookies();
     if (!cookies.length) {
       setStatus('ไม่พบคุกกี้ Aztek — กรุณาล็อกอิน Aztek ก่อน', 'error');
       return;
     }
 
+    const tabOrigin = new URL(tab.url).origin;
     const localStorageEntries = await readLocalStorage(tab.id);
     const payload = {
       pairing_token: token,
@@ -102,7 +164,7 @@ async function connect() {
       storage_state: {
         cookies: cookies.map(toPlaywrightCookie),
         origins: localStorageEntries.length
-          ? [{ origin: AZTEK_ORIGIN, localStorage: localStorageEntries }]
+          ? [{ origin: tabOrigin, localStorage: localStorageEntries }]
           : [],
       },
     };

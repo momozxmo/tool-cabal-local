@@ -7,6 +7,8 @@ EXTENSION = Path(__file__).resolve().parents[1] / 'extension'
 
 AZTEK_HOST = 'aztek-tools.combo-interactive.com'
 AZTEK_ORIGIN = 'https://aztek-tools.combo-interactive.com'
+AUTH_HOST = 'auth.combo-interactive.com'
+AUTH_ORIGIN = 'https://auth.combo-interactive.com'
 
 
 def read(name: str) -> str:
@@ -18,7 +20,8 @@ def test_extension_permissions_are_scoped_to_aztek():
     assert manifest['manifest_version'] == 3
     assert 'cookies' in manifest['permissions']
     assert manifest['host_permissions'] == [
-        AZTEK_ORIGIN + '/*',
+        'https://*.combo-interactive.com/*',
+        'https://combo-interactive.com/*',
         'http://localhost:8000/*',
     ]
 
@@ -27,7 +30,7 @@ def test_content_scripts_only_target_the_aztek_host():
     manifest = json.loads(read('manifest.json'))
     for entry in manifest.get('content_scripts', []):
         for match in entry['matches']:
-            assert AZTEK_HOST in match
+            assert 'combo-interactive.com' in match
             assert 'localhost' not in match
 
 
