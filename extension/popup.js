@@ -3,21 +3,18 @@
 // stored, or transmitted — only the resulting cookies and localStorage.
 'use strict';
 
-const AZTEK_V2_ORIGIN = 'https://aztek-tools-v2.combo-interactive.com';
 const AZTEK_ORIGIN = 'https://aztek-tools.combo-interactive.com';
 const AZTEK_AUTH_ORIGIN = 'https://auth.combo-interactive.com';
-const ALLOWED_ORIGINS = [AZTEK_V2_ORIGIN, AZTEK_ORIGIN, AZTEK_AUTH_ORIGIN];
+const ALLOWED_ORIGINS = [AZTEK_ORIGIN, AZTEK_AUTH_ORIGIN];
 // Cookies for the app host plus the shared SSO login host; both are valid
 // parts of one logged-in Aztek session.
 const COOKIE_DOMAINS = [
-  'aztek-tools-v2.combo-interactive.com',
   'aztek-tools.combo-interactive.com',
   'auth.combo-interactive.com',
   'combo-interactive.com',
   '.combo-interactive.com',
 ];
 const COOKIE_URLS = [
-  AZTEK_V2_ORIGIN,
   AZTEK_ORIGIN,
   AZTEK_AUTH_ORIGIN,
 ];

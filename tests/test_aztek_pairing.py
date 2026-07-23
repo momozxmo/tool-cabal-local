@@ -29,14 +29,20 @@ def valid_storage_state():
     }
 
 
+def auth_storage_state():
+    """A session captured while the user is on the shared SSO login host."""
+    state = valid_storage_state()
+    state['cookies'][0]['domain'] = 'auth.combo-interactive.com'
+    state['origins'][0]['origin'] = 'https://auth.combo-interactive.com'
+    return state
+
+
 def issue_pairing_token(client) -> str:
     response = client.post('/api/aztek/pairing-token')
     assert response.status_code == 200
     body = response.json()
     assert 'expires_at' in body
     return body['pairing_token']
-
-
 def test_pairing_token_then_pair_connects(client, anonymous_client, member,
                                           test_database, test_settings):
     token = issue_pairing_token(client)
@@ -62,6 +68,16 @@ def test_pairing_token_then_pair_connects(client, anonymous_client, member,
         assert SECRET_COOKIE_VALUE not in record.encrypted_state
         assert (security.decrypt_storage_state(record.encrypted_state, test_settings)
                 == valid_storage_state())
+
+
+def test_shared_sso_auth_origin_is_accepted(client, anonymous_client):
+    token = issue_pairing_token(client)
+    response = anonymous_client.post('/api/aztek/pair', json={
+        'pairing_token': token, 'storage_state': auth_storage_state()})
+    assert response.status_code == 200
+
+    status = client.get('/api/aztek/status').json()
+    assert status['connected'] is True
 
 
 def test_pairing_token_is_single_use(client, anonymous_client):

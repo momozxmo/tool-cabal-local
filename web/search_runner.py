@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Callback-driven host for the existing Item Finder Playwright engine."""
+from urllib.parse import urlsplit
+
 from playwright.async_api import async_playwright
 
 import item_finder
@@ -13,19 +15,28 @@ class AztekSessionExpired(Exception):
 async def is_login_page(page):
     """Heuristic: is this the Aztek login screen rather than the app shell?
 
-    Uses the URL path and the presence of a password field — never an empty
-    result table, which is a legitimate search outcome, not an expired session.
+    A login route in the URL path is a reliable signal (e.g. the shared SSO
+    redirect). A password field only counts when it is actually *visible* — the
+    full app shell may keep a hidden re-login modal in the DOM, and that must
+    not be mistaken for a login page (the desktop engine never checks this and
+    works on the same page). An empty result table is never a signal: it is a
+    legitimate search outcome, not an expired session.
     """
     url = (getattr(page, 'url', '') or '').lower()
-    if any(part in url for part in ('/login', '/signin', '/sign-in', '/auth')):
+    path = (urlsplit(url).path or '').lower()
+    if any(part in path for part in ('/login', '/signin', '/sign-in')):
         return True
     try:
-        has_password = await page.evaluate(
-            "() => !!document.querySelector("
-            "'input[type=\"password\"], input[name=\"password\"]')")
+        visible_password = await page.evaluate(
+            "() => Array.from(document.querySelectorAll("
+            "'input[type=\"password\"], input[name=\"password\"]')).some("
+            "function(el){ var r = el.getBoundingClientRect();"
+            "var st = getComputedStyle(el);"
+            "return r.width > 0 && r.height > 0 && el.offsetParent !== null &&"
+            "st.display !== 'none' && st.visibility !== 'hidden'; })")
     except Exception:
-        has_password = False
-    return bool(has_password)
+        visible_password = False
+    return bool(visible_password)
 
 
 class _StubNotebook:
@@ -97,7 +108,11 @@ class HeadlessFinder:
                                 timeout=30000)
                 await page.wait_for_timeout(2000)  # let the SPA settle
                 if await is_login_page(page):
-                    raise AztekSessionExpired('Aztek session หมดอายุ')
+                    # Include the URL so the log reveals whether we landed on a
+                    # real SSO login (session not authenticating) or the app page.
+                    raise AztekSessionExpired(
+                        'Aztek session หมดอายุ/ยังไม่ได้ล็อกอิน (หน้า: %s)'
+                        % page.url)
                 await self._search_all(page, data)
             finally:
                 await context.close()

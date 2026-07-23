@@ -233,6 +233,46 @@ def test_web_runner_raises_on_login_page(monkeypatch):
           fake.browser.closed and fake.browser.context.closed)
 
 
+class _RunPageWithVisiblePassword(_FakeRunPage):
+    async def evaluate(self, js, *a):
+        return True  # the visibility filter in the JS found a visible field
+
+
+def test_is_login_page_ignores_app_paths_containing_auth(monkeypatch):
+    # The old heuristic matched the loose substring '/auth', so an app route like
+    # '/authorization/...' was mistaken for a login screen. The path check now
+    # only honours real login routes, and there is no visible password field.
+    page = _FakeRunPage(
+        url='https://aztek-tools.combo-interactive.com/authorization/settings')
+    fake = _FakePlaywright(page)
+    monkeypatch.setattr(sr, 'async_playwright', lambda: fake)
+    finder = sr.HeadlessFinder(lambda *a, **k: None, lambda *a: None, lambda *a: None)
+
+    raised = False
+    try:
+        asyncio.run(finder.run(_run_data(), {'cookies': [], 'origins': []}))
+    except sr.AztekSessionExpired:
+        raised = True
+    check('app path with "auth" substring is not treated as login', not raised)
+
+
+def test_is_login_page_flags_visible_password_on_app_page(monkeypatch):
+    # A visible password field (e.g. an in-app re-login overlay) still means the
+    # session is not authenticated, even on an app URL with no login route.
+    page = _RunPageWithVisiblePassword(
+        url='https://aztek-tools.combo-interactive.com/combo/cabalm/shop/items')
+    fake = _FakePlaywright(page)
+    monkeypatch.setattr(sr, 'async_playwright', lambda: fake)
+    finder = sr.HeadlessFinder(lambda *a, **k: None, lambda *a: None, lambda *a: None)
+
+    raised = False
+    try:
+        asyncio.run(finder.run(_run_data(), {'cookies': [], 'origins': []}))
+    except sr.AztekSessionExpired:
+        raised = True
+    check('visible password field on app page is treated as login', raised)
+
+
 if __name__ == '__main__':
     test_binding_and_callbacks()
     test_regroup_callback_replaces_streamed_rows_in_document_order()

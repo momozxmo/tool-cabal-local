@@ -68,8 +68,6 @@ def _allowed_hosts(settings: Settings) -> tuple[str, ...]:
     """Every host whose cookies may appear in a captured Aztek session."""
     hosts = {
         _hostname(settings.aztek_origin),
-        'aztek-tools-v2.combo-interactive.com',
-        'aztek-tools.combo-interactive.com',
         _hostname(settings.aztek_auth_origin),
     }
     return tuple(host for host in hosts if host)
@@ -77,12 +75,7 @@ def _allowed_hosts(settings: Settings) -> tuple[str, ...]:
 
 def _allowed_origins(settings: Settings) -> frozenset[str]:
     """Origins permitted in the storage state's ``origins`` list."""
-    return frozenset({
-        settings.aztek_origin,
-        'https://aztek-tools-v2.combo-interactive.com',
-        'https://aztek-tools.combo-interactive.com',
-        settings.aztek_auth_origin,
-    })
+    return frozenset({settings.aztek_origin, settings.aztek_auth_origin})
 
 
 def _base_domain(host: str) -> str:
