@@ -48,10 +48,10 @@ def release_browser():
 
 # --------------------------------------------------------------------------- เกม/เซิร์ฟ
 GAME_BASES = {
-    "CabalM TH":   "https://aztek-tools-v2.combo-interactive.com/combo/cabalm",
-    "CabalM SEA":  "https://aztek-tools-v2.combo-interactive.com/combo/cabalmsea",
-    "CabalPC TH":  "https://aztek-tools-v2.combo-interactive.com/combo/cabalpc",
-    "CabalPC SEA": "https://aztek-tools-v2.combo-interactive.com/combo/cabalpcsea",
+    "CabalM TH":   "https://aztek-tools.combo-interactive.com/combo/cabalm",
+    "CabalM SEA":  "https://aztek-tools.combo-interactive.com/combo/cabalmsea",
+    "CabalPC TH":  "https://aztek-tools.combo-interactive.com/combo/cabalpc",
+    "CabalPC SEA": "https://aztek-tools.combo-interactive.com/combo/cabalpcsea",
 }
 GAME_NAMES = list(GAME_BASES.keys())
 

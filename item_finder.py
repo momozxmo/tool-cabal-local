@@ -2016,39 +2016,54 @@ class App:
         if not kind:
             return
 
-        main_selector = (
-            'input[name="searchBox"], '
-            'input[name="searchbox"], '
-            'input[placeholder*="Aztek Item Id"], '
-            'input[placeholder*="Item Name"], '
-            'input[placeholder*="ItemKind"], '
-            'input[placeholder*="Item ID"], '
-            'input[placeholder*="Item"], '
-            'input[placeholder*="Search"], '
-            'input[placeholder*="search"], '
-            'input[placeholder*="ค้นหา"], '
-            'input[name*="search"], '
-            'input[type="text"]'
-        )
         box = None
-        # 1. Wait for selector to attach/render on main page (up to 10 seconds)
-        try:
-            loc = page.locator(main_selector).first
-            await loc.wait_for(state='attached', timeout=10000)
-            box = loc
-        except Exception:
-            pass
+        # 1. Try exact input[name="searchBox"] or placeholders with visibility wait
+        for sel in (
+            'input[name="searchBox"]',
+            'input[name="searchbox"]',
+            'input[placeholder*="Aztek Item Id"]',
+            'input[placeholder*="Item Name"]',
+            'input[placeholder*="ItemKind"]',
+            'input[placeholder*="ค้นหา"]',
+        ):
+            loc = page.locator(sel).first
+            try:
+                if await loc.count() > 0:
+                    await loc.wait_for(state='visible', timeout=5000)
+                    box = loc
+                    break
+            except Exception:
+                continue
 
-        # 2. Check frames as fallback if not found in main document
+        # 2. Fallback: find any visible text/search input
         if box is None:
-            for frame in page.frames:
+            for sel in (
+                'input[name*="search"]:visible',
+                'input[placeholder*="Search"]:visible',
+                'input[type="text"]:visible',
+                'input:not([type="hidden"]):visible',
+            ):
+                loc = page.locator(sel).first
                 try:
-                    loc = frame.locator(main_selector).first
-                    if await loc.count() > 0:
+                    if await loc.count() > 0 and await loc.is_visible():
                         box = loc
                         break
                 except Exception:
                     continue
+
+        # 3. Check frames as fallback
+        if box is None:
+            for frame in page.frames:
+                for sel in ('input[name="searchBox"]', 'input[placeholder*="Aztek"]', 'input[type="text"]:visible'):
+                    try:
+                        loc = frame.locator(sel).first
+                        if await loc.count() > 0 and await loc.is_visible():
+                            box = loc
+                            break
+                    except Exception:
+                        continue
+                if box is not None:
+                    break
 
         if box is None:
             self.log(f'  หาช่องค้นหาไม่เจอ (หน้าปัจจุบัน: {page.url})', 'WARNING')

@@ -17,7 +17,7 @@ class Settings:
     session_ttl_seconds: int = 604800
     pairing_ttl_seconds: int = 300
     browser_concurrency: int = 1
-    aztek_origin: str = 'https://aztek-tools-v2.combo-interactive.com'
+    aztek_origin: str = 'https://aztek-tools.combo-interactive.com'
     # Shared SSO login host used by all four game servers; its cookies/origins
     # are equally valid parts of a captured Aztek session.
     aztek_auth_origin: str = 'https://auth.combo-interactive.com'
