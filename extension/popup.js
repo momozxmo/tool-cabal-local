@@ -88,8 +88,6 @@ function isAllowedDomain(domain) {
 }
 
 async function collectCookies() {
-  // Gather cookies from the app host, shared SSO host, and parent domain,
-  // queried by both exact URL and domain filter, de-duplicated by (domain, path, name).
   const seen = new Set();
   const cookies = [];
   const addCookie = (cookie) => {
@@ -103,6 +101,15 @@ async function collectCookies() {
     }
   };
 
+  // 1. Gather all cookies accessible to the extension
+  try {
+    const all = await chrome.cookies.getAll({});
+    for (const cookie of all) {
+      addCookie(cookie);
+    }
+  } catch (err) {}
+
+  // 2. Gather explicitly by URL
   for (const url of COOKIE_URLS) {
     try {
       const found = await chrome.cookies.getAll({ url: url });
@@ -112,6 +119,7 @@ async function collectCookies() {
     } catch (err) {}
   }
 
+  // 3. Gather explicitly by domain
   for (const domain of COOKIE_DOMAINS) {
     try {
       const found = await chrome.cookies.getAll({ domain: domain });
@@ -194,7 +202,9 @@ async function connect() {
     } else if (response.status === 410) {
       setStatus('รหัสจับคู่หมดอายุหรือถูกใช้ไปแล้ว — ขอรหัสใหม่จากหน้า /account', 'error');
     } else if (response.status === 422) {
-      setStatus('เซสชัน Aztek ไม่ถูกต้อง — ลองล็อกอิน Aztek ใหม่แล้วเชื่อมอีกครั้ง', 'error');
+      const body = await response.json().catch(() => ({}));
+      const detail = body && body.detail ? ' (' + body.detail + ')' : '';
+      setStatus('เซสชัน Aztek ไม่ถูกต้อง' + detail, 'error');
     } else if (response.status === 429) {
       setStatus('พยายามบ่อยเกินไป — รอสักครู่แล้วลองใหม่', 'error');
     } else {

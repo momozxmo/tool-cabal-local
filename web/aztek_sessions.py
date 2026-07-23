@@ -12,8 +12,9 @@ Security invariants enforced here:
 * Pairing tokens live at most ``settings.pairing_ttl_seconds`` and may be
   consumed once; issuing a new token supersedes any still-pending token.
 * Only the HMAC hash of a pairing token is ever stored.
-* Every cookie domain must equal or be a dot-aligned parent of the Aztek host,
-  and every origin must equal ``settings.aztek_origin``.
+* Every cookie domain must equal or be a dot-aligned parent of the Aztek host
+  or the shared SSO auth host, and every origin must equal ``aztek_origin`` or
+  ``aztek_auth_origin``.
 * Storage state is size/shape bounded before encryption.
 * Ciphertext never leaves this module except to the search coordinator.
 """
@@ -59,8 +60,22 @@ class PairingIssue:
     expires_at: datetime
 
 
-def _aztek_host(settings: Settings) -> str:
-    return (urlsplit(settings.aztek_origin).hostname or '').lower()
+def _hostname(origin: str) -> str:
+    return (urlsplit(origin).hostname or '').lower()
+
+
+def _allowed_hosts(settings: Settings) -> tuple[str, ...]:
+    """Every host whose cookies may appear in a captured Aztek session."""
+    hosts = {
+        _hostname(settings.aztek_origin),
+        _hostname(settings.aztek_auth_origin),
+    }
+    return tuple(host for host in hosts if host)
+
+
+def _allowed_origins(settings: Settings) -> frozenset[str]:
+    """Origins permitted in the storage state's ``origins`` list."""
+    return frozenset({settings.aztek_origin, settings.aztek_auth_origin})
 
 
 def _base_domain(host: str) -> str:
@@ -87,6 +102,11 @@ def _cookie_domain_allowed(domain: Any, host: str) -> bool:
     return norm == base or norm.endswith('.' + base)
 
 
+def _cookie_domain_allowed_for_any(domain: Any, hosts: tuple[str, ...]) -> bool:
+    """True when ``domain`` scopes a cookie to any allowed Aztek/auth host."""
+    return any(_cookie_domain_allowed(domain, host) for host in hosts)
+
+
 def validate_storage_state(storage_state: Any, settings: Settings) -> None:
     """Reject storage state that is malformed, oversized, or off-origin."""
     if not isinstance(storage_state, dict):
@@ -110,19 +130,20 @@ def validate_storage_state(storage_state: Any, settings: Settings) -> None:
     if len(serialized.encode('utf-8')) > _MAX_STORAGE_STATE_BYTES:
         raise InvalidStorageState('storage_state payload is too large')
 
-    host = _aztek_host(settings)
+    hosts = _allowed_hosts(settings)
+    allowed_origins = _allowed_origins(settings)
     for cookie in cookies:
         if not isinstance(cookie, dict):
             raise InvalidStorageState('each cookie must be an object')
-        if not _cookie_domain_allowed(cookie.get('domain', ''), host):
-            raise InvalidStorageState('cookie domain is not allowed')
+        if not _cookie_domain_allowed_for_any(cookie.get('domain', ''), hosts):
+            raise InvalidStorageState('cookie domain is not allowed: %s' % cookie.get('domain'))
 
     local_storage_total = 0
     for origin in origins:
         if not isinstance(origin, dict):
             raise InvalidStorageState('each origin must be an object')
-        if origin.get('origin') != settings.aztek_origin:
-            raise InvalidStorageState('origin is not allowed')
+        if origin.get('origin') not in allowed_origins:
+            raise InvalidStorageState('origin is not allowed: %s' % origin.get('origin'))
         entries = origin.get('localStorage', [])
         if not isinstance(entries, list):
             raise InvalidStorageState('localStorage must be a list')

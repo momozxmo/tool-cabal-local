@@ -379,9 +379,9 @@ def pair_aztek_session(payload: StorageStatePayload, request: Request,
     except PairingTokenUnavailable:
         throttle.record_failure(throttle_key)
         raise HTTPException(status_code=410, detail='รหัสจับคู่หมดอายุหรือถูกใช้ไปแล้ว')
-    except InvalidStorageState:
+    except InvalidStorageState as exc:
         throttle.record_failure(throttle_key)
-        raise HTTPException(status_code=422, detail='ข้อมูลเซสชันไม่ถูกต้อง')
+        raise HTTPException(status_code=422, detail='ข้อมูลเซสชันไม่ถูกต้อง: %s' % str(exc))
     throttle.clear(throttle_key)
     write_audit(
         db, user_id=session.user_id, action='aztek.connected', status='success',
