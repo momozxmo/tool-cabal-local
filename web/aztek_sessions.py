@@ -84,7 +84,7 @@ def _base_domain(host: str) -> str:
 
 
 def _cookie_domain_allowed(domain: Any, host: str) -> bool:
-    """True when ``domain`` scopes a cookie to the Aztek host or a parent of it.
+    """True when ``domain`` scopes a cookie to the Aztek host, parent domain, or sibling subdomain.
 
     Blocks over-broad public suffixes (``.com``) by requiring the normalized
     domain to still contain the Aztek registrable base domain.
@@ -93,10 +93,6 @@ def _cookie_domain_allowed(domain: Any, host: str) -> bool:
         return False
     norm = domain.strip().lstrip('.').lower()
     if not norm:
-        return False
-    if norm == host:
-        return True
-    if not host.endswith('.' + norm):
         return False
     base = _base_domain(host)
     return norm == base or norm.endswith('.' + base)
