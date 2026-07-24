@@ -61,13 +61,18 @@ session undecryptable, and users must reconnect.
 > member accounts by running `AuthService.create_user` against the database, or
 > add them once the admin panel ships.
 
-## 5. Connect the Chrome extension
+## 5. Connect an Aztek session (bookmarklet — no extension)
 
-See [install-extension.md](install-extension.md). Set the extension's
-`BACKEND_ORIGIN` (in `extension/config.js`) to your Render URL, add that origin to
-`extension/manifest.json` `host_permissions`, and reload the extension. Then each
-member logs into Aztek in a normal tab, copies a pairing token from `/account`,
-and pastes it into the extension to connect their own session.
+Each member connects their own Aztek session with a bookmarklet — nothing to
+install:
+
+1. Open `/account` on the deployed site and drag the **“เชื่อม Aztek”** button to
+   the browser bookmarks bar (one time).
+2. Log in to the Aztek web app (the v2 host) in a normal tab.
+3. On `/account`, click **สร้างรหัสจับคู่** and copy the pairing token.
+4. On the Aztek tab, click the **“เชื่อม Aztek”** bookmark. It reads the page's
+   session cookies and opens `/pair-bridge` on your site; paste the token there
+   and connect. The token is single-use and expires in 5 minutes.
 
 ## Free-tier notes
 

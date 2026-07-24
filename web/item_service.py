@@ -210,14 +210,24 @@ def regroup_results(results, occurrences):
             row = dict(found_row)
             row['sources'] = list(occurrence.get('sources') or [])
             row['file_name'] = occurrence.get('name', '') or ''
+            # Carry the quantity ('Amt' column) from the imported row so the
+            # bundle dialog can auto-fill qty instead of defaulting to 1.
+            row['amt'] = occurrence.get('amt', '') or ''
             expanded.append(row)
     return expanded or [dict(row) for row in results]
 
 
 def _bundle_name(group, group_meta):
+    # Prefix the bundle name with the activity/event title so the operator sees
+    # which event a bundle belongs to. Event imports carry 'event_name'; shop
+    # imports carry 'shop_sheet'/'activity'.
     meta = group_meta.get(group) or {}
-    sheet = str(meta.get('shop_sheet') or meta.get('activity') or '').strip()
-    return '%s - %s' % (sheet, group) if sheet and not group.startswith(sheet) else group
+    title = str(
+        meta.get('event_name') or meta.get('shop_sheet') or meta.get('activity')
+        or '').strip()
+    if title and not group.startswith(title):
+        return '%s - %s' % (title, group)
+    return group
 
 
 def build_bundles(results, group_meta):
@@ -246,7 +256,12 @@ def build_bundles(results, group_meta):
             if item_id in bucket['seen']:
                 continue
             bucket['seen'].add(item_id)
-            item = {'id': item_id, 'name': row.get('item_name', '') or ''}
+            # 'shared' marks an item that appears in more than one bundle, so the
+            # UI can highlight it and let the user drop the duplicate.
+            # qty comes from the imported 'Amt' column when present; else 1.
+            qty = str(row.get('amt', '') or '').strip() or '1'
+            item = {'id': item_id, 'name': row.get('item_name', '') or '',
+                    'shared': shared, 'qty': qty}
             bucket['shared' if shared else 'normal'].append(item)
     return [
         {'name': _bundle_name(group, group_meta), 'group': group,

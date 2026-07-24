@@ -7,6 +7,17 @@ from playwright.async_api import async_playwright
 import item_finder
 from web import item_service
 
+# The desktop tool targets the v1 host (its own logged-in Chrome profile). The
+# web app's users log in to the v2 host, so web searches must run against v2.
+# We only rewrite the host for the web path; item_finder.GAMES (v1) is untouched.
+_DESKTOP_HOST = 'aztek-tools.combo-interactive.com'
+_WEB_HOST = 'aztek-tools-v2.combo-interactive.com'
+
+
+def to_web_url(url):
+    """Rewrite a desktop (v1) Aztek URL to the web (v2) host."""
+    return url.replace('//' + _DESKTOP_HOST, '//' + _WEB_HOST, 1)
+
 
 class AztekSessionExpired(Exception):
     """The stored Aztek session no longer authenticates against the site."""
@@ -164,7 +175,7 @@ def build_search_data(game, criteria, web_mode=None, *, mode='event'):
 
     return {
         'game': game,
-        'url': item_finder.GAMES[game],
+        'url': to_web_url(item_finder.GAMES[game]),
         'multi': multi,
         # Shop must visit every detail page to read textarea[name="detail"],
         # even when every filter in a generic template is Any.
@@ -182,10 +193,21 @@ def result_view(item):
     if web_values:
         params = ((params + ' | ' + web_values)
                   if params and params != '-' else web_values)
+    file_name = item.get('file_name', '') or ''
+    web_name = item.get('item_name', '') or ''
+    # Same rule as the desktop table: the name from the file is only used to eye-
+    # check the web result (search matches by kind/opt/dur, not name). Flag rows
+    # whose file name is not contained in the web name so the UI can highlight
+    # them for manual review — it does NOT mean the row is wrong.
+    name_mismatch = bool(
+        file_name
+        and item_finder._norm_name(file_name) not in item_finder._norm_name(web_name)
+    )
+    sources = [str(s) for s in (item.get('sources') or [])]
     return {
         'aztek_id': item.get('aztek_id', ''),
-        'item_name': item.get('item_name', ''),
-        'file_name': item.get('file_name', '') or '',
+        'item_name': web_name,
+        'file_name': file_name,
         'item_kind': item.get('item_kind', '') or '',
         'item_option': item.get('item_option', '') or '',
         'duration_index': item.get('duration_index', '') or '',
@@ -193,6 +215,13 @@ def result_view(item):
         'notes': item.get('notes', '') or '',
         'criteria_no': item.get('_ci', '') or '',
         'params': params,
-        'groups': ' , '.join(item.get('sources') or []),
+        'groups': ' , '.join(sources),
+        # Keep the raw group list too: build_bundles groups by 'sources', and the
+        # persisted results must carry it so bundling works after a reload.
+        'sources': sources,
+        # Quantity from the imported 'Amt' column (carried by regroup_results);
+        # build_bundles uses it to pre-fill the bundle qty.
+        'amt': str(item.get('amt', '') or '').strip(),
         'desc': item.get('_desc', '') or '',
+        'name_mismatch': name_mismatch,
     }

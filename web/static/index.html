@@ -27,6 +27,10 @@
     .table-wrap{overflow:auto;max-height:355px;border-top:1px solid var(--line)}table{border-collapse:collapse;min-width:100%;width:max-content}
     th,td{padding:8px 10px;border-right:1px solid #26313e;border-bottom:1px solid #26313e;text-align:left;white-space:nowrap;max-width:520px;overflow:hidden;text-overflow:ellipsis}
     th{position:sticky;top:0;background:#202b38;color:#cbd6e2;z-index:1}tr:hover td{background:#1a2430}.num{text-align:right;color:var(--muted)}
+    tr.needs-review td{background:#2a2410}tr.needs-review:hover td{background:#332c14}tr.needs-review td:first-child{box-shadow:inset 3px 0 0 var(--yellow)}
+    td.review-cell{color:var(--yellow);font-weight:600}
+    tr.pick-row{cursor:pointer}input.pick{width:18px;height:18px;cursor:pointer;accent-color:var(--green)}
+    tr.row-selected td{background:#123322!important}tr.row-selected td:first-child{box-shadow:inset 3px 0 0 var(--green)}
     .log{height:230px;overflow:auto;background:#080c12;padding:10px;font:12px/1.55 Consolas,monospace;white-space:pre-wrap}
     .log .SUCCESS{color:var(--green)}.log .WARNING{color:var(--yellow)}.log .ERROR{color:var(--red)}.log .STEP{color:#7ab8ff}
     progress{width:100%;height:9px;accent-color:var(--green)}.result-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
@@ -107,6 +111,7 @@
           </div></div>
         <div class="card-body result-actions">
           <button id="btnBundles" class="success" disabled>📦 รวมเป็นบันเดิล (รีวิว)</button>
+          <button id="btnBundleOpen" class="primary" disabled>🧩 สร้าง Bundle (เปิดดู)</button>
           <button id="btnExportXlsx" class="warn" disabled>⬇ Excel</button>
           <button id="btnExportCsv" disabled>⬇ CSV</button>
           <button id="btnCopyAll" class="primary" disabled>Copy All IDs</button>
@@ -132,6 +137,29 @@
   <div id="sheetList" class="sheet-list"></div><div class="actions"><button id="btnApplySheets" class="success">Import ที่เลือก</button><button data-close="sheetDialog">ยกเลิก</button></div>
 </dialog>
 <dialog id="bundleDialog"><h3>รีวิวบันเดิลจากผลค้นหา</h3><div id="bundleList" class="bundle-list"></div><div class="actions"><button data-close="bundleDialog">ปิด</button></div></dialog>
+<dialog id="bundleOpenDialog"><h3>สร้าง Bundle (เปิดหน้าเว็บให้ดู)</h3>
+  <p class="hint" id="bundleOpenInfo">กรอกข้อมูล แล้วกด “เปิดหน้าเว็บ” — ระบบจะกรอกฟอร์มบน Aztek ให้ดู <b>โดยยังไม่กดสร้าง</b></p>
+  <div class="fields" style="display:grid;gap:10px;margin:12px 0">
+    <label>กลุ่ม / กิจกรรม (แต่ละกลุ่ม = 1 bundle)<select id="bundleGroup"></select></label>
+    <label>ชื่อ Bundle (เว้นว่าง = ตั้งอัตโนมัติจากกิจกรรม)<input id="bundleName" type="text" placeholder="อัตโนมัติจากชื่อกิจกรรม - กลุ่ม"></label>
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end">
+      <label>ประเภท<select id="bundleType"><option value="FIXED">FIXED</option><option value="CHOICE">CHOICE</option><option value="RANDOM">RANDOM</option></select></label>
+      <label style="display:flex;align-items:center;gap:8px;padding-bottom:10px"><input id="bundleDeliver" type="checkbox" checked style="width:auto">ส่งทันที</label>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+    <span class="hint">ตั้งทุกไอเทม:</span>
+    <input id="bundleBulkQty" type="number" min="1" value="1" style="width:70px" placeholder="จำนวน">
+    <select id="bundleBulkTier"><option>Common</option><option>Rare</option><option>Epic</option><option>Mystic</option><option>Legend</option></select>
+    <button id="btnBundleApplyAll" type="button">ใช้กับทุกไอเทม</button>
+    <span class="hint" style="margin-left:8px">แถวสีเหลือง = ไอเทมซ้ำหลายบันเดิล (ตัดออกได้)</span>
+  </div>
+  <p class="hint" style="margin-bottom:6px">จำนวนเติมจากคอลัมน์ Amt ให้อัตโนมัติ · แก้จำนวน/Tier รายไอเทมได้ในตาราง</p>
+  <div class="table-wrap" style="max-height:320px"><table id="bundleItemsTable"><thead><tr><th>#</th><th>ID</th><th>ชื่อไอเท็ม</th><th>จำนวน</th><th>Tier</th><th></th></tr></thead><tbody></tbody></table></div>
+  <p id="bundleOpenMsg" class="hint" role="status" aria-live="polite"></p>
+  <div id="bundleOpenShot" style="margin-top:10px"></div>
+  <div class="actions"><button id="btnBundleOpenGo" class="primary">เปิดหน้าเว็บ</button><button data-close="bundleOpenDialog">ปิด</button></div>
+</dialog>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -174,7 +202,7 @@ async function loadAztekStatus(){
   catch(error){ paintAztek('disconnected'); }
 }
 $('btnLogout').onclick=async()=>{ $('btnLogout').disabled=true; try{ await fetch('/api/auth/logout',{method:'POST'}); } finally{ window.location.replace('/login'); } };
-function resultActions(){ const has=state.results.length>0; ['btnBundles','btnExportXlsx','btnExportCsv','btnCopyAll'].forEach(id=>$(id).disabled=!has);
+function resultActions(){ const has=state.results.length>0; ['btnBundles','btnBundleOpen','btnExportXlsx','btnExportCsv','btnCopyAll'].forEach(id=>$(id).disabled=!has);
   $('btnCopySelected').disabled=!state.selected.size; $('selectedCount').textContent=`เลือก ${state.selected.size}`; }
 
 async function init(){
@@ -222,10 +250,15 @@ async function clearWorkspace(){ if(state.socket)state.socket.close();if(state.w
   state.workspaceId='';state.criteria=[];state.results=[];state.selected.clear();renderCriteria();renderResults();renderNotFound([]);$('workspaceSummary').textContent='ล้างรายการแล้ว';setBusy(false);}
 $('btnClearWorkspace').onclick=clearWorkspace;
 
-function addResult(item){state.results.push(item);const index=state.results.length-1;const tr=document.createElement('tr');tr.dataset.index=index;
-  const select=document.createElement('input');select.type='checkbox';select.onchange=()=>{select.checked?state.selected.add(index):state.selected.delete(index);resultActions();};
+function setRowSelected(index,tr,select,on){select.checked=on;on?state.selected.add(index):state.selected.delete(index);tr.classList.toggle('row-selected',on);resultActions();}
+function addResult(item){state.results.push(item);const index=state.results.length-1;const tr=document.createElement('tr');tr.dataset.index=index;tr.classList.add('pick-row');
+  const mismatch=!!item.name_mismatch; if(mismatch)tr.classList.add('needs-review');
+  const select=document.createElement('input');select.type='checkbox';select.className='pick';select.onclick=e=>e.stopPropagation();select.onchange=()=>setRowSelected(index,tr,select,select.checked);
   const selectTd=document.createElement('td');selectTd.appendChild(select);tr.appendChild(selectTd);
-  [index+1,item.aztek_id,item.item_name,item.file_name,item.params,item.groups,item.desc].forEach((value,pos)=>{const td=document.createElement('td');td.textContent=escapeText(value);if(pos===6)td.className='desc-col';tr.appendChild(td);});
+  // Clicking anywhere on the row toggles its checkbox — the box itself is small.
+  tr.onclick=()=>setRowSelected(index,tr,select,!select.checked);
+  const fileNameCell=mismatch?('⚠ '+(item.file_name||'')):item.file_name;
+  [index+1,item.aztek_id,item.item_name,fileNameCell,item.params,item.groups,item.desc].forEach((value,pos)=>{const td=document.createElement('td');td.textContent=escapeText(value);if(pos===6)td.className='desc-col';if(pos===3&&mismatch){td.className='review-cell';td.title='ชื่อในไฟล์ไม่ตรงกับชื่อในเว็บ — ตรวจเอง (ค้นด้วย kind/opt/dur ถูกแล้ว)';}tr.appendChild(td);});
   $('resultsTable').tBodies[0].appendChild(tr);$('resultCount').textContent=state.results.length;resultActions();}
 function renderResults(){ $('resultsTable').tBodies[0].replaceChildren();const rows=[...state.results];state.results=[];state.selected.clear();rows.forEach(addResult);resultActions(); }
 function resetResults(){state.results=[];state.selected.clear();$('resultsTable').tBodies[0].replaceChildren();$('resultCount').textContent='0';resultActions();}
@@ -238,17 +271,51 @@ function startSearch(){if(!state.workspaceId)return;resetResults();renderNotFoun
   socket.onmessage=event=>{const message=JSON.parse(event.data);if(message.type==='log')log(message.msg,message.level);else if(message.type==='progress'){const percent=message.total?message.cur/message.total*100:0;$('progress').value=Math.min(100,percent);$('progressText').textContent=`${message.cur}/${message.total} ${message.name||''}`;}
     else if(message.type==='reset_results')resetResults();else if(message.type==='result')addResult(message.item);
     else if(message.type==='error'){ if(message.code==='aztek_session_required'||message.code==='aztek_session_expired'){ paintAztek(message.code==='aztek_session_expired'?'expired':'disconnected'); log((message.msg||'ต้องเชื่อมเซสชัน Aztek ก่อน')+' — เปิดหน้า “บัญชี / เชื่อม Aztek”','ERROR'); } else { log(message.msg||'เกิดข้อผิดพลาด','ERROR'); } }
-    else if(message.type==='done'){$('progress').value=100;$('progressText').textContent=`เสร็จ · พบ ${message.count}`;renderNotFound(message.not_found||[]);setBusy(false);}};
+    else if(message.type==='done'){$('progress').value=100;const review=state.results.filter(r=>r.name_mismatch).length;$('progressText').textContent=`เสร็จ · พบ ${message.count}`+(review?` · ⚠ ตรวจเอง ${review}`:'');renderNotFound(message.not_found||[]);setBusy(false);if(review)log(`⚠ มี ${review} รายการชื่อไม่ตรงกับไฟล์ (ไฮไลต์สีเหลือง) — ตรวจเอง`,'WARNING');}};
   socket.onerror=()=>log('WebSocket ขัดข้อง','ERROR');socket.onclose=event=>{state.socket=null;setBusy(false); if(event&&event.code===4401){window.location.replace('/login');}};}
 $('btnSearch').onclick=startSearch;$('btnStop').onclick=()=>{if(state.socket){state.socket.close();log('ยกเลิกการค้นหา','WARNING');}};
 
-$('btnSelectAll').onclick=()=>{state.selected=new Set(state.results.map((_,i)=>i));document.querySelectorAll('#resultsTable tbody input').forEach(x=>x.checked=true);resultActions();};
-$('btnClearSelection').onclick=()=>{state.selected.clear();document.querySelectorAll('#resultsTable tbody input').forEach(x=>x.checked=false);resultActions();};
+$('btnSelectAll').onclick=()=>{state.selected=new Set(state.results.map((_,i)=>i));document.querySelectorAll('#resultsTable tbody tr').forEach(tr=>{tr.classList.add('row-selected');const c=tr.querySelector('input.pick');if(c)c.checked=true;});resultActions();};
+$('btnClearSelection').onclick=()=>{state.selected.clear();document.querySelectorAll('#resultsTable tbody tr').forEach(tr=>{tr.classList.remove('row-selected');const c=tr.querySelector('input.pick');if(c)c.checked=false;});resultActions();};
 async function copyIds(selectedOnly){const indexes=selectedOnly?[...state.selected]:state.results.map((_,i)=>i);if(!indexes.length){alert('ยังไม่ได้เลือกไอเทม');return;}const ids=indexes.map(i=>state.results[i]?.aztek_id).filter(Boolean);await navigator.clipboard.writeText(ids.join(', '));log(`Copied ${ids.length} IDs`,'SUCCESS');}
 $('btnCopyAll').onclick=()=>copyIds(false);$('btnCopySelected').onclick=()=>copyIds(true);
 function download(format){if(!state.workspaceId)return;const anchor=document.createElement('a');anchor.href=`/api/workspaces/${state.workspaceId}/export.${format}`;anchor.click();}
 $('btnExportXlsx').onclick=()=>download('xlsx');$('btnExportCsv').onclick=()=>download('csv');
 $('btnBundles').onclick=async()=>{const response=await apiFetch(`/api/workspaces/${state.workspaceId}/bundles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selected_indexes:[...state.selected]})});const data=await response.json();if(!response.ok){alert(data.detail);return;}const list=$('bundleList');list.replaceChildren();data.bundles.forEach(bundle=>{const box=document.createElement('div');box.className='bundle';const title=document.createElement('h4');title.textContent=`${bundle.name} (${bundle.items.length})`;const items=document.createElement('div');items.className='hint';items.textContent=bundle.items.map((item,i)=>`${i+1}. ${item.id} ${item.name}`).join(' · ');box.append(title,items);list.appendChild(box);});$('bundleDialog').showModal();};
+
+const TIERS=['Common','Rare','Epic','Mystic','Legend'];
+state.bundleData=[];
+function liveItems(b){return b?b.items.filter(it=>!it.removed):[];}
+// Rebuild the item table. Each row carries an inline qty input and a tier
+// dropdown so items are edited one by one (desktop-style). qty is pre-filled
+// from the imported 'Amt' column; tier defaults to Common for every item.
+function renderBundleItems(){const b=currentBundle();const body=$('bundleItemsTable').tBodies[0];body.replaceChildren();if(!b)return;
+  const live=liveItems(b);
+  live.forEach((it,i)=>{const tr=document.createElement('tr');if(it.shared)tr.classList.add('needs-review');
+    const nameTxt=(it.shared?'⚠ ':'')+it.name;
+    [i+1,it.id,nameTxt].forEach((v,pos)=>{const td=document.createElement('td');td.textContent=v;if(pos===2&&it.shared){td.className='review-cell';td.title='ไอเทมนี้อยู่หลายบันเดิล — กด ✕ เพื่อตัดออก';}tr.appendChild(td);});
+    // จำนวน — per-item number input.
+    const qtyTd=document.createElement('td');const qi=document.createElement('input');qi.type='number';qi.min='1';qi.value=it.qty||'1';qi.style.width='64px';qi.oninput=()=>{it.qty=qi.value;};qtyTd.appendChild(qi);tr.appendChild(qtyTd);
+    // Tier — per-item dropdown (defaults to Common for every item).
+    const tierTd=document.createElement('td');const ts=document.createElement('select');TIERS.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;ts.appendChild(o);});ts.value=it.tier||'Common';ts.onchange=()=>{it.tier=ts.value;};tierTd.appendChild(ts);tr.appendChild(tierTd);
+    const x=document.createElement('td');const rm=document.createElement('button');rm.type='button';rm.textContent='✕';rm.title='ตัดออกจากบันเดิลนี้';rm.onclick=()=>{it.removed=true;renderBundleItems();};x.appendChild(rm);tr.appendChild(x);
+    body.appendChild(tr);});
+  if(!live.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=6;td.className='hint';td.textContent='ไม่มีไอเทม (ตัดออกหมด)';tr.appendChild(td);body.appendChild(tr);}}
+async function loadBundleGroups(){const sel=$('bundleGroup');sel.replaceChildren();$('bundleItemsTable').tBodies[0].replaceChildren();try{const r=await apiFetch(`/api/workspaces/${state.workspaceId}/bundles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selected_indexes:[...state.selected]})});const d=await r.json();if(!r.ok){$('bundleOpenMsg').textContent=d.detail||'โหลดกลุ่มไม่สำเร็จ';return;}
+    state.bundleData=(d.bundles||[]).map(b=>({group:b.group,name:b.name,items:b.items.map(it=>({id:it.id,name:it.name,shared:!!it.shared,qty:String(it.qty||'1'),tier:'Common',removed:false}))}));
+    state.bundleData.forEach(b=>{const o=document.createElement('option');o.value=b.group;o.textContent=`${b.name} (${b.items.length})`;sel.appendChild(o);});
+    renderBundleItems();}catch(e){$('bundleOpenMsg').textContent='โหลดกลุ่มไม่สำเร็จ';}}
+$('bundleGroup').onchange=renderBundleItems;
+function currentBundle(){return (state.bundleData||[]).find(x=>x.group===$('bundleGroup').value);}
+$('btnBundleApplyAll').onclick=()=>{const b=currentBundle();if(!b)return;const q=$('bundleBulkQty').value||'1',t=$('bundleBulkTier').value;liveItems(b).forEach(it=>{it.qty=q;it.tier=t;});renderBundleItems();};
+$('btnBundleOpen').onclick=async()=>{$('bundleOpenInfo').innerHTML=`แต่ละกลุ่ม/กิจกรรม = 1 bundle · แก้จำนวน/Tier รายไอเทมได้ · กด “เปิดหน้าเว็บ” เพื่อกรอกฟอร์มบน Aztek ให้ดู <b>โดยยังไม่กดสร้าง</b>`;$('bundleOpenMsg').textContent='';$('bundleOpenShot').replaceChildren();$('bundleName').value='';await loadBundleGroups();$('bundleOpenDialog').showModal();};
+$('btnBundleOpenGo').onclick=async()=>{const btn=$('btnBundleOpenGo');const group=$('bundleGroup').value;const b=currentBundle();const items=liveItems(b).map(it=>({id:it.id,qty:String(parseInt(it.qty)||1),tier:it.tier||'Common'}));if(!items.length){$('bundleOpenMsg').textContent='บันเดิลนี้ไม่มีไอเทม (ตัดออกหมด)';return;}btn.disabled=true;$('bundleOpenMsg').textContent='กำลังเปิดหน้าเว็บและกรอกฟอร์ม…';$('bundleOpenShot').replaceChildren();
+  try{const response=await apiFetch(`/api/workspaces/${state.workspaceId}/bundle-open`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:$('game').value,name:$('bundleName').value.trim(),bundle_type:$('bundleType').value,deliver:$('bundleDeliver').checked,group,items,selected_indexes:[...state.selected]})});
+    const data=await response.json();if(!response.ok){$('bundleOpenMsg').textContent=data.detail||'เปิดฟอร์มไม่สำเร็จ';return;}
+    $('bundleOpenMsg').textContent=`✓ "${data.bundle_name}" · เพิ่มไอเทม ${data.added}/${data.total}`+(data.headed?' · เปิดหน้าต่าง Chrome ให้ดูแล้ว (ยังไม่กดสร้าง)':' · ดูภาพด้านล่าง');
+    (data.logs||[]).forEach(l=>log('[bundle] '+l.msg,l.level));
+    if(data.screenshot_b64){const img=document.createElement('img');img.src='data:image/png;base64,'+data.screenshot_b64;img.style.cssText='max-width:100%;border:1px solid var(--line);border-radius:8px';$('bundleOpenShot').appendChild(img);}
+  }catch(e){$('bundleOpenMsg').textContent='เชื่อมต่อไม่สำเร็จ';}finally{btn.disabled=false;}};
 $('btnClearLog').onclick=()=>$('log').replaceChildren();
 
 init().catch(error=>{log(error.message,'ERROR');$('serverBadge').textContent='เชื่อมต่อไม่ได้';$('serverBadge').className='badge error';});

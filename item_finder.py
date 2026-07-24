@@ -2076,12 +2076,24 @@ class App:
             return
         await page.wait_for_timeout(200)
         clicked = False
-        for btn_sel in ('button:has-text("Search")', 'button:has-text("ค้นหา")'):
-            loc = page.locator(btn_sel).first
-            if await loc.count() > 0:
-                await loc.click()
-                clicked = True
-                break
+        # v2 puts several elements labelled "ค้นหา" on the page (a date filter,
+        # column headers); only the type=submit one actually runs the search, so
+        # try the submit button first. The generic label selectors stay as a
+        # fallback for the v1 layout.
+        for btn_sel in (
+            'button[type="submit"]:has-text("ค้นหา")',
+            'button[type="submit"]:has-text("Search")',
+            'button:has-text("Search")',
+            'button:has-text("ค้นหา")',
+        ):
+            try:
+                loc = page.locator(btn_sel).first
+                if await loc.count() > 0 and await loc.is_visible():
+                    await loc.click()
+                    clicked = True
+                    break
+            except Exception:
+                continue
         if not clicked:
             await box.press('Enter')
         # base wait (เหมือนเดิมที่เคยเวิร์ก) + รอตารางมีข้อมูลนิ่ง (ไม่คืนตอนว่าง)
@@ -2191,18 +2203,32 @@ class App:
         kind = await page.evaluate("""() => {
             const norm = t => (t||'').trim().toLowerCase();
             const nextWords = ['next','ถัดไป','>','next >','›','»','>>'];
+            // Words that mean "previous" — never treat these as a Next button,
+            // even though "‹ Previous" also contains a chevron.
+            const prevWords = ['prev','previous','ก่อนหน้า','‹','«','<'];
             const isDisabled = el => el.disabled || el.getAttribute('disabled')!==null ||
                 el.classList.contains('disabled') ||
                 el.getAttribute('aria-disabled')==='true' ||
                 (el.closest && el.closest('.disabled,[disabled],[aria-disabled="true"]')!==null);
-            // 1) ปุ่มที่มีข้อความ Next/ถัดไป/›
             const cands=[...document.querySelectorAll('button,a,[role="button"],li')];
+            // 1) exact-match a Next label (original v1 behaviour)
             for(const el of cands){
                 const t=(el.innerText||el.textContent||'').trim();
                 if(!nextWords.includes(norm(t))) continue;
                 if(isDisabled(el)) continue;
                 const target=(el.tagName==='LI')?(el.querySelector('a,button')||el):el;
                 target.click(); return 'text';
+            }
+            // 1b) v2 labels like "Next ›" (word + chevron): match if the text
+            // CONTAINS a next word and no previous word.
+            for(const el of cands){
+                const t=norm(el.innerText||el.textContent||'');
+                if(!t) continue;
+                if(prevWords.some(w=>t.includes(w))) continue;
+                if(!(t.includes('next')||t.includes('ถัดไป')||t.includes('›')||t.includes('»'))) continue;
+                if(isDisabled(el)) continue;
+                const target=(el.tagName==='LI')?(el.querySelector('a,button')||el):el;
+                target.click(); return 'text2';
             }
             // 2) aria-label / rel=next / title
             const aria=document.querySelector('[rel="next"],[aria-label="Next"],[aria-label*="ถัดไป"],button[title="Next"]');

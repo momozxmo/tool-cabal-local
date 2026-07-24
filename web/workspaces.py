@@ -1,10 +1,29 @@
 from __future__ import annotations
 
+import datetime as _dt
+
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from web.item_service import merge_imported, mode_policy
 from web.models import PendingImportRecord, WorkspaceRecord
+
+
+def _json_safe(value):
+    """Make a value safe for a JSON column.
+
+    Spreadsheet cells can arrive as datetime/date/time objects (openpyxl reads
+    dated cells that way), which the JSON encoder cannot serialize. Convert those
+    to ISO strings, recursing through dicts/lists so nested row values are also
+    covered.
+    """
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, (_dt.datetime, _dt.date, _dt.time)):
+        return value.isoformat()
+    return value
 
 
 class WorkspaceNotFound(LookupError):
@@ -28,7 +47,7 @@ class WorkspaceRepository:
             owner_user_id=owner_user_id,
             mode=mode,
             filename=filename,
-            criteria=[dict(row) for row in (criteria or [])],
+            criteria=[_json_safe(dict(row)) for row in (criteria or [])],
             occurrences=[],
         )
         self._session.add(workspace)
@@ -84,10 +103,10 @@ class WorkspaceRepository:
             owner_user_id=owner_user_id,
             workspace_id=workspace_id,
             sheets=[
-                (sheet_name, [dict(row) for row in rows])
+                (sheet_name, [_json_safe(dict(row)) for row in rows])
                 for sheet_name, rows in sheets
             ],
-            skipped=list(skipped),
+            skipped=_json_safe(list(skipped)),
         )
         self._session.add(pending)
         self._session.flush()
@@ -158,6 +177,9 @@ class WorkspaceRepository:
     def _update_workspace(
         self, owner_user_id: str, workspace_id: str, **values,
     ) -> WorkspaceRecord:
+        # Every JSON column funnels through here; sanitize so spreadsheet-sourced
+        # datetime cells never reach the JSON encoder.
+        values = {key: _json_safe(item) for key, item in values.items()}
         workspace = self._session.scalar(
             update(WorkspaceRecord).where(
                 WorkspaceRecord.id == workspace_id,

@@ -18,8 +18,8 @@ ttk `clam` ธีมเดียวไม่สลับ → นำทางล�
 Chrome — เซิร์ฟเวอร์รัน Chrome แบบ headless แยก context ต่อผู้ใช้ (ไม่แชร์โปรไฟล์)
 
 - รันโลคัล: `uvicorn web.app:app --reload` แล้วเปิด `http://localhost:8000`
-- โค้ดเว็บอยู่ใน `web/`, ส่วนขยายอยู่ใน `extension/`
-- ติดตั้งส่วนขยาย: [docs/install-extension.md](docs/install-extension.md)
+- โค้ดเว็บอยู่ใน `web/`
+- เชื่อมเซสชัน Aztek ด้วย **bookmarklet** (ไม่ต้องลงส่วนขยาย) — ลากปุ่ม “เชื่อม Aztek” จากหน้า `/account` ไปไว้ที่แถบบุ๊กมาร์ก แล้วกดบนหน้า Aztek ที่ล็อกอินแล้ว
 - deploy ขึ้น Render ฟรี: [docs/deploy-render.md](docs/deploy-render.md)
 
 โปรแกรม desktop เดิมยังทำงานได้ตามปกติทุกอย่าง — เว็บเป็นทางเลือกเสริม ไม่กระทบของเดิม

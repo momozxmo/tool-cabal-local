@@ -33,9 +33,13 @@
           <div><dt>บัญชีที่เชื่อม</dt><dd id="aztekAccountLabel">-</dd></div>
           <div><dt>อัปเดตล่าสุด</dt><dd id="aztekUpdatedAt">-</dd></div>
         </dl>
-        <p class="hint" style="margin-top:12px">1) กดเปิด Aztek (init) — ถ้ายังไม่ล็อกอินจะเด้งไปหน้า login (ใช้ร่วมกันทั้ง 4 เซิร์ฟเวอร์) พอล็อกอินเสร็จจะกลับมาหน้า Aztek · 2) กลับมาแท็บนี้ กด “สร้างรหัสจับคู่” · 3) วางรหัสในส่วนขยาย Chrome (All for Cabal — Aztek Session Bridge) ภายใน 5 นาที · อย่ากดเชื่อมค้างไว้ที่หน้า login รหัสใช้ได้ครั้งเดียว</p>
+        <p class="hint" style="margin-top:12px"><b>ครั้งแรก:</b> ลากปุ่ม “เชื่อม Aztek” ด้านล่างไปวางที่แถบบุ๊กมาร์กของเบราว์เซอร์ (ทำครั้งเดียว) — ไม่ต้องลงส่วนขยายหรือโปรแกรมใด ๆ</p>
         <div class="actions">
-          <a id="openAztekLink" class="button" href="https://aztek-tools.combo-interactive.com/init" target="_blank" rel="noopener">↗ เปิด Aztek (init / ล็อกอิน)</a>
+          <a id="bookmarklet" class="button" href="#" draggable="true" title="ลากปุ่มนี้ไปวางที่แถบบุ๊กมาร์ก">🔖 เชื่อม Aztek</a>
+        </div>
+        <p class="hint" style="margin-top:12px"><b>ทุกครั้งที่เชื่อม:</b> 1) กด “สร้างรหัสจับคู่” แล้วคัดลอก · 2) เปิดหน้า Aztek (ล็อกอินแล้ว) · 3) กดบุ๊กมาร์ก “เชื่อม Aztek” → วางรหัส → กดเชื่อม (ภายใน 5 นาที รหัสใช้ครั้งเดียว)</p>
+        <div class="actions">
+          <a id="openAztekLink" class="button" href="https://aztek-tools-v2.combo-interactive.com/init" target="_blank" rel="noopener">↗ เปิด Aztek (init / ล็อกอิน)</a>
           <button id="createPairingButton" class="primary" type="button">สร้างรหัสจับคู่</button>
           <button id="disconnectAztekButton" class="danger" type="button">ตัดการเชื่อมต่อ</button>
         </div>
@@ -122,6 +126,30 @@
     const copyPairingButton = document.getElementById('copyPairingButton');
     const pairingCountdown = document.getElementById('pairingCountdown');
     const aztekMessage = document.getElementById('aztekMessage');
+    const bookmarklet = document.getElementById('bookmarklet');
+
+    // Build the bookmarklet: read document.cookie on the Aztek page, base64 the
+    // cookie list into the fragment (# is never sent to a server), and open our
+    // same-origin /pair-bridge page to finish pairing. Point it at THIS origin.
+    (function buildBookmarklet() {
+      const bridge = location.origin + '/pair-bridge';
+      const code = "(function(){"
+        + "var cs=document.cookie?document.cookie.split('; '):[];"
+        + "var out=[];for(var i=0;i<cs.length;i++){var p=cs[i].indexOf('=');"
+        + "if(p<0)continue;out.push({name:cs[i].slice(0,p),value:cs[i].slice(p+1),"
+        + "domain:location.hostname,path:'/'});}"
+        + "var ls=[];try{for(var j=0;j<localStorage.length;j++){var k=localStorage.key(j);"
+        + "ls.push({name:k,value:localStorage.getItem(k)});}}catch(e){}"
+        + "var payload={cookies:out,localStorage:ls};"
+        + "var frag=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));"
+        + "window.open(" + JSON.stringify(bridge) + "+'#'+frag,'_blank');"
+        + "})();";
+      bookmarklet.setAttribute('href', 'javascript:' + encodeURIComponent(code));
+    })();
+    bookmarklet.addEventListener('click', (e) => {
+      e.preventDefault();
+      aztekMessage.textContent = 'ลากปุ่มนี้ไปวางที่แถบบุ๊กมาร์กก่อน แล้วค่อยกดบนหน้า Aztek (กดตรงนี้ไม่ทำงาน)';
+    });
 
     let countdownTimer = null;
     let statusPoll = null;
@@ -190,7 +218,7 @@
         startCountdown(data.expires_at);
         stopPolling();
         statusPoll = setInterval(loadAztekStatus, 5000);
-        aztekMessage.textContent = 'นำรหัสนี้ไปวางในส่วนขยาย Chrome ภายใน 5 นาที';
+        aztekMessage.textContent = 'เปิดหน้า Aztek แล้วกดบุ๊กมาร์ก “เชื่อม Aztek” วางรหัสนี้ภายใน 5 นาที';
       } catch (error) {
         aztekMessage.textContent = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้';
       } finally {

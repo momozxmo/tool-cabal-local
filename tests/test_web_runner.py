@@ -86,7 +86,12 @@ def test_build_search_data():
              'web': 'yes', 'img': 'any', 'qty_val': '', 'trade': 'any',
              'drill': 'any', 'crit_val': ''}]
     d = sr.build_search_data(game, crit, 'no')
-    check('data game/url set', d['game'] == game and d['url'] == item_finder.GAMES[game])
+    # The web path rewrites the desktop v1 host to the v2 host users log in to.
+    check('data game/url set (v2 host)',
+          d['game'] == game and d['url'] == sr.to_web_url(item_finder.GAMES[game]))
+    check('url uses v2 host', 'aztek-tools-v2.combo-interactive.com' in d['url'])
+    check('url keeps the game path',
+          item_finder.GAMES[game].split('combo-interactive.com', 1)[1] in d['url'])
     check('web_mode=no overrides row web', d['multi'][0]['web'] == 'no', str(d['multi'][0].get('web')))
     check('deep auto True (row has web)', d['deep'] is True)
     check('headless True', d['headless'] is True)
@@ -120,6 +125,19 @@ def test_result_view():
     check('result_view groups joins sources', v['groups'] == 'Cash Shop')
     check('result_view desc', v['desc'] == 'แฟชั่น')
     check('result_view params is string', isinstance(v['params'], str) and v['params'])
+    check('result_view no file_name -> not flagged', v['name_mismatch'] is False)
+
+    # file name is a contiguous prefix of the web name -> matches, no flag
+    ok = sr.result_view({'aztek_id': '1', 'item_name': 'Force Wing (30 Days)',
+                         'file_name': 'Force Wing'})
+    check('result_view name contained -> not flagged', ok['name_mismatch'] is False)
+
+    # file name NOT contiguous in web name -> flagged for manual review
+    # (matches the desktop rule: "Heroic Holy Water (15 min.) x10" vs the web's
+    # "...(15 min.) (7 Days) x10" — the "x10" is split off, so it is flagged).
+    bad = sr.result_view({'aztek_id': '2', 'item_name': 'Heroic Holy Water (15 min.) (7 Days) x10',
+                          'file_name': 'Heroic Holy Water (15 min.) x10'})
+    check('result_view name mismatch -> flagged', bad['name_mismatch'] is True)
 
 
 class _FakeRunPage:

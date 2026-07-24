@@ -116,7 +116,11 @@ class SearchCoordinator:
                 queue.put_nowait({'type': 'job', 'job_id': job_id, 'status': 'running'})
                 self._mark_job_running(job_id)
                 await finder.run(data, storage_state)
-                outcome['results'] = [dict(row) for row in finder._results]
+                # Persist the same view that was streamed to the browser so a
+                # workspace reload keeps every derived field (params, groups, and
+                # the name_mismatch highlight flag).
+                outcome['results'] = [
+                    search_runner.result_view(row) for row in finder._results]
                 outcome['not_found'] = list(finder._not_found)
                 outcome['status'] = 'cancelled' if finder._cancel else 'done'
                 queue.put_nowait({'type': 'done', 'count': len(outcome['results']),

@@ -186,7 +186,9 @@ def test_search_websocket_persists_results_not_found_and_regroups(
     with test_database.session() as db:
         saved = db.get(WorkspaceRecord, workspace_id)
         assert saved is not None
-        assert [row['sources'] for row in saved.results] == [['G1'], ['G2']]
+        # Results are persisted in the streamed result_view shape (sources are
+        # joined into the 'groups' field, not a raw 'sources' list).
+        assert [row['groups'] for row in saved.results] == ['G1', 'G2']
 
 
 def test_failed_search_clears_previous_workspace_results(client, member, test_database):

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เชื่อมเซสชัน Aztek | All for Cabal</title>
+  <style>
+    :root{color-scheme:dark;--bg:#111820;--panel:#18222e;--line:#314152;--text:#e8eef5;--muted:#9dabb9;--blue:#2878bf;--green:#167d5c;--red:#f1838b;--shadow:0 12px 32px #0006}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{width:min(100%,460px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+    .card h1{font-size:19px;margin:0;padding:16px 18px;border-bottom:1px solid var(--line)}
+    .body{padding:18px}
+    label{display:grid;gap:6px;font-weight:600;margin-bottom:12px}
+    input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}
+    input:focus{outline:2px solid #5fa8e8;outline-offset:1px}
+    button{width:100%;border:1px solid #3c94df;border-radius:7px;background:var(--blue);color:#fff;padding:11px;font:inherit;font-weight:700;cursor:pointer}
+    button:disabled{opacity:.55;cursor:default}
+    .msg{min-height:1.4em;margin-top:12px;color:var(--muted)}
+    .msg.ok{color:#66d8ac}.msg.err{color:var(--red)}
+    .hint{color:var(--muted);font-size:13px;margin:0 0 14px}
+    .cookies{font-size:12px;color:var(--muted);margin-top:10px}
+    a{color:#7ab8ff}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>เชื่อมเซสชัน Aztek</h1>
+    <div class="body">
+      <p class="hint" id="hint">วางรหัสจับคู่ (pairing token) ที่สร้างจากหน้าบัญชี แล้วกดเชื่อม</p>
+      <label for="token">รหัสจับคู่ (ใช้ครั้งเดียว)
+        <input id="token" type="text" autocomplete="off" placeholder="วางรหัสที่นี่">
+      </label>
+      <label for="label">ชื่อบัญชี (ไม่บังคับ)
+        <input id="label" type="text" autocomplete="off" placeholder="เช่น บัญชีหลัก">
+      </label>
+      <button id="connect" type="button">เชื่อมต่อ</button>
+      <p id="msg" class="msg" role="status" aria-live="polite"></p>
+      <p class="cookies" id="cookieInfo"></p>
+    </div>
+  </div>
+  <script>
+    'use strict';
+    // The bookmarklet passes the Aztek cookies in the URL fragment (#...), which
+    // browsers never send to the server — so the raw session never hits a log.
+    const AZTEK_V2_ORIGIN = 'https://aztek-tools-v2.combo-interactive.com';
+
+    function parseFragment() {
+      const raw = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+      if (!raw) return null;
+      try {
+        return JSON.parse(decodeURIComponent(escape(atob(raw))));
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function sameSite(v) {
+      const s = (v || '').toLowerCase();
+      if (s === 'strict') return 'Strict';
+      if (s === 'none' || s === 'no_restriction') return 'None';
+      return 'Lax';
+    }
+
+    // Turn "name=value; name2=value2" (document.cookie) into Playwright cookies
+    // scoped to the Aztek v2 host. document.cookie omits httpOnly cookies and
+    // attributes, so we default the flags the search context needs.
+    function toStorageState(payload) {
+      const cookies = [];
+      (payload.cookies || []).forEach((c) => {
+        cookies.push({
+          name: c.name,
+          value: c.value,
+          domain: c.domain || 'aztek-tools-v2.combo-interactive.com',
+          path: c.path || '/',
+          httpOnly: false,
+          secure: true,
+          sameSite: sameSite(c.sameSite),
+          expires: -1,
+        });
+      });
+      const origins = (payload.localStorage && payload.localStorage.length)
+        ? [{ origin: AZTEK_V2_ORIGIN, localStorage: payload.localStorage }]
+        : [];
+      return { cookies, origins };
+    }
+
+    const msg = document.getElementById('msg');
+    const cookieInfo = document.getElementById('cookieInfo');
+    const connectBtn = document.getElementById('connect');
+    const tokenInput = document.getElementById('token');
+    const labelInput = document.getElementById('label');
+
+    const captured = parseFragment();
+    // Clear the fragment from the address bar immediately so the session is not
+    // left sitting in the URL / history.
+    if (location.hash) {
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+
+    let storageState = null;
+    if (!captured || !captured.cookies || !captured.cookies.length) {
+      cookieInfo.textContent =
+        'ยังไม่พบข้อมูลเซสชัน — เปิดหน้านี้ผ่านปุ่ม “เชื่อม Aztek” (bookmarklet) ขณะอยู่บนหน้า Aztek ที่ล็อกอินแล้ว';
+      connectBtn.disabled = true;
+    } else {
+      storageState = toStorageState(captured);
+      const names = storageState.cookies.map((c) => c.name);
+      const hasToken = names.indexOf('access_token') !== -1;
+      cookieInfo.textContent = 'จับเซสชันได้ ' + names.length + ' คุกกี้'
+        + (hasToken ? ' (พบ access_token ✓)' : ' — ⚠️ ไม่พบ access_token');
+    }
+
+    async function connect() {
+      const token = tokenInput.value.trim();
+      if (!token) { msg.textContent = 'กรุณาวางรหัสจับคู่ก่อน'; msg.className = 'msg err'; return; }
+      if (!storageState) { return; }
+      connectBtn.disabled = true;
+      msg.textContent = 'กำลังเชื่อมต่อ…'; msg.className = 'msg';
+      try {
+        const res = await fetch('/api/aztek/pair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pairing_token: token,
+            account_label: labelInput.value.trim(),
+            storage_state: storageState,
+          }),
+        });
+        if (res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const label = body && body.account_label ? ' (' + body.account_label + ')' : '';
+          msg.textContent = 'เชื่อมต่อสำเร็จ' + label + ' — กลับไปที่หน้าเว็บได้เลย';
+          msg.className = 'msg ok';
+          tokenInput.value = '';
+        } else if (res.status === 404) {
+          msg.textContent = 'ไม่พบรหัสจับคู่ — ตรวจสอบว่าคัดลอกครบ'; msg.className = 'msg err';
+        } else if (res.status === 410) {
+          msg.textContent = 'รหัสหมดอายุหรือถูกใช้แล้ว — สร้างใหม่จากหน้าบัญชี'; msg.className = 'msg err';
+        } else if (res.status === 422) {
+          const body = await res.json().catch(() => ({}));
+          msg.textContent = 'เซสชันไม่ถูกต้อง' + (body.detail ? ' (' + body.detail + ')' : ''); msg.className = 'msg err';
+        } else if (res.status === 429) {
+          msg.textContent = 'พยายามบ่อยเกินไป — รอสักครู่'; msg.className = 'msg err';
+        } else if (res.status === 401) {
+          msg.textContent = 'กรุณาล็อกอินเว็บ All for Cabal ก่อน แล้วลองใหม่'; msg.className = 'msg err';
+        } else {
+          msg.textContent = 'เชื่อมต่อไม่สำเร็จ (สถานะ ' + res.status + ')'; msg.className = 'msg err';
+        }
+      } catch (e) {
+        msg.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; msg.className = 'msg err';
+      } finally {
+        connectBtn.disabled = false;
+      }
+    }
+
+    connectBtn.addEventListener('click', connect);
+  </script>
+</body>
+</html>

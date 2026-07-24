@@ -54,6 +54,20 @@ class BundleRequest(BaseModel):
     selected_indexes: list[int] = Field(default_factory=list)
 
 
+class BundleOpenRequest(BaseModel):
+    game: str = Field(min_length=1, max_length=64)
+    # Empty name -> auto name from the group's event title + group.
+    name: str = Field(default='', max_length=200)
+    bundle_type: Literal['FIXED', 'CHOICE', 'RANDOM'] = 'FIXED'
+    deliver: bool = True
+    # Which grouped bundle to open; empty -> the first group.
+    group: str = Field(default='', max_length=200)
+    # Per-item quantity/tier overrides: [{id, qty, tier}]. When empty the group's
+    # items are used with default qty=1 / tier=Common.
+    items: list[dict] = Field(default_factory=list)
+    selected_indexes: list[int] = Field(default_factory=list)
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -234,6 +248,22 @@ def account_page(
     if user is None:
         return RedirectResponse('/login')
     with open(os.path.join(STATIC_DIR, 'account.html'), encoding='utf-8') as stream:
+        return stream.read()
+
+
+@router.get('/pair-bridge', response_class=HTMLResponse)
+def pair_bridge_page(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    # Landing page for the bookmarklet: it receives the Aztek cookies in the URL
+    # fragment (never sent to the server) and POSTs them same-origin to
+    # /api/aztek/pair. Requires a logged-in web session like /account.
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is None:
+        return RedirectResponse('/login')
+    with open(os.path.join(STATIC_DIR, 'pair_bridge.html'), encoding='utf-8') as stream:
         return stream.read()
 
 
@@ -650,6 +680,104 @@ def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
         request=request,
     )
     return {'bundles': bundles}
+
+
+@router.post('/api/workspaces/{workspace_id}/bundle-open')
+async def bundle_open(workspace_id: str, payload: BundleOpenRequest,
+                      request: Request, user: User = Depends(require_user),
+                      db: Session = Depends(get_db)):
+    """Preview: fill the Aztek v2 create-bundle form for the selected items WITHOUT
+    saving. On local (development) runs it opens a real Chrome window; otherwise it
+    returns a screenshot of the filled form. Nothing is created on the live site.
+    """
+    from web import bundle_runner
+
+    settings: Settings = request.app.state.settings
+    if payload.game not in item_finder.GAMES:
+        raise HTTPException(status_code=400, detail='ไม่รู้จักเกม: %s' % payload.game)
+    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
+    indexes = payload.selected_indexes
+    if indexes:
+        rows = [workspace.results[i] for i in sorted(set(indexes))
+                if isinstance(i, int) and 0 <= i < len(workspace.results)]
+    else:
+        rows = workspace.results
+    if not rows:
+        raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้สร้างบันเดิล')
+
+    # Split the chosen rows into one bundle per group (activity/reward), each with
+    # an auto name of "<event> - <group>". The caller opens one group at a time.
+    bundles = item_service.build_bundles(rows, workspace.group_meta)
+    if not bundles:
+        raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้สร้างบันเดิล')
+    chosen = None
+    if payload.group:
+        chosen = next((b for b in bundles if b['group'] == payload.group), None)
+    if chosen is None:
+        chosen = bundles[0]
+    group_ids = {str(it.get('id') or '').strip()
+                 for it in chosen['items'] if it.get('id')}
+    if payload.items:
+        # The UI sends the exact items to include (duplicates already dropped),
+        # each with its own qty/tier. Keep only ids that belong to this group.
+        items = []
+        for it in payload.items:
+            iid = str(it.get('id') or '').strip()
+            if not iid or iid not in group_ids:
+                continue
+            qty = str(it.get('qty') or '1').strip() or '1'
+            tier = str(it.get('tier') or 'Common').strip() or 'Common'
+            items.append({'id': iid, 'qty': qty, 'tier': tier})
+    else:
+        items = [{'id': str(it['id']), 'qty': '1', 'tier': 'Common'}
+                 for it in chosen['items'] if it.get('id')]
+    if not items:
+        raise HTTPException(status_code=400, detail='กลุ่มนี้ไม่มีไอเทม')
+    bundle_name = payload.name.strip() or chosen['name']
+
+    storage_state = request.app.state.aztek_session_service.load_storage_state(db, user)
+    if storage_state is None:
+        raise HTTPException(status_code=409, detail='ยังไม่ได้เชื่อมเซสชัน Aztek')
+
+    logs: list[dict] = []
+    preview = bundle_runner.BundlePreview(
+        lambda message, level='INFO': logs.append({'msg': message, 'level': level}))
+    # A real (watchable) window only makes sense where the server shares the
+    # user's desktop — i.e. a local development run.
+    headed = settings.app_env != 'production'
+    try:
+        result = await preview.run(
+            game=payload.game, name=bundle_name, btype=payload.bundle_type,
+            deliver=payload.deliver, items=items, storage_state=storage_state,
+            headed=headed)
+    except Exception as exc:
+        write_audit(
+            db, user_id=user.id, action='bundle.preview_open', status='failed',
+            summary={'error': str(exc)[:200], 'game': payload.game},
+            tool='create_bundle', resource_type='workspace',
+            resource_id=workspace_id, request=request)
+        raise HTTPException(status_code=502, detail='เปิดฟอร์มบันเดิลไม่สำเร็จ: %s' % exc)
+
+    write_audit(
+        db, user_id=user.id, action='bundle.preview_open', status='success',
+        summary={'game': payload.game, 'added': result['added'],
+                 'total': result['total'], 'name': bundle_name,
+                 'group': chosen['group']},
+        tool='create_bundle', resource_type='workspace',
+        resource_id=workspace_id, request=request)
+
+    screenshot_b64 = None
+    if result.get('screenshot'):
+        import base64
+        screenshot_b64 = base64.b64encode(result['screenshot']).decode('ascii')
+    return {
+        'url': result['url'], 'added': result['added'], 'total': result['total'],
+        'headed': headed, 'logs': logs, 'screenshot_b64': screenshot_b64,
+        'bundle_name': bundle_name, 'group': chosen['group'],
+        # Every group available from this selection, so the UI can offer them.
+        'groups': [{'group': b['group'], 'name': b['name'],
+                    'count': len(b['items'])} for b in bundles],
+    }
 
 
 @router.websocket('/ws/search')

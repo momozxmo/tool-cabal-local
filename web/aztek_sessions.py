@@ -73,9 +73,24 @@ def _allowed_hosts(settings: Settings) -> tuple[str, ...]:
     return tuple(host for host in hosts if host)
 
 
-def _allowed_origins(settings: Settings) -> frozenset[str]:
-    """Origins permitted in the storage state's ``origins`` list."""
-    return frozenset({settings.aztek_origin, settings.aztek_auth_origin})
+def _origin_allowed(origin: Any, settings: Settings) -> bool:
+    """True when ``origin`` is https on the Aztek registrable base domain.
+
+    The live web app moved between the v1 and v2 hosts, and localStorage is
+    captured under whichever host the user is on. Rather than pin exact hosts,
+    accept any https host under the same base domain as ``aztek_origin`` (still
+    rejects other sites and non-https origins).
+    """
+    if not isinstance(origin, str):
+        return False
+    parts = urlsplit(origin)
+    if parts.scheme != 'https':
+        return False
+    host = (parts.hostname or '').lower()
+    if not host:
+        return False
+    base = _base_domain(_hostname(settings.aztek_origin))
+    return host == base or host.endswith('.' + base)
 
 
 def _base_domain(host: str) -> str:
@@ -127,7 +142,6 @@ def validate_storage_state(storage_state: Any, settings: Settings) -> None:
         raise InvalidStorageState('storage_state payload is too large')
 
     hosts = _allowed_hosts(settings)
-    allowed_origins = _allowed_origins(settings)
     for cookie in cookies:
         if not isinstance(cookie, dict):
             raise InvalidStorageState('each cookie must be an object')
@@ -138,7 +152,7 @@ def validate_storage_state(storage_state: Any, settings: Settings) -> None:
     for origin in origins:
         if not isinstance(origin, dict):
             raise InvalidStorageState('each origin must be an object')
-        if origin.get('origin') not in allowed_origins:
+        if not _origin_allowed(origin.get('origin'), settings):
             raise InvalidStorageState('origin is not allowed: %s' % origin.get('origin'))
         entries = origin.get('localStorage', [])
         if not isinstance(entries, list):

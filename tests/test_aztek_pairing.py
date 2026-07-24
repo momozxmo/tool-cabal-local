@@ -80,6 +80,17 @@ def test_shared_sso_auth_origin_is_accepted(client, anonymous_client):
     assert status['connected'] is True
 
 
+def test_v2_app_origin_is_accepted(client, anonymous_client):
+    # The live web app runs on the v2 host; localStorage is captured under it.
+    token = issue_pairing_token(client)
+    state = valid_storage_state()
+    state['origins'][0]['origin'] = 'https://aztek-tools-v2.combo-interactive.com'
+    response = anonymous_client.post('/api/aztek/pair', json={
+        'pairing_token': token, 'storage_state': state})
+    assert response.status_code == 200
+    assert client.get('/api/aztek/status').json()['connected'] is True
+
+
 def test_pairing_token_is_single_use(client, anonymous_client):
     token = issue_pairing_token(client)
     first = anonymous_client.post('/api/aztek/pair', json={

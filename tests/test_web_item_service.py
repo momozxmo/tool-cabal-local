@@ -67,6 +67,24 @@ def test_regroup_results_follows_document_occurrences():
     assert rows[0]['file_name'] == 'A-file'
 
 
+def test_regroup_and_bundles_carry_amt_as_qty():
+    # The imported 'Amt' column must flow occurrence -> row -> bundle qty.
+    found = [{'aztek_id': '10', 'item_kind': '1', 'item_option': '2',
+              'duration_index': '0', 'item_name': 'A-web', 'sources': ['G1']}]
+    occurrences = [{'kind': '1', 'opt': '2', 'dur': '0', 'name': 'A',
+                    'amt': '5', 'sources': ['G1']}]
+    rows = svc.regroup_results(found, occurrences)
+    assert rows[0]['amt'] == '5'
+    bundles = svc.build_bundles(
+        [{'aztek_id': '10', 'item_name': 'A-web', 'amt': '5', 'sources': ['G1']}],
+        {})
+    assert bundles[0]['items'][0]['qty'] == '5'
+    # Missing/blank Amt falls back to '1'.
+    blank = svc.build_bundles(
+        [{'aztek_id': '11', 'item_name': 'B', 'sources': ['G1']}], {})
+    assert blank[0]['items'][0]['qty'] == '1'
+
+
 def test_build_bundles_puts_shared_items_last_in_every_group():
     rows = [
         {'aztek_id': '99', 'item_name': 'Shared', 'sources': ['G1']},
@@ -79,6 +97,15 @@ def test_build_bundles_puts_shared_items_last_in_every_group():
     assert [b['name'] for b in bundles] == ['Event - G1', 'Cash Shop - G2']
     assert [[it['id'] for it in b['items']] for b in bundles] == [
         ['11', '99'], ['22', '99']]
+
+
+def test_bundle_name_uses_event_name_from_import():
+    # Event imports carry 'event_name'; it should title the bundle.
+    rows = [{'aztek_id': '1', 'item_name': 'X', 'sources': ['รางวัลที่ 1']}]
+    meta = {'รางวัลที่ 1': {'event_name': 'กิจกรรมปีใหม่', 'is_event': True}}
+    bundles = svc.build_bundles(rows, meta)
+    assert bundles[0]['name'] == 'กิจกรรมปีใหม่ - รางวัลที่ 1'
+    assert bundles[0]['group'] == 'รางวัลที่ 1'
 
 
 def test_exports_include_full_result_columns():
