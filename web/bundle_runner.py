@@ -12,6 +12,7 @@ this is a small purpose-built filler rather than the desktop modal engine.
 from playwright.async_api import async_playwright
 
 import new_tool
+from web import browser_launch
 from web.search_runner import to_web_url
 
 
@@ -134,8 +135,11 @@ class BundlePreview:
         url = bundle_create_url(game)
         self.log('เปิดหน้าสร้าง Bundle: %s' % url, 'STEP')
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=not headed)
-            context = await browser.new_context(storage_state=storage_state)
+            browser = await pw.chromium.launch(
+                **browser_launch.launch_kwargs(headed))
+            context = await browser.new_context(
+                **browser_launch.context_kwargs(
+                    headed, storage_state=storage_state))
             page = await context.new_page()
             shot = None
             final_url = None

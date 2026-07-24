@@ -17,6 +17,7 @@ from web import security
 from web.auth_service import AuthService
 from web.db import Database
 from web.models import User, WebSession, WorkspaceRecord, utc_now
+from web.search_coordinator import SearchCoordinator
 from web.settings import Settings
 
 
@@ -503,3 +504,16 @@ def test_timestamps_reject_naive_input(test_database):
             session.flush()
     assert isinstance(error.value.orig, ValueError)
     assert 'timezone-aware' in str(error.value.orig)
+
+
+def test_headed_search_is_refused_in_production(settings, test_database):
+    """A hosted server has no display, so it must ignore a headed request."""
+    coordinator = SearchCoordinator(test_database, settings, aztek_session_service=None)
+    assert coordinator.resolve_headed(True) is True
+    assert coordinator.resolve_headed(False) is False
+
+    hosted = SearchCoordinator(
+        test_database, replace(settings, app_env='production'),
+        aztek_session_service=None)
+    assert hosted.resolve_headed(True) is False
+    assert hosted.resolve_headed(False) is False

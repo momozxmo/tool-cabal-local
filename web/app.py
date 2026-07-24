@@ -450,6 +450,17 @@ def games(user: User = Depends(require_user)):
     return {'games': list(item_finder.GAME_NAMES)}
 
 
+@router.get('/api/capabilities')
+def capabilities(request: Request, user: User = Depends(require_user)):
+    """What this deployment can offer the UI.
+
+    A watchable (headed) browser needs the server to share the operator's
+    desktop, which is only true for a local run — a hosted server has no
+    display to draw on, so the UI must not offer the choice there.
+    """
+    return {'allow_headed': request.app.state.settings.app_env != 'production'}
+
+
 @router.get('/api/modes')
 def modes(user: User = Depends(require_user)):
     return {mode: item_service.mode_policy(mode)

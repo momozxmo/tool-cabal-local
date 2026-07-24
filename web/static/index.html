@@ -178,6 +178,10 @@
             <label><input id="webYes" type="radio" name="webMode" value="yes"> มี</label>
             <label><input id="webNo" type="radio" name="webMode" value="no"> ไม่มี</label>
           </div></div>
+          <div class="field hidden" id="runModeField"><label>หน้าต่างค้นหา</label><div class="choice">
+            <label><input id="runHeadless" type="radio" name="runMode" value="headless" checked> ไม่เปิด (เร็วกว่า)</label>
+            <label><input id="runHeaded" type="radio" name="runMode" value="headed"> เปิดให้ดู</label>
+          </div></div>
           <div class="hint" id="modeHint">มี/ไม่มี = เข้าไปเช็คหน้ารายละเอียดทีละไอเทม</div>
           <div class="actions">
             <a class="button" href="/api/template">⬇ โหลด Template</a>
@@ -292,7 +296,8 @@ function deepSummary(row){
   return out.join(' ') || '-';
 }
 function setBusy(busy){ $('btnSearch').disabled=busy||!state.workspaceId||!state.criteria.length||!state.aztekConnected; $('btnStop').disabled=!busy;
-  $('btnImportTemplate').disabled=busy; $('btnImportPlan').disabled=busy; $('btnClearWorkspace').disabled=busy; }
+  $('btnImportTemplate').disabled=busy; $('btnImportPlan').disabled=busy; $('btnClearWorkspace').disabled=busy;
+  document.querySelectorAll('input[name=runMode]').forEach(input=>input.disabled=busy); }
 async function loadIdentity(){
   const user=await apiFetch('/api/auth/me').then(r=>r.json());
   state.user=user; $('currentUser').textContent=`${user.username} (${user.role})`;
@@ -314,8 +319,10 @@ function resultActions(){ const has=state.results.length>0; ['btnBundles','btnBu
 
 async function init(){
   await loadIdentity();
-  const [games,modes]=await Promise.all([apiFetch('/api/games').then(r=>r.json()),apiFetch('/api/modes').then(r=>r.json())]);
+  const [games,modes,caps]=await Promise.all([apiFetch('/api/games').then(r=>r.json()),apiFetch('/api/modes').then(r=>r.json()),apiFetch('/api/capabilities').then(r=>r.json())]);
   games.games.forEach(game=>{const option=document.createElement('option'); option.value=option.textContent=game; $('game').appendChild(option);});
+  // Only a server that shares this desktop can show a real window.
+  state.allowHeaded=!!caps.allow_headed; $('runModeField').classList.toggle('hidden',!state.allowHeaded);
   state.modes=modes; applyMode('event',false);
   await loadAztekStatus();
 }
@@ -374,7 +381,7 @@ function renderNotFound(rows){const list=$('notFoundList');list.replaceChildren(
 
 function startSearch(){if(!state.workspaceId)return;resetResults();renderNotFound([]);$('progress').value=0;$('progressText').textContent='กำลังเชื่อมต่อ…';setBusy(true);
   const protocol=location.protocol==='https:'?'wss:':'ws:';const socket=new WebSocket(`${protocol}//${location.host}/ws/search`);state.socket=socket;
-  socket.onopen=()=>socket.send(JSON.stringify({workspace_id:state.workspaceId,game:$('game').value,web_mode:document.querySelector('input[name=webMode]:checked').value}));
+  socket.onopen=()=>socket.send(JSON.stringify({workspace_id:state.workspaceId,game:$('game').value,web_mode:document.querySelector('input[name=webMode]:checked').value,headed:state.allowHeaded&&$('runHeaded').checked}));
   socket.onmessage=event=>{const message=JSON.parse(event.data);if(message.type==='log')log(message.msg,message.level);else if(message.type==='progress'){const percent=message.total?message.cur/message.total*100:0;$('progress').value=Math.min(100,percent);$('progressText').textContent=`${message.cur}/${message.total} ${message.name||''}`;}
     else if(message.type==='reset_results')resetResults();else if(message.type==='result')addResult(message.item);
     else if(message.type==='error'){ if(message.code==='aztek_session_required'||message.code==='aztek_session_expired'){ paintAztek(message.code==='aztek_session_expired'?'expired':'disconnected'); log((message.msg||'ต้องเชื่อมเซสชัน Aztek ก่อน')+' — เปิดหน้า “บัญชี / เชื่อม Aztek”','ERROR'); } else { log(message.msg||'เกิดข้อผิดพลาด','ERROR'); } }

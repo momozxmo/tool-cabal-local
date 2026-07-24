@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 from playwright.async_api import async_playwright
 
 import item_finder
-from web import item_service
+from web import browser_launch, item_service
 
 # The desktop tool targets the v1 host (its own logged-in Chrome profile). The
 # web app's users log in to the v2 host, so web searches must run against v2.
@@ -109,10 +109,18 @@ class HeadlessFinder:
         Unlike the desktop ``_auto`` (which reuses a shared persistent Chrome
         profile), the web path launches a throwaway browser seeded only with the
         caller's decrypted Aztek storage state, so users never share a session.
+
+        ``data['headless']`` decides whether the run is watchable; the caller is
+        responsible for only allowing a headed run where the server has a
+        display (see ``SearchCoordinator``).
         """
+        headed = not data.get('headless', True)
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
-            context = await browser.new_context(storage_state=storage_state)
+            browser = await pw.chromium.launch(
+                **browser_launch.launch_kwargs(headed))
+            context = await browser.new_context(
+                **browser_launch.context_kwargs(
+                    headed, storage_state=storage_state))
             page = await context.new_page()
             try:
                 await page.goto(data['url'], wait_until='domcontentloaded',
@@ -140,7 +148,8 @@ for _method_name in _ENGINE_METHODS:
 del _method_name
 
 
-def build_search_data(game, criteria, web_mode=None, *, mode='event'):
+def build_search_data(game, criteria, web_mode=None, *, mode='event',
+                      headed=False):
     """Build the same multi-search data as desktop, including mode policy."""
     if game not in item_finder.GAMES:
         raise ValueError('ไม่รู้จักเกม: %s' % game)
@@ -182,7 +191,7 @@ def build_search_data(game, criteria, web_mode=None, *, mode='event'):
         'deep': policy['read_desc'] or any(has_deep(row) for row in multi),
         'web': 'any', 'img': 'any', 'qty_val': '', 'trade': 'any',
         'drill': 'any', 'crit_val': '', 'batch': 10,
-        'headless': True,
+        'headless': not headed,
         'read_desc': policy['read_desc'],
     }
 

@@ -95,6 +95,9 @@ def test_build_search_data():
     check('web_mode=no overrides row web', d['multi'][0]['web'] == 'no', str(d['multi'][0].get('web')))
     check('deep auto True (row has web)', d['deep'] is True)
     check('headless True', d['headless'] is True)
+    # The caller can ask for a watchable window; headless is the default.
+    headed = sr.build_search_data(game, crit, 'no', headed=True)
+    check('headed=True -> headless False', headed['headless'] is False)
 
     d2 = sr.build_search_data(game, crit, 'yes')
     check('web_mode=yes -> web yes + _show_web_vals', d2['multi'][0]['web'] == 'yes'
@@ -115,6 +118,27 @@ def test_build_search_data():
     itemcode = sr.build_search_data(game, crit, 'yes', mode='itemcode')
     check('itemcode locks web=no even if caller asks yes',
           itemcode['multi'][0]['web'] == 'no' and itemcode['read_desc'] is False)
+
+
+def test_browser_launch_kwargs():
+    from web import browser_launch as bl
+    # Headed must fill the real window; headless keeps Playwright's wide
+    # default viewport (no_viewport there would drop to 800x600).
+    launch_headed, launch_hidden = bl.launch_kwargs(True), bl.launch_kwargs(False)
+    check('headed launches visible + maximized',
+          launch_headed['headless'] is False
+          and '--start-maximized' in launch_headed['args'])
+    check('headless launches hidden without window args',
+          launch_hidden['headless'] is True and 'args' not in launch_hidden)
+
+    ctx_headed = bl.context_kwargs(True, storage_state={'cookies': []})
+    ctx_hidden = bl.context_kwargs(False, storage_state={'cookies': []})
+    check('headed context uses the window size',
+          ctx_headed.get('no_viewport') is True
+          and ctx_headed['storage_state'] == {'cookies': []})
+    check('headless context keeps the default viewport',
+          'no_viewport' not in ctx_hidden
+          and ctx_hidden['storage_state'] == {'cookies': []})
 
 
 def test_result_view():
@@ -296,6 +320,7 @@ if __name__ == '__main__':
     test_regroup_callback_replaces_streamed_rows_in_document_order()
     test_engine_method_runs_on_fake_page()
     test_build_search_data()
+    test_browser_launch_kwargs()
     test_result_view()
     print('\n' + ('ALL PASS' if not FAIL else 'FAIL: ' + ', '.join(FAIL)))
     sys.exit(1 if FAIL else 0)

@@ -33,10 +33,21 @@ class SearchCoordinator:
         self._aztek = aztek_session_service
         self._semaphore = asyncio.Semaphore(max(1, settings.browser_concurrency))
 
+    def resolve_headed(self, wants_headed: bool) -> bool:
+        """Whether this run may open a watchable window.
+
+        A headed browser needs a display the server can draw on, which only a
+        local run has. A hosted server refuses regardless of what the client
+        asks for, so a forged flag cannot stall a search on a missing display.
+        """
+        return bool(wants_headed) and self._settings.app_env != 'production'
+
     async def run(self, user_id: str, workspace_id: str,
                   request_data: dict, emit: Emit) -> None:
         game = str(request_data.get('game') or '')
         web_mode = request_data.get('web_mode')
+        wants_headed = bool(request_data.get('headed'))
+        headed = self.resolve_headed(wants_headed)
 
         # 1. Load owned workspace, snapshot its data, and decrypt the session.
         with self._database.session() as db:
@@ -70,10 +81,14 @@ class SearchCoordinator:
             WorkspaceRepository(db).save_results(
                 user_id, workspace_id, game=game, results=[], not_found=[])
 
+        if wants_headed and not headed:
+            await emit({'type': 'log', 'level': 'WARNING',
+                        'msg': 'เซิร์ฟเวอร์นี้ไม่มีหน้าจอ — ค้นหาแบบไม่เปิดหน้าต่างแทน'})
+
         # 4. Validate the search request before creating a job.
         try:
             data = search_runner.build_search_data(
-                game, criteria, web_mode, mode=mode)
+                game, criteria, web_mode, mode=mode, headed=headed)
         except Exception as error:
             await emit({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
             await emit({'type': 'done', 'count': 0, 'not_found': []})
@@ -83,7 +98,8 @@ class SearchCoordinator:
         with self._database.session() as db:
             job = Job(owner_user_id=user_id, workspace_id=workspace_id,
                       tool='item_finder', status='queued',
-                      config={'game': game, 'mode': mode, 'web_mode': web_mode or ''})
+                      config={'game': game, 'mode': mode,
+                              'web_mode': web_mode or '', 'headed': headed})
             db.add(job)
             db.flush()
             job_id = job.id
