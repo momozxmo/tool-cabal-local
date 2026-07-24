@@ -5,26 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>เชื่อมเซสชัน Aztek | All for Cabal</title>
   <style>
-    :root{color-scheme:dark;--bg:#111820;--panel:#18222e;--line:#314152;--text:#e8eef5;--muted:#9dabb9;--blue:#2878bf;--green:#167d5c;--red:#f1838b;--shadow:0 12px 32px #0006}
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
-    .card{width:min(100%,460px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
-    .card h1{font-size:19px;margin:0;padding:16px 18px;border-bottom:1px solid var(--line)}
-    .body{padding:18px}
-    label{display:grid;gap:6px;font-weight:600;margin-bottom:12px}
-    input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}
-    input:focus{outline:2px solid #5fa8e8;outline-offset:1px}
-    button{width:100%;border:1px solid #3c94df;border-radius:7px;background:var(--blue);color:#fff;padding:11px;font:inherit;font-weight:700;cursor:pointer}
-    button:disabled{opacity:.55;cursor:default}
-    .msg{min-height:1.4em;margin-top:12px;color:var(--muted)}
-    .msg.ok{color:#66d8ac}.msg.err{color:var(--red)}
-    .hint{color:var(--muted);font-size:13px;margin:0 0 14px}
-    .cookies{font-size:12px;color:var(--muted);margin-top:10px}
-    a{color:#7ab8ff}
+    :root{color-scheme:dark;
+      --void:#0b0d13;--obsidian:#111420;--raise:#212636;--edge:#272d40;
+      --edge-soft:#1e2334;--ink:#e7eaf3;--muted:#868da3;--faint:#5b6076;
+      --arc:#6d7cf5;--arc-bright:#8b96ff;--arc-dim:rgba(109,124,245,.15);
+      --common:#8b93a6;--rare:#3f8bea;--epic:#b45ef0;--mystic:#2fcabe;--legend:#e0a63c;
+      --rail:linear-gradient(90deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend));
+      --green:#3fc98a;--red:#ef5b67;
+      --sans:"Segoe UI","Leelawadee UI","IBM Plex Sans Thai",Tahoma,system-ui,sans-serif;
+      --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,monospace;
+      /* legacy aliases */
+      --bg:var(--void);--panel:var(--obsidian);--line:var(--edge);--text:var(--ink);--blue:var(--arc);--shadow:0 30px 70px -30px #000c}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.55 var(--sans);display:flex;align-items:center;justify-content:center;padding:20px;
+      background:
+        radial-gradient(900px 560px at 50% -18%,rgba(109,124,245,.15),transparent 60%),
+        radial-gradient(640px 460px at 88% 112%,rgba(47,202,190,.06),transparent 55%),
+        var(--void)}
+    .card{width:min(100%,460px);background:linear-gradient(180deg,var(--obsidian),#0e111b);
+      border:1px solid var(--edge);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;position:relative;
+      animation:rise .5s ease}
+    @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+    .card::before{content:"";display:block;height:3px;background:var(--rail)}
+    .head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--edge-soft,#1e2334)}
+    .gem{width:30px;height:30px;transform:rotate(45deg);border-radius:8px;flex:none;position:relative;
+      background:conic-gradient(from 45deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend),var(--common));
+      box-shadow:0 0 20px -3px var(--arc)}
+    .gem::after{content:"";position:absolute;inset:6px;border-radius:4px;background:var(--obsidian)}
+    .card h1{font-size:18px;font-weight:800;margin:0;padding:0;border:0;letter-spacing:-.01em}
+    .head p{margin:2px 0 0;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+    .body{padding:20px}
+    label{display:grid;gap:7px;margin-bottom:14px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    input{width:100%;background:#0d111a;color:var(--ink);border:1px solid var(--edge);border-radius:9px;padding:11px 12px;font:15px var(--mono)}
+    input:focus{outline:none;border-color:var(--arc);box-shadow:0 0 0 3px var(--arc-dim)}
+    button{width:100%;margin-top:4px;border:1px solid transparent;border-radius:9px;
+      background:linear-gradient(150deg,var(--arc),#5563e6);color:#fff;padding:12px;font:700 15px var(--sans);
+      cursor:pointer;box-shadow:0 8px 22px -10px var(--arc);transition:box-shadow .15s,transform .05s}
+    button:hover:not(:disabled){box-shadow:0 11px 28px -10px var(--arc)}
+    button:active:not(:disabled){transform:translateY(1px)}
+    button:focus-visible{outline:2px solid var(--arc-bright);outline-offset:2px}
+    button:disabled{opacity:.45;cursor:default;box-shadow:none}
+    .msg{min-height:1.4em;margin-top:14px;color:var(--muted);font-size:13.5px}
+    .msg.ok{color:var(--green)}.msg.err{color:var(--red)}
+    .hint{color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.6}
+    .cookies{font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--faint);margin-top:12px;
+      border-left:2px solid var(--edge);padding-left:10px}
+    a{color:var(--arc-bright)}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+    @media(max-width:480px){body{padding:12px}.body{padding:16px}}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>เชื่อมเซสชัน Aztek</h1>
+    <div class="head">
+      <span class="gem"></span>
+      <div><h1>เชื่อมเซสชัน Aztek</h1><p>All for Cabal · Pair Bridge</p></div>
+    </div>
     <div class="body">
       <p class="hint" id="hint">วางรหัสจับคู่ (pairing token) ที่สร้างจากหน้าบัญชี แล้วกดเชื่อม</p>
       <label for="token">รหัสจับคู่ (ใช้ครั้งเดียว)

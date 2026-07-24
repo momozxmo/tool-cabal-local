@@ -5,9 +5,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>All for Cabal — Item Finder</title>
   <style>
-    :root{color-scheme:dark;--bg:#0b1017;--panel:#151c25;--panel2:#1c2531;--line:#2d3948;
-      --text:#e7edf5;--muted:#8f9cac;--blue:#3182f6;--green:#32c48d;--yellow:#f4c44e;
-      --red:#ef5b67;--shadow:0 16px 40px #0005}
+    :root{color-scheme:dark;
+      /* base — obsidian, indigo-biased (not pure black) */
+      --void:#0b0d13;--obsidian:#111420;--onyx:#191d2b;--raise:#212636;--edge:#272d40;--edge-soft:#1e2334;
+      --ink:#e7eaf3;--ink-dim:#c3c9db;--faint:#5b6076;
+      /* arcane accent — "Force" */
+      --arc:#6d7cf5;--arc-bright:#8b96ff;--arc-dim:rgba(109,124,245,.15);--arc-line:rgba(109,124,245,.42);
+      /* rarity ramp (Cabal tier) — functional signature palette */
+      --common:#8b93a6;--rare:#3f8bea;--epic:#b45ef0;--mystic:#2fcabe;--legend:#e0a63c;
+      --rail:linear-gradient(90deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend));
+      --sans:"Segoe UI","Leelawadee UI","IBM Plex Sans Thai",Tahoma,system-ui,sans-serif;
+      --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,monospace;
+      /* legacy aliases kept so existing CSS + inline JS (var(--line)/(--red)/(--yellow)) keep working */
+      --bg:var(--void);--panel:var(--obsidian);--panel2:var(--raise);--line:var(--edge);
+      --text:var(--ink);--muted:#868da3;--blue:var(--arc);--green:#3fc98a;--yellow:#e0b03a;
+      --red:#ef5b67;--shadow:0 18px 44px -20px #000a}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Tahoma,sans-serif}
     button,input,select{font:inherit} button,.button{border:1px solid transparent;border-radius:8px;padding:8px 13px;
       background:var(--panel2);color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
@@ -40,12 +52,100 @@
     dialog h3{margin-top:0}.sheet-list,.bundle-list{display:grid;gap:7px;max-height:430px;overflow:auto;margin:12px 0}.sheet-row,.bundle{
       background:#0e151e;border:1px solid var(--line);border-radius:8px;padding:9px}.bundle h4{margin:0 0 5px;color:var(--green)}
     .hidden{display:none!important}@media(max-width:980px){.grid{grid-template-columns:1fr}.field{grid-template-columns:110px 1fr}.shell{padding:12px}}
+
+    /* ===================== Arcane Operator Console — visual overhaul ===================== */
+    body{font-family:var(--sans);background:
+        radial-gradient(1100px 480px at 85% -10%,rgba(109,124,245,.09),transparent 60%),
+        radial-gradient(720px 420px at 5% 108%,rgba(224,166,60,.05),transparent 55%),var(--void)}
+    button,.button{border-color:var(--edge);border-radius:9px;background:var(--raise);transition:border-color .15s,box-shadow .15s,transform .05s}
+    button:hover,.button:hover{border-color:var(--faint)}
+    button:active,.button:active{transform:translateY(1px)}
+    button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--arc-bright);outline-offset:2px}
+    .primary{background:linear-gradient(150deg,var(--arc),#5563e6);color:#fff;box-shadow:0 6px 18px -9px var(--arc)}
+    .primary:hover{border-color:transparent;box-shadow:0 9px 24px -9px var(--arc)}
+    .success{background:linear-gradient(150deg,#1f9c74,#167d5c);color:#fff}
+    .warn{background:linear-gradient(150deg,#caa03a,#b0862a);color:#17120a}
+    .danger{background:#8d2d37;color:#fff}
+    input[type=radio],input[type=checkbox]{accent-color:var(--arc)}
+    input[type=text],input[type=number],textarea{background:#0d111a;border:1px solid var(--edge);border-radius:8px;color:var(--ink);padding:8px 10px}
+    input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{outline:none;border-color:var(--arc);box-shadow:0 0 0 3px var(--arc-dim)}
+    select{background:#0d111a;border:1px solid var(--edge)}
+
+    /* command bar */
+    .topbar{align-items:center;background:linear-gradient(180deg,var(--obsidian),#0e111b);border:1px solid var(--edge);border-radius:14px;padding:13px 18px;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:13px}
+    .brand h1{font-size:20px;font-weight:800;letter-spacing:.01em}
+    .brand p{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+    .gem{width:28px;height:28px;transform:rotate(45deg);border-radius:7px;flex:none;position:relative;
+      background:conic-gradient(from 45deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend),var(--common));
+      box-shadow:0 0 18px -4px var(--arc)}
+    .gem::after{content:"";position:absolute;inset:6px;border-radius:4px;background:var(--obsidian)}
+    .badge{background:#0e121c;border:1px solid var(--edge);color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+
+    /* pipeline spine (status, non-interactive) */
+    .spine{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:14px;background:var(--obsidian);border:1px solid var(--edge);border-radius:14px;overflow:hidden}
+    .snode{display:flex;align-items:center;gap:11px;padding:11px 15px;border-right:1px solid var(--edge-soft);position:relative}
+    .snode:last-child{border-right:0}
+    .snode .k{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;font-family:var(--mono);font-weight:700;font-size:13px;color:var(--faint);background:#0e121c;border:1px solid var(--edge)}
+    .snode .lab b{display:block;font-size:13px;font-weight:700;color:var(--muted)}
+    .snode .lab span{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+    .snode.active{background:linear-gradient(180deg,var(--arc-dim),transparent)}
+    .snode.active .k{color:#fff;background:linear-gradient(150deg,var(--arc),#5563e6);border-color:transparent;box-shadow:0 0 15px -3px var(--arc);animation:pulse 3s ease-in-out infinite}
+    .snode.active .lab b{color:var(--ink)}
+    .snode.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--arc),transparent)}
+    @keyframes pulse{0%,100%{box-shadow:0 0 15px -3px var(--arc)}50%{box-shadow:0 0 23px 0 var(--arc)}}
+
+    /* cards + rarity rail signature */
+    .card{background:var(--obsidian);border:1px solid var(--edge);border-radius:14px;box-shadow:var(--shadow);position:relative}
+    .card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--rail);opacity:.65;z-index:2}
+    .card-head{border-bottom:1px solid var(--edge-soft);padding:14px 16px 13px}
+    .card-head h2{font-size:15px;font-weight:800}
+    .summary{background:#0d111a;border:1px solid var(--edge);border-radius:9px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+    .summary strong{color:var(--green)}
+
+    /* tables — mono for machine data (id/kind/opt/dur), sans for human text */
+    .table-wrap{border-top:1px solid var(--edge-soft)}
+    th{background:#0e121c;color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+    th,td{border-right:1px solid var(--edge-soft);border-bottom:1px solid var(--edge-soft)}
+    tr:hover td{background:#151a27}
+    #resultsTable td:nth-child(2),#criteriaTable td:nth-child(1){font-family:var(--mono);color:var(--muted);text-align:right}
+    #resultsTable td:nth-child(3){font-family:var(--mono);color:var(--arc-bright);font-weight:600}
+    #criteriaTable td:nth-child(2),#criteriaTable td:nth-child(3),#criteriaTable td:nth-child(4){font-family:var(--mono);color:var(--ink-dim)}
+    tr.needs-review td{background:rgba(224,176,58,.06)}
+    tr.needs-review:hover td{background:rgba(224,176,58,.1)}
+    tr.row-selected td{background:rgba(109,124,245,.12)!important}
+    tr.row-selected td:first-child{box-shadow:inset 3px 0 0 var(--arc)}
+    input.pick{accent-color:var(--arc);width:17px;height:17px}
+    .count{color:var(--arc-bright);font-family:var(--mono);font-weight:800}
+    tbody tr{animation:feed .32s ease}
+    @keyframes feed{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+    /* log + progress */
+    .log{background:#080b11;font-family:var(--mono);color:var(--muted)}
+    .log .STEP{color:var(--arc-bright)}
+    progress{height:8px;border:0;background:#0d111a;border-radius:99px;overflow:hidden}
+    progress::-webkit-progress-bar{background:#0d111a}
+    progress::-webkit-progress-value{background:linear-gradient(90deg,var(--arc),var(--arc-bright))}
+    progress::-moz-progress-bar{background:var(--arc)}
+
+    /* dialogs */
+    dialog{background:var(--obsidian);border:1px solid var(--edge);border-radius:16px;padding:20px}
+    dialog::backdrop{background:#000b}
+    dialog h3{font-weight:800}
+    .sheet-row,.bundle{background:#0d111a;border:1px solid var(--edge);border-radius:9px}
+    .sheet-row{display:flex;align-items:center;gap:8px;cursor:pointer}
+    .bundle h4{color:var(--arc-bright)}
+    #bundleItemsTable td:nth-child(2){font-family:var(--mono);color:var(--arc-bright);font-weight:600}
+
+    @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+    @media(max-width:760px){.spine{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:980px){.topbar{flex-direction:column;align-items:stretch}.userbar{justify-content:flex-start}}
   </style>
 </head>
 <body data-mode="event">
 <main class="shell">
   <header class="topbar">
-    <div class="brand"><h1>All for Cabal · Item Finder</h1><p>ค้นหาไอเทมจาก Template / Event / Prize / Shop Plan</p></div>
+    <div class="brand"><span class="gem"></span><div><h1>All for Cabal</h1><p>Item Finder · Operator Console</p></div></div>
     <div class="userbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
       <span id="serverBadge" class="badge">พร้อมใช้งาน</span>
       <span id="aztekStatus" class="badge" style="background:#3a2f14;color:var(--yellow)">Aztek: กำลังตรวจสอบ…</span>
@@ -54,6 +154,13 @@
       <button id="btnLogout" type="button" class="danger">ออกจากระบบ</button>
     </div>
   </header>
+
+  <nav class="spine" aria-label="ขั้นตอนการทำงาน (pipeline)">
+    <div class="snode active"><span class="k">1</span><span class="lab"><b>หาไอดีไอเทม</b><span>Item Finder</span></span></div>
+    <div class="snode"><span class="k">2</span><span class="lab"><b>สร้าง Bundle</b><span>Create Bundle</span></span></div>
+    <div class="snode"><span class="k">3</span><span class="lab"><b>โค้ดแลกของ</b><span>Item Code</span></span></div>
+    <div class="snode"><span class="k">4</span><span class="lab"><b>อีเวนต์</b><span>Event</span></span></div>
+  </nav>
 
   <div class="grid">
     <div class="stack">

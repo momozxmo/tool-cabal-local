@@ -5,24 +5,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>เข้าสู่ระบบ | All for Cabal</title>
   <style>
-    :root{color-scheme:dark;--bg:#111820;--panel:#18222e;--line:#314152;--text:#e8eef5;--muted:#9dabb9;--blue:#2878bf;--red:#f1838b;--shadow:0 12px 32px #0006}
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif;display:grid;place-items:center;padding:20px}
-    .card{width:min(100%,430px);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:28px}.eyebrow{color:#69e0b5;font-weight:700;font-size:13px}.brand{margin:3px 0 6px;font-size:26px}.muted{color:var(--muted);margin:0 0 24px}.fields{display:grid;gap:14px}label{display:grid;gap:6px;font-weight:600}input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}input:focus{outline:2px solid #5fa8e8;outline-offset:1px}button{width:100%;border:1px solid #3c94df;border-radius:7px;background:var(--blue);color:#fff;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.error{min-height:1.5em;color:var(--red);margin:16px 0 0}@media(max-width:480px){body{padding:12px}.card{padding:22px 18px}.brand{font-size:23px}}
+    :root{color-scheme:dark;
+      --void:#0b0d13;--obsidian:#111420;--raise:#212636;--edge:#272d40;
+      --ink:#e7eaf3;--muted:#868da3;--faint:#5b6076;
+      --arc:#6d7cf5;--arc-bright:#8b96ff;--arc-dim:rgba(109,124,245,.15);
+      --common:#8b93a6;--rare:#3f8bea;--epic:#b45ef0;--mystic:#2fcabe;--legend:#e0a63c;
+      --rail:linear-gradient(90deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend));
+      --red:#ef5b67;
+      --sans:"Segoe UI","Leelawadee UI","IBM Plex Sans Thai",Tahoma,system-ui,sans-serif;
+      --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,monospace}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;color:var(--ink);font:15px/1.55 var(--sans);display:grid;place-items:center;padding:20px;
+      background:
+        radial-gradient(1000px 600px at 50% -20%,rgba(109,124,245,.16),transparent 60%),
+        radial-gradient(700px 500px at 85% 115%,rgba(224,166,60,.07),transparent 55%),
+        var(--void)}
+    .card{width:min(100%,420px);background:linear-gradient(180deg,var(--obsidian),#0e111b);
+      border:1px solid var(--edge);border-radius:18px;box-shadow:0 30px 70px -30px #000c;padding:0;overflow:hidden;
+      animation:rise .5s ease}
+    @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+    .rail{height:3px;background:var(--rail)}
+    .inner{padding:30px 30px 28px}
+    .brandrow{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+    .gem{width:34px;height:34px;transform:rotate(45deg);border-radius:9px;flex:none;position:relative;
+      background:conic-gradient(from 45deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend),var(--common));
+      box-shadow:0 0 22px -3px var(--arc)}
+    .gem::after{content:"";position:absolute;inset:7px;border-radius:5px;background:var(--obsidian)}
+    .brandrow b{display:block;font-size:17px;font-weight:800;letter-spacing:.01em}
+    .brandrow span{font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+    .eyebrow{font-family:var(--mono);color:var(--arc-bright);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+    h1{margin:6px 0 6px;font-size:26px;font-weight:800;letter-spacing:-.01em}
+    .muted{color:var(--muted);margin:0 0 24px;font-size:14px}
+    .fields{display:grid;gap:15px}
+    label{display:grid;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    input{width:100%;background:#0d111a;color:var(--ink);border:1px solid var(--edge);border-radius:9px;padding:11px 12px;font:15px var(--sans)}
+    input:focus{outline:none;border-color:var(--arc);box-shadow:0 0 0 3px var(--arc-dim)}
+    button{width:100%;margin-top:4px;border:1px solid transparent;border-radius:9px;
+      background:linear-gradient(150deg,var(--arc),#5563e6);color:#fff;padding:12px 14px;font:700 15px var(--sans);
+      cursor:pointer;box-shadow:0 8px 22px -10px var(--arc);transition:box-shadow .15s,transform .05s}
+    button:hover{box-shadow:0 11px 28px -10px var(--arc)}
+    button:active{transform:translateY(1px)}
+    button:focus-visible{outline:2px solid var(--arc-bright);outline-offset:2px}
+    button:disabled{opacity:.55;cursor:wait}
+    .error{min-height:1.5em;color:var(--red);margin:16px 0 0;font-size:13.5px}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+    @media(max-width:480px){body{padding:12px}.inner{padding:24px 20px}h1{font-size:23px}}
   </style>
 </head>
 <body>
   <main class="card" aria-labelledby="pageTitle">
-    <div class="eyebrow">ALL FOR CABAL</div>
-    <h1 id="pageTitle" class="brand">เข้าสู่ระบบ</h1>
-    <p class="muted">เข้าสู่ Item Finder ด้วยบัญชีที่ได้รับอนุญาต</p>
-    <form id="loginForm">
-      <div class="fields">
-        <label for="username">ชื่อผู้ใช้<input id="username" name="username" autocomplete="username" required></label>
-        <label for="password">รหัสผ่าน<input id="password" name="password" type="password" autocomplete="current-password" required></label>
-        <button id="loginButton" type="submit">เข้าสู่ระบบ</button>
-      </div>
-      <p id="loginError" class="error" role="alert" aria-live="polite"></p>
-    </form>
+    <div class="rail"></div>
+    <div class="inner">
+      <div class="brandrow"><span class="gem"></span><div><b>All for Cabal</b><span>Operator Console</span></div></div>
+      <div class="eyebrow">Item Finder</div>
+      <h1 id="pageTitle">เข้าสู่ระบบ</h1>
+      <p class="muted">เข้าสู่ระบบด้วยบัญชีที่ได้รับอนุญาต</p>
+      <form id="loginForm">
+        <div class="fields">
+          <label for="username">ชื่อผู้ใช้<input id="username" name="username" autocomplete="username" required></label>
+          <label for="password">รหัสผ่าน<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+          <button id="loginButton" type="submit">เข้าสู่ระบบ</button>
+        </div>
+        <p id="loginError" class="error" role="alert" aria-live="polite"></p>
+      </form>
+    </div>
   </main>
   <script>
     const form = document.getElementById('loginForm');

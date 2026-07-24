@@ -5,15 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>บัญชีผู้ใช้ | All for Cabal</title>
   <style>
-    :root{color-scheme:dark;--bg:#111820;--panel:#18222e;--line:#314152;--text:#e8eef5;--muted:#9dabb9;--blue:#2878bf;--green:#167d5c;--red:#f1838b;--shadow:0 12px 32px #0006}
+    :root{color-scheme:dark;
+      --void:#0b0d13;--obsidian:#111420;--raise:#212636;--edge:#272d40;--edge-soft:#1e2334;
+      --ink:#e7eaf3;--ink-dim:#c3c9db;--faint:#5b6076;
+      --arc:#6d7cf5;--arc-bright:#8b96ff;--arc-dim:rgba(109,124,245,.15);--arc-line:rgba(109,124,245,.42);
+      --common:#8b93a6;--rare:#3f8bea;--epic:#b45ef0;--mystic:#2fcabe;--legend:#e0a63c;
+      --rail:linear-gradient(90deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend));
+      --sans:"Segoe UI","Leelawadee UI","IBM Plex Sans Thai",Tahoma,system-ui,sans-serif;
+      --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,monospace;
+      /* legacy aliases so existing rules + inline var(--muted) keep working */
+      --bg:var(--void);--panel:var(--obsidian);--line:var(--edge);--text:var(--ink);--muted:#868da3;
+      --blue:var(--arc);--green:#3fc98a;--red:#ef5b67;--shadow:0 18px 44px -20px #000a}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}.shell{width:min(100%,820px);margin:auto;padding:24px 20px}.topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}.topbar h1{font-size:25px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted)}.button,button{border:1px solid var(--line);border-radius:7px;background:#202b38;color:var(--text);padding:9px 12px;font:inherit;font-weight:600;cursor:pointer}.primary{background:var(--blue);border-color:#3c94df;color:#fff}.danger{background:#8d2d37;border-color:#b64b58;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}.card h2{font-size:17px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.card-body{padding:16px}.profile{display:grid;gap:10px}.profile dt{color:var(--muted)}.profile dd{margin:2px 0 0;font-weight:700}.profile div{padding-bottom:10px;border-bottom:1px solid #283747}.profile div:last-child{border:0;padding:0}.fields{display:grid;gap:12px}label{display:grid;gap:6px;font-weight:600}input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}input:focus{outline:2px solid #5fa8e8;outline-offset:1px}.message{min-height:1.5em;color:var(--red);margin:13px 0 0}.notice{margin-top:14px;border-color:#2b715a}.notice p{margin:0;color:var(--muted)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}@media(max-width:620px){.shell{padding:16px 12px}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions button{flex:1 1 100%}}
+
+    /* ===================== Arcane Operator Console — account ===================== */
+    body{font-family:var(--sans);background:
+        radial-gradient(1000px 500px at 85% -10%,rgba(109,124,245,.09),transparent 60%),
+        radial-gradient(700px 460px at 5% 110%,rgba(224,166,60,.05),transparent 55%),var(--void)}
+    .topbar{background:linear-gradient(180deg,var(--obsidian),#0e111b);border:1px solid var(--edge);border-radius:14px;padding:14px 18px}
+    .topbar h1{font-size:19px;font-weight:800}
+    .topbar p{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+    .brand{display:flex;align-items:center;gap:13px}
+    .gem{width:30px;height:30px;transform:rotate(45deg);border-radius:8px;flex:none;position:relative;
+      background:conic-gradient(from 45deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend),var(--common));
+      box-shadow:0 0 18px -4px var(--arc)}
+    .gem::after{content:"";position:absolute;inset:6px;border-radius:4px;background:var(--obsidian)}
+    .button,button{border:1px solid var(--edge);border-radius:9px;background:var(--raise);color:var(--ink);transition:border-color .15s,box-shadow .15s,transform .05s}
+    .button:hover,button:hover{border-color:var(--faint)}
+    button:active,.button:active{transform:translateY(1px)}
+    button:focus-visible,.button:focus-visible,input:focus-visible{outline:2px solid var(--arc-bright);outline-offset:2px}
+    .primary{background:linear-gradient(150deg,var(--arc),#5563e6);border-color:transparent;color:#fff;box-shadow:0 6px 18px -9px var(--arc)}
+    .danger{background:#8d2d37;border-color:transparent;color:#fff}
+    .card{background:var(--obsidian);border:1px solid var(--edge);border-radius:14px;position:relative}
+    .card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--rail);opacity:.65;z-index:2}
+    .card h2{font-size:15px;font-weight:800;border-bottom:1px solid var(--edge-soft)}
+    .profile dt{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    .profile div{border-bottom:1px solid var(--edge-soft)}
+    label{color:var(--ink-dim)}
+    input{background:#0d111a;border:1px solid var(--edge);border-radius:9px;color:var(--ink)}
+    input:focus{outline:none;border-color:var(--arc);box-shadow:0 0 0 3px var(--arc-dim)}
+    #pairingToken{font-family:var(--mono);color:var(--arc-bright);letter-spacing:.04em;font-weight:600}
+    .notice{margin-top:14px}
+    .notice::before{background:linear-gradient(90deg,var(--arc),transparent);opacity:1}
+    /* the bookmarklet is a drag target — mark it with Legend gold + dashed hint */
+    #bookmarklet{border:1px dashed var(--legend);color:var(--legend);background:rgba(224,166,60,.08)}
+    #bookmarklet:hover{border-color:var(--legend);background:rgba(224,166,60,.14)}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important}}
   </style>
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
-      <div><h1>บัญชีผู้ใช้</h1><p>All for Cabal</p></div>
-      <a class="button" href="/">กลับไป Item Finder</a>
+      <div class="brand"><span class="gem"></span><div><h1>บัญชีผู้ใช้</h1><p>All for Cabal · Operator Console</p></div></div>
+      <a class="button" href="/">← กลับไป Item Finder</a>
     </header>
     <div class="grid">
       <section class="card" aria-labelledby="profileTitle">
