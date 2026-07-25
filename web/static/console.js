@@ -51,6 +51,168 @@ function nextKey(prefix) {
   return prefix + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 }
 
+// ---------------------------------------------------------------- ปฏิทิน 24 ชม.
+// The browser's own datetime-local picker follows the *browser's* locale, not
+// the page's, so an English Windows shows AM/PM however the page is written.
+// Aztek's own field is 24-hour and so is every plan file, so this is a picker
+// of our own rather than a setting to fight over.
+
+const MONTHS_TH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+/** 'YYYY-MM-DD HH:MM:SS' (also reads the 'T' form the old inputs produced). */
+function readStamp(text) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(
+    String(text || '').trim());
+  if (!m) return null;
+  return {year: +m[1], month: +m[2] - 1, day: +m[3],
+          hour: +m[4], minute: +m[5], second: +(m[6] || 0)};
+}
+function writeStamp(v) {
+  return `${v.year}-${pad(v.month + 1)}-${pad(v.day)} `
+       + `${pad(v.hour)}:${pad(v.minute)}:${pad(v.second)}`;
+}
+
+function optionList(count) {
+  return Array.from({length: count}, (_, n) => pad(n));
+}
+
+/** Turn a text input into a read-only field with a 24-hour calendar popover. */
+function attachPicker(input) {
+  const wrap = document.createElement('span');
+  wrap.className = 'dtwrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  input.readOnly = true;
+  input.placeholder = 'เลือกวันและเวลา';
+
+  const pop = document.createElement('div');
+  pop.className = 'dtpop';
+  pop.hidden = true;
+  wrap.appendChild(pop);
+
+  const head = document.createElement('div');
+  head.className = 'dthead';
+  const prev = document.createElement('button');
+  prev.type = 'button'; prev.textContent = '‹';
+  const title = document.createElement('b');
+  const next = document.createElement('button');
+  next.type = 'button'; next.textContent = '›';
+  head.append(prev, title, next);
+
+  const grid = document.createElement('div');
+  grid.className = 'dtgrid';
+
+  const time = document.createElement('div');
+  time.className = 'dttime';
+  const boxes = {};
+  [['hour', 24, 'ชม.'], ['minute', 60, 'นาที'], ['second', 60, 'วินาที']]
+    .forEach(([field, count, label]) => {
+      const cell = document.createElement('label');
+      const select = document.createElement('select');
+      optionList(count).forEach(value => {
+        const option = document.createElement('option');
+        option.value = option.textContent = value;
+        select.appendChild(option);
+      });
+      select.onchange = () => { shown[field] = +select.value; commit(); };
+      boxes[field] = select;
+      cell.append(label, select);
+      time.appendChild(cell);
+    });
+
+  const foot = document.createElement('div');
+  foot.className = 'dtfoot';
+  const nowBtn = document.createElement('button');
+  nowBtn.type = 'button'; nowBtn.textContent = 'วันนี้ 00:00:00';
+  const doneBtn = document.createElement('button');
+  doneBtn.type = 'button'; doneBtn.className = 'primary'; doneBtn.textContent = 'ตกลง';
+  foot.append(nowBtn, doneBtn);
+  pop.append(head, grid, time, foot);
+
+  const today = new Date();
+  let shown = readStamp(input.value) || {
+    year: today.getFullYear(), month: today.getMonth(), day: today.getDate(),
+    hour: 0, minute: 0, second: 0};
+  let view = {year: shown.year, month: shown.month};
+
+  function commit() {
+    input.value = writeStamp(shown);
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+    paint();
+  }
+
+  function paint() {
+    title.textContent = `${MONTHS_TH[view.month]} ${view.year}`;
+    grid.replaceChildren();
+    ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].forEach(name => {
+      const cell = document.createElement('span');
+      cell.className = 'dtdow'; cell.textContent = name;
+      grid.appendChild(cell);
+    });
+    const first = new Date(view.year, view.month, 1).getDay();
+    const days = new Date(view.year, view.month + 1, 0).getDate();
+    for (let blank = 0; blank < first; blank++) {
+      grid.appendChild(document.createElement('span'));
+    }
+    for (let day = 1; day <= days; day++) {
+      const cell = document.createElement('button');
+      cell.type = 'button'; cell.textContent = String(day);
+      if (shown.year === view.year && shown.month === view.month && shown.day === day) {
+        cell.className = 'on';
+      }
+      cell.onclick = () => {
+        shown = Object.assign({}, shown,
+                              {year: view.year, month: view.month, day});
+        commit();
+      };
+      grid.appendChild(cell);
+    }
+    boxes.hour.value = pad(shown.hour);
+    boxes.minute.value = pad(shown.minute);
+    boxes.second.value = pad(shown.second);
+  }
+
+  function step(by) {
+    const moved = new Date(view.year, view.month + by, 1);
+    view = {year: moved.getFullYear(), month: moved.getMonth()};
+    paint();
+  }
+  prev.onclick = () => step(-1);
+  next.onclick = () => step(1);
+  nowBtn.onclick = () => {
+    const day = new Date();
+    shown = {year: day.getFullYear(), month: day.getMonth(), day: day.getDate(),
+             hour: 0, minute: 0, second: 0};
+    view = {year: shown.year, month: shown.month};
+    commit();
+  };
+  doneBtn.onclick = () => { pop.hidden = true; };
+
+  function open() {
+    const value = readStamp(input.value);
+    if (value) { shown = value; view = {year: value.year, month: value.month}; }
+    paint();
+    pop.hidden = false;
+  }
+  input.onclick = () => { pop.hidden ? open() : (pop.hidden = true); };
+  input.onkeydown = event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+    if (event.key === 'Escape') pop.hidden = true;
+  };
+  document.addEventListener('mousedown', event => {
+    if (!pop.hidden && !wrap.contains(event.target)) pop.hidden = true;
+  });
+  return input;
+}
+
+/** Give every .dtpick on the page its calendar. */
+function attachPickers() {
+  document.querySelectorAll('input.dtpick').forEach(attachPicker);
+}
+
 /** A list of half-built things kept in this browser. */
 class Queue {
   constructor(storageKey) { this.storageKey = storageKey; this.items = []; this.active = ''; }

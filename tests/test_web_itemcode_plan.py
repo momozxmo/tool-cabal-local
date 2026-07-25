@@ -77,10 +77,18 @@ def test_a_thai_name_cannot_become_a_slug_and_says_so():
 
 def test_a_single_set_is_generated_as_one_batch_with_the_buffer():
     """35 codes asked for, +5 on SEA — the buffer covers ones that fail."""
+    reward = _one(_event())['rewards'][0]
+    assert reward['num_codes'] == '40'
+    assert (reward['quantity'], reward['remaining']) == ('40', '40')
+    assert reward['limited'] is True
+
+
+def test_the_item_code_itself_carries_no_counts():
+    """The counts belong to the reward set — the code-wide "จำกัดจำนวน" is not
+    part of how these are written, so nothing here may set it."""
     draft = _one(_event())
-    assert [r['num_codes'] for r in draft['rewards']] == ['40']
-    assert (draft['quantity'], draft['remaining']) == ('40', '40')
-    assert draft['limited'] is True
+    assert not {'limited', 'quantity', 'remaining', 'kind',
+                'desc_th', 'desc_en'} & set(draft)
 
 
 def test_the_buffer_is_bigger_on_pc_th():
@@ -93,8 +101,6 @@ def test_once_per_set_makes_one_reward_set_each_and_buffers_only_the_first_two()
     assert [r['num_codes'] for r in draft['rewards']] == ['105', '105', '100', '100']
     assert [r['name_th'] for r in draft['rewards']][:2] == [
         'Storm Chaser - WINNER REWARDS 1', 'Storm Chaser - WINNER REWARDS 2']
-    # 4 sets of 100, and the buffer twice.
-    assert draft['quantity'] == '410'
 
 
 def test_a_code_that_may_not_be_reused_is_one_use_per_player():
@@ -263,6 +269,86 @@ def test_the_singular_spelling_of_the_codes_column_is_read_too():
     meta = sheets[0][1][0]['group_meta']
     assert meta['codes_per_set'] == '50'
     assert meta['set_count'] == '1'
+
+
+def _workbook_bytes(rows, title='plan'):
+    import io
+
+    import openpyxl
+
+    book = openpyxl.Workbook()
+    book.active.title = title
+    for row in rows:
+        book.active.append(list(row))
+    buffer = io.BytesIO()
+    book.save(buffer)
+    return buffer.getvalue()
+
+
+def test_importing_a_plan_on_this_page_needs_a_session(anonymous_client):
+    assert anonymous_client.post('/api/itemcodes/import').status_code == 401
+
+
+def test_import_reports_the_tabs_and_stamps_each_draft_with_its_own(client):
+    """The page offers the tabs to pick from, so a draft has to know which one
+    it came from — a plan holds dozens of activities and a run is about a few."""
+    payload = _workbook_bytes(
+        [['Quiz Night']] + _block(1, 'WINNER REWARDS', 50, ['111'])
+        + _block(2, 'Participation', 60, ['222']), title='ID COM Quiz')
+    response = client.post(
+        '/api/itemcodes/import', data={'game': SEA},
+        files={'file': ('plan.xlsx', payload,
+                        'application/vnd.openxmlformats-officedocument'
+                        '.spreadsheetml.sheet')})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body['sheets'] == [{'name': 'ID COM Quiz', 'count': 2}]
+    assert [d['sheet'] for d in body['itemcodes']] == ['ID COM Quiz'] * 2
+    assert [d['name_th'] for d in body['itemcodes']] == [
+        'Quiz Night - WINNER REWARDS', 'Quiz Night - Participation']
+    assert body['itemcodes'][0]['rewards'][0]['num_codes'] == '55'
+
+
+def test_only_the_tabs_chosen_on_the_finder_page_are_kept(client):
+    """A plan holds dozens of activities. What the operator did not tick must
+    not turn up later as an Item Code nobody asked for."""
+    import io
+
+    import openpyxl
+
+    book = openpyxl.Workbook()
+    for index, (title, activity) in enumerate(
+            [('Wanted', 'Quiz Night'), ('Skipped', 'Other Thing')]):
+        sheet = book.active if index == 0 else book.create_sheet()
+        sheet.title = title
+        for row in [[activity]] + _block(1, 'WINNER REWARDS', 50, ['111']):
+            sheet.append(list(row))
+    buffer = io.BytesIO()
+    book.save(buffer)
+
+    started = client.post(
+        '/api/import-plan', data={'mode': 'itemcode'},
+        files={'file': ('plan.xlsx', buffer.getvalue(),
+                        'application/vnd.openxmlformats-officedocument'
+                        '.spreadsheetml.sheet')}).json()
+    assert {sheet['name'] for sheet in started['sheets']} == {'Wanted', 'Skipped'}
+    applied = client.post('/api/import-plan/apply', json={
+        'pending_id': started['pending_id'], 'selected_sheets': ['Wanted']})
+    assert applied.status_code == 200, applied.text
+
+    drafts = client.get('/api/workspaces/%s/itemcodes'
+                        % started['workspace_id']).json()['itemcodes']
+    assert [d['name_th'] for d in drafts] == ['Quiz Night - WINNER REWARDS']
+
+
+def test_a_file_with_no_prize_table_imports_as_nothing_rather_than_failing(client):
+    response = client.post(
+        '/api/itemcodes/import', data={'game': SEA},
+        files={'file': ('empty.xlsx', _workbook_bytes([['just a note']]),
+                        'application/vnd.openxmlformats-officedocument'
+                        '.spreadsheetml.sheet')})
+    assert response.status_code == 200
+    assert response.json()['itemcodes'] == []
 
 
 @pytest.mark.parametrize('game, expected', [(SEA, '55'), (TH, '60')])

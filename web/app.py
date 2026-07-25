@@ -88,17 +88,15 @@ class ItemCodeSpec(BaseModel):
 
     ``rewards`` is a list of sets: each carries its own codes and exactly one
     bundle, because v2 replaces a reward set's bundle rather than adding to it.
+
+    The type is not a field: an Item Code is always ALL. Neither are the
+    descriptions or the code-wide "จำกัดจำนวน" — those are not part of how
+    these are written, and the counts live on the reward set.
     """
     name_th: str = Field(default='', max_length=200)
     name_en: str = Field(default='', max_length=200)
     slug: str = Field(default='', max_length=120)
-    desc_th: str = Field(default='', max_length=1000)
-    desc_en: str = Field(default='', max_length=1000)
-    kind: Literal['ALL', 'WINNER'] = 'ALL'
     uses_per_user: str = Field(default='1', max_length=12)
-    limited: bool = False
-    quantity: str = Field(default='', max_length=12)
-    remaining: str = Field(default='', max_length=12)
     start_time: str = Field(default='', max_length=32)
     end_time: str = Field(default='', max_length=32)
     # Which bundle group this came from, so a page that handed it over can show
@@ -1139,8 +1137,6 @@ def _reward_head(entry: dict) -> dict:
     return {
         'name_th': str(entry.get('name_th') or '').strip(),
         'name_en': str(entry.get('name_en') or '').strip(),
-        'desc_th': str(entry.get('desc_th') or ''),
-        'desc_en': str(entry.get('desc_en') or ''),
         'uses_per_user': str(entry.get('uses_per_user') or '1').strip() or '1',
         'limited': bool(entry.get('limited')),
         'quantity': str(entry.get('quantity') or '').strip(),
@@ -1250,6 +1246,60 @@ def _prepare(payload_game, jobs, do_save):
         raise HTTPException(status_code=400, detail='ดูตัวอย่างได้ทีละรายการเท่านั้น')
 
 
+@router.post('/api/itemcodes/import')
+async def itemcodes_import(request: Request, file: UploadFile = File(...),
+                           game: str = Form(''),
+                           user: User = Depends(require_user),
+                           db: Session = Depends(get_db)):
+    """Read a plan file straight into Item Code drafts, tab by tab.
+
+    No workspace and no search: everything an Item Code needs is in the
+    conditions block above each prize table, so the file can be looked at here
+    before deciding whether any items need finding at all. Drafts carry the
+    sheet they came from so the page can offer the tabs to pick from.
+    """
+    from web import itemcode_plan
+
+    path = await _temporary_upload(file)
+    try:
+        sheets, skipped = await asyncio.to_thread(
+            item_service.parse_workbook_locked,
+            item_service.parser_for_mode('itemcode'), path)
+    except Exception as error:
+        raise HTTPException(status_code=400,
+                            detail='อ่านไฟล์ไม่สำเร็จ: %s' % error)
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+    drafts = []
+    counts = []
+    for name, rows in sheets:
+        # One group per prize table, first row wins — they all carry the same
+        # conditions, which is what a draft is made of.
+        group_meta = {}
+        for row in rows:
+            group = (row.get('sources') or [''])[0]
+            if group and group not in group_meta:
+                group_meta[group] = row.get('group_meta') or {}
+        made = itemcode_plan.build_itemcodes(group_meta, game)
+        for draft in made:
+            draft['sheet'] = name
+        drafts.extend(made)
+        counts.append({'name': name, 'count': len(made)})
+
+    write_audit(
+        db, user_id=user.id, action='itemcode.imported', status='success',
+        summary={'filename': file.filename or 'plan.xlsx', 'game': game,
+                 'sheets': len(counts), 'drafts': len(drafts)},
+        tool='create_itemcode', resource_type='user', resource_id=user.id,
+        request=request,
+    )
+    return {'sheets': counts, 'itemcodes': drafts, 'skipped': list(skipped or [])}
+
+
 @router.post('/api/itemcodes/run')
 async def itemcodes_run(payload: ItemCodeRunRequest, request: Request,
                         user: User = Depends(require_user),
@@ -1264,10 +1314,7 @@ async def itemcodes_run(payload: ItemCodeRunRequest, request: Request,
         jobs.append({
             'name_th': spec.name_th.strip(), 'name_en': spec.name_en.strip(),
             'slug': _require_slug(spec.slug, where),
-            'desc_th': spec.desc_th, 'desc_en': spec.desc_en,
-            'type': spec.kind, 'uses_per_user': spec.uses_per_user.strip() or '1',
-            'limited': spec.limited, 'quantity': spec.quantity.strip(),
-            'remaining': spec.remaining.strip(),
+            'uses_per_user': spec.uses_per_user.strip() or '1',
             'start_time': _require_datetime(spec.start_time, 'เวลาเริ่มใช้งาน', where),
             'end_time': _require_datetime(spec.end_time, 'เวลาสิ้นสุด', where),
             'group': spec.group,

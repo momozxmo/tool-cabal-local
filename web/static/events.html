@@ -85,11 +85,11 @@
           <label>จำนวนรางวัลทั้งหมด<input id="quantity" type="number" min="0" value="0"></label>
           <label>คงเหลือ<input id="remaining" type="number" min="0" value="0"></label>
           <div class="win-head">ช่วงเวลากิจกรรม</div>
-          <label class="wide">วันเริ่มกิจกรรม *<input id="startEvent" type="datetime-local" step="1"></label>
-          <label class="wide">วันสิ้นสุดกิจกรรม *<input id="endEvent" type="datetime-local" step="1"></label>
+          <label class="wide">วันเริ่มกิจกรรม *<input id="startEvent" class="dtpick" type="text"></label>
+          <label class="wide">วันสิ้นสุดกิจกรรม *<input id="endEvent" class="dtpick" type="text"></label>
           <div class="win-head">ช่วงเวลารับรางวัล</div>
-          <label class="wide">วันเริ่มรับรางวัล *<input id="startClaim" type="datetime-local" step="1"></label>
-          <label class="wide">วันสิ้นสุดการรับรางวัล *<input id="endClaim" type="datetime-local" step="1"></label>
+          <label class="wide">วันเริ่มรับรางวัล *<input id="startClaim" class="dtpick" type="text"></label>
+          <label class="wide">วันสิ้นสุดการรับรางวัล *<input id="endClaim" class="dtpick" type="text"></label>
           <label class="full inline"><input id="sameWindow" type="checkbox">ช่วงรับรางวัล = ช่วงกิจกรรม (คัดลอกให้อัตโนมัติ)</label>
         </div>
       </div>
@@ -380,6 +380,7 @@ $('btnCreateOne').onclick = () => { const entry = queue.current(); return entry 
 $('btnCreateAll').onclick = () => queue.items.length ? createThese(queue.items.slice()) : null;
 
 async function init() {
+  attachPickers();
   queue.load(); drainHandoff();
   await loadShell(pendingGame);
   if (!queue.active && queue.items.length) queue.active = queue.items[0].key;

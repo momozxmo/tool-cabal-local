@@ -378,6 +378,23 @@ def test_the_two_forms_are_told_apart_by_where_they_write():
     assert 'aztek-tools-v2' in activity_runner.create_url(GAME, 'events')
 
 
+def test_an_item_code_is_always_all_and_leaves_the_rest_of_the_form_alone():
+    """WINNER is the Event's idea. The descriptions and the code-wide
+    "จำกัดจำนวน" are not part of how these are written, so the page's own
+    defaults must not be overwritten with blanks."""
+    source = inspect.getsource(itemcode_runner.ItemCodeBuilder._fill_header)
+    assert "select_by_options(page, 'ALL'" in source
+    assert 'desc_th' not in source and 'desc_en' not in source
+    assert "set_switch" not in source
+
+
+def test_a_reward_set_still_gets_its_own_code_limit():
+    """Ticking that one is what makes the two count boxes exist at all."""
+    source = inspect.getsource(itemcode_runner.ItemCodeBuilder._fill_reward)
+    assert 'จำกัดจำนวน Code' in source
+    assert 'rewards.%d.quantity' in source
+
+
 def test_each_form_knows_its_own_confirm_button():
     assert itemcode_runner.ItemCodeBuilder.SAVE_LABEL == 'สร้าง Item Code'
     assert event_runner.EventBuilder.SAVE_LABEL == 'สร้าง Event'

@@ -64,32 +64,31 @@
         <div class="topline">
           <label>เกม / เซิร์ฟ<select id="game"></select></label>
           <label>Item Code ในคิว <span id="queueCount" class="count">0</span><select id="queuePick"></select></label>
+          <button id="btnImport" class="primary" title="อ่านไฟล์แผนแล้วเลือกแท็บที่จะเอา">📂 Import ไฟล์แผน</button>
           <button id="btnQueueNew" class="success">+ Item Code ใหม่</button>
           <button id="btnQueueDel">✕ เอาออก</button>
           <button id="btnQueueClear" class="danger">ล้างคิว</button>
         </div>
-        <p class="hint" id="queueHint">ยังไม่มีอะไรในคิว — กด “+ Item Code ใหม่” หรือสร้างบันเดิลแล้วส่งเลขมาจากหน้า “สร้าง Bundle”</p>
+        <input id="planFile" class="hidden" type="file" accept=".xlsx,.xlsm">
+        <p class="hint" id="queueHint">ยังไม่มีอะไรในคิว — กด “📂 Import ไฟล์แผน” เพื่อดูข้อมูลในไฟล์ก่อน
+          หรือ “+ Item Code ใหม่” เพื่อกรอกเอง</p>
       </div>
     </section>
 
     <section class="card" id="editor" hidden>
       <div class="card-head"><h2>แก้ Item Code</h2><span id="editorWhich" class="hint"></span></div>
       <div class="card-body section">
+        <!-- ประเภทล็อกเป็น ALL · ไม่มี "จำกัดจำนวน" และคำอธิบายระดับ Item Code
+             (ไม่ได้ใช้ ปล่อยค่าเริ่มต้นของเว็บไว้) -->
         <div class="formgrid">
           <label class="wide">ชื่อ Item Code (ไทย) *<input id="nameTh" type="text"></label>
           <label class="wide">ชื่อ Item Code (อังกฤษ) *<input id="nameEn" type="text"></label>
           <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
             <span class="slugline"><input id="slug" type="text" spellcheck="false">
               <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
-          <label>ประเภท<select id="kind"><option value="ALL">ALL</option><option value="WINNER">WINNER</option></select></label>
           <label>ใช้ต่อ 1 User<input id="usesPerUser" type="number" min="1" value="1"></label>
-          <label class="wide">เวลาเริ่มใช้งาน *<input id="startTime" type="datetime-local" step="1"></label>
-          <label class="wide">เวลาสิ้นสุด *<input id="endTime" type="datetime-local" step="1"></label>
-          <label class="inline"><input id="limited" type="checkbox">จำกัดจำนวน</label>
-          <label>จำนวนครั้งที่ใช้ได้<input id="quantity" type="number" min="0"></label>
-          <label>จำนวนคงเหลือ<input id="remaining" type="number" min="0"></label>
-          <label class="wide">คำอธิบาย (ไทย)<input id="descTh" type="text"></label>
-          <label class="wide">คำอธิบาย (อังกฤษ)<input id="descEn" type="text"></label>
+          <label class="wide">เวลาเริ่มใช้งาน *<input id="startTime" class="dtpick" type="text"></label>
+          <label class="wide">เวลาสิ้นสุด *<input id="endTime" class="dtpick" type="text"></label>
         </div>
       </div>
       <div class="card-body section">
@@ -124,6 +123,22 @@
   </div>
 </main>
 
+<!-- A plan file holds dozens of activities and a run is usually about a few of
+     them, so nothing enters the queue until the operator has picked. -->
+<dialog id="sheetDialog">
+  <h3>เลือกแท็บที่จะเอา <span id="sheetTotal" class="hint"></span></h3>
+  <p class="hint">ติ๊กเฉพาะแท็บที่ต้องทำ — แต่ละตารางของรางวัลในแท็บ = 1 Item Code</p>
+  <div class="actions">
+    <button id="btnSheetAll" type="button">เลือกทั้งหมด</button>
+    <button id="btnSheetNone" type="button">ล้างที่เลือก</button>
+  </div>
+  <div id="sheetList" class="sheet-list"></div>
+  <div class="actions">
+    <button id="btnSheetTake" class="primary" type="button">เอาเข้าคิว</button>
+    <button data-close="sheetDialog" type="button">ปิด</button>
+  </div>
+</dialog>
+
 <script src="/static/console.js"></script>
 <script>
 const queue = new Queue('afc.itemcodeQueue');
@@ -137,9 +152,8 @@ function blankReward(bundleId, name) {
 }
 function blankCode(name) {
   return {key: nextKey('c'), name: queue.uniqueName(name || 'Item Code ใหม่'),
-          name_th: name || '', name_en: '', slug: '', kind: 'ALL',
-          uses_per_user: '1', limited: false, quantity: '', remaining: '',
-          start_time: '', end_time: '', desc_th: '', desc_en: '', group: '',
+          name_th: name || '', name_en: '', slug: '',
+          uses_per_user: '1', start_time: '', end_time: '', group: '',
           rewards: [blankReward('')]};
 }
 
@@ -165,17 +179,15 @@ function renderQueue() {
   queue.save();
 }
 
-const FIELDS = {nameTh: 'name_th', nameEn: 'name_en', slug: 'slug', kind: 'kind',
-                usesPerUser: 'uses_per_user', quantity: 'quantity',
-                remaining: 'remaining', startTime: 'start_time',
-                endTime: 'end_time', descTh: 'desc_th', descEn: 'desc_en'};
+const FIELDS = {nameTh: 'name_th', nameEn: 'name_en', slug: 'slug',
+                usesPerUser: 'uses_per_user', startTime: 'start_time',
+                endTime: 'end_time'};
 
 function select(key) {
   queue.active = key;
   const entry = queue.current();
   if (entry) {
     Object.entries(FIELDS).forEach(([id, field]) => { $(id).value = entry[field] || ''; });
-    $('limited').checked = !!entry.limited;
     $('editorWhich').textContent = entry.name;
   }
   renderQueue(); renderSets();
@@ -192,10 +204,6 @@ Object.entries(FIELDS).forEach(([id, field]) => {
     renderQueue();
   };
 });
-$('limited').onchange = () => {
-  const entry = queue.current(); if (!entry) return;
-  entry.limited = $('limited').checked; queue.save();
-};
 $('btnSlug').onclick = () => {
   const entry = queue.current(); if (!entry) return;
   const made = slugify($('nameEn').value || $('nameTh').value);
@@ -257,6 +265,8 @@ function setCard(entry, reward, index) {
     field('ใช้ต่อ 1 User', input(reward.uses_per_user, 'number', v => { reward.uses_per_user = v; queue.save(); }, {min: '1'})),
     field('Bundle ID *', input(reward.bundle_id, 'text', v => { reward.bundle_id = v; queue.save(); }, {inputmode: 'numeric'})));
 
+  // Ticking this is what makes the two count boxes exist on the Aztek form,
+  // so they appear here the same way rather than sitting there greyed out.
   const limited = document.createElement('input');
   limited.type = 'checkbox'; limited.checked = !!reward.limited;
   limited.onchange = () => {
@@ -264,7 +274,7 @@ function setCard(entry, reward, index) {
   };
   grid.append(field('จำกัดจำนวน Code', limited, 'inline'));
   grid.append(
-    field('จำนวนครั้งที่ใช้ได้', input(reward.quantity, 'number', v => { reward.quantity = v; queue.save(); }, {min: '0'}), 'limit-only'),
+    field('จำนวนรวม', input(reward.quantity, 'number', v => { reward.quantity = v; queue.save(); }, {min: '0'}), 'limit-only'),
     field('จำนวนคงเหลือ', input(reward.remaining, 'number', v => { reward.remaining = v; queue.save(); }, {min: '0'}), 'limit-only'));
 
   const kind = document.createElement('select');
@@ -307,29 +317,9 @@ function drainPlan() {
     sessionStorage.removeItem('afc.itemcodeHandoff');
     payload = JSON.parse(raw);
   } catch (e) { return; }
-  if (!payload || !Array.isArray(payload.itemcodes)) return;
-  let added = 0, first = '';
-  payload.itemcodes.forEach(draft => {
-    const entry = blankCode(draft.name_th || draft.group || '');
-    ['name_th', 'name_en', 'slug', 'kind', 'uses_per_user', 'limited',
-     'quantity', 'remaining', 'start_time', 'end_time', 'group']
-      .forEach(field => { if (draft[field] !== undefined) entry[field] = draft[field]; });
-    entry.rewards = (draft.rewards || []).map(
-      reward => Object.assign(blankReward(''), reward));
-    if (!entry.rewards.length) entry.rewards = [blankReward('')];
-    entry.name = queue.uniqueName(entry.name_th || 'Item Code');
-    queue.add(entry); added++;
-    first = first || entry.key;
-    // What the file could not answer for itself, said once and in place.
-    (draft.notes || []).forEach(note => log(`${entry.name}: ${note}`, 'WARNING'));
-  });
-  if (added) {
-    // Land on the first of the batch, not whatever happened to be added last.
-    queue.active = first;
-    log(`รับ ${added} Item Code จากไฟล์แผน — ยังไม่มีเลข bundle `
-        + `(สร้างบันเดิลแล้วส่งกลับมาได้)`, 'SUCCESS');
-  }
+  if (!payload || !Array.isArray(payload.itemcodes) || !payload.itemcodes.length) return;
   if (payload.game) pendingGame = payload.game;
+  addDrafts(payload.itemcodes, 'หน้าหาไอดีไอเทม');
 }
 
 // ---- รับเลข bundle จากหน้าสร้าง Bundle ----
@@ -358,13 +348,89 @@ function drainHandoff() {
   if (payload.game) pendingGame = payload.game;
 }
 
+// ---- Import ไฟล์แผนตรงหน้านี้ ----
+// The plan can be read here as well as through Item Finder: everything an Item
+// Code needs is in the conditions block, and the items only matter once there
+// is a bundle to build. A file holds dozens of activities, so nothing enters
+// the queue before the operator has picked the tabs.
+let imported = [];
+
+$('btnImport').onclick = () => $('planFile').click();
+$('planFile').onchange = async event => {
+  const file = event.target.files[0];
+  $('planFile').value = '';
+  if (!file) return;
+  $('btnImport').disabled = true;
+  $('runMsg').textContent = 'กำลังอ่านไฟล์…';
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('game', $('game').value);
+    const response = await apiFetch('/api/itemcodes/import', {method: 'POST', body: form});
+    const data = await response.json();
+    if (!response.ok) { $('runMsg').textContent = data.detail || 'อ่านไฟล์ไม่สำเร็จ'; return; }
+    imported = data.itemcodes || [];
+    if (!imported.length) { $('runMsg').textContent = 'ไฟล์นี้ไม่มีเงื่อนไข Item Code'; return; }
+    $('runMsg').textContent = `อ่านไฟล์ได้ ${imported.length} Item Code จาก ${(data.sheets || []).length} แท็บ`;
+    log(`อ่าน "${file.name}": ${(data.sheets || []).length} แท็บ · ${imported.length} Item Code`, 'SUCCESS');
+    (data.skipped || []).slice(0, 5).forEach(name => log('ข้ามแถวที่อ่าน ItemKind ไม่ได้: ' + name, 'WARNING'));
+    showSheets(data.sheets || []);
+  } catch (e) { $('runMsg').textContent = 'อ่านไฟล์ไม่สำเร็จ'; }
+  finally { $('btnImport').disabled = false; }
+};
+
+function showSheets(sheets) {
+  const list = $('sheetList'); list.replaceChildren();
+  $('sheetTotal').textContent = `${sheets.length} แท็บ`;
+  sheets.forEach(sheet => {
+    const row = document.createElement('label');
+    row.className = 'sheet-row';
+    const tick = document.createElement('input');
+    tick.type = 'checkbox'; tick.value = sheet.name; tick.checked = true;
+    const text = document.createElement('span');
+    text.textContent = ` ${sheet.name} — ${sheet.count} Item Code`;
+    row.append(tick, text);
+    list.appendChild(row);
+  });
+  $('sheetDialog').showModal();
+}
+$('btnSheetAll').onclick = () => $('sheetList').querySelectorAll('input').forEach(b => b.checked = true);
+$('btnSheetNone').onclick = () => $('sheetList').querySelectorAll('input').forEach(b => b.checked = false);
+$('btnSheetTake').onclick = () => {
+  const wanted = new Set([...$('sheetList').querySelectorAll('input')]
+    .filter(box => box.checked).map(box => box.value));
+  const taken = imported.filter(draft => wanted.has(draft.sheet));
+  if (!taken.length) { log('ยังไม่ได้เลือกแท็บไหนเลย', 'WARNING'); return; }
+  $('sheetDialog').close();
+  addDrafts(taken, `ไฟล์แผน (${wanted.size} แท็บ)`);
+};
+document.querySelectorAll('[data-close]').forEach(
+  button => button.onclick = () => $(button.dataset.close).close());
+
+/** Put drafts in the queue and land on the first of them. */
+function addDrafts(drafts, from) {
+  let first = '';
+  drafts.forEach(draft => {
+    const entry = blankCode(draft.name_th || draft.group || '');
+    ['name_th', 'name_en', 'slug', 'uses_per_user', 'start_time', 'end_time', 'group']
+      .forEach(field => { if (draft[field] !== undefined) entry[field] = draft[field]; });
+    entry.rewards = (draft.rewards || []).map(
+      reward => Object.assign(blankReward(''), reward));
+    if (!entry.rewards.length) entry.rewards = [blankReward('')];
+    entry.name = queue.uniqueName(entry.name_th || 'Item Code');
+    queue.add(entry);
+    first = first || entry.key;
+    (draft.notes || []).forEach(note => log(`${entry.name}: ${note}`, 'WARNING'));
+  });
+  if (first) queue.active = first;
+  log(`รับ ${drafts.length} Item Code จาก${from} — ตรวจเลข/วันที่ก่อนสร้าง`, 'SUCCESS');
+  select(queue.active);
+}
+
 // ---- สร้างจริง ----
 function jobFrom(entry) {
   return {name_th: entry.name_th, name_en: entry.name_en, slug: entry.slug,
-          desc_th: entry.desc_th, desc_en: entry.desc_en, kind: entry.kind,
           uses_per_user: String(entry.uses_per_user || '1'),
-          limited: !!entry.limited, quantity: String(entry.quantity || ''),
-          remaining: String(entry.remaining || ''),
           start_time: withSeconds(entry.start_time),
           end_time: withSeconds(entry.end_time), group: entry.group || '',
           rewards: entry.rewards};
@@ -441,6 +507,7 @@ $('btnCreateOne').onclick = () => { const entry = queue.current(); return entry 
 $('btnCreateAll').onclick = () => queue.items.length ? createThese(queue.items.slice()) : null;
 
 async function init() {
+  attachPickers();
   queue.load(); drainPlan(); drainHandoff();
   await loadShell(pendingGame);
   if (!queue.active && queue.items.length) queue.active = queue.items[0].key;

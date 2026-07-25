@@ -35,34 +35,25 @@ class ItemCodeBuilder(ActivityBuilder):
     WRITE_MARK = 'itemcode'
 
     async def _fill_header(self, page, spec, missing):
-        for field, value, label, required in (
-            ('name_th', spec.get('name_th'), 'ชื่อ Item Code (ไทย)', True),
-            ('name_en', spec.get('name_en'), 'ชื่อ Item Code (อังกฤษ)', True),
-            ('slug', spec.get('slug'), 'Slug', True),
-            ('desc_th', spec.get('desc_th'), 'คำอธิบาย (ไทย)', False),
-            ('desc_en', spec.get('desc_en'), 'คำอธิบาย (อังกฤษ)', False),
+        # Only three fields belong to the Item Code itself. The descriptions and
+        # the "จำกัดจำนวน" switch are not part of how these are written, so the
+        # page's own defaults are left alone rather than overwritten with blanks.
+        for field, value, label in (
+            ('name_th', spec.get('name_th'), 'ชื่อ Item Code (ไทย)'),
+            ('name_en', spec.get('name_en'), 'ชื่อ Item Code (อังกฤษ)'),
+            ('slug', spec.get('slug'), 'Slug'),
         ):
             text = str(value or '')
-            if not text and not required:
-                continue
             ok = await aztek_form.fill(page, 'input[name="%s"]' % field, text,
                                        self.log, label)
-            if required and (not ok or not text):
+            if not ok or not text:
                 missing.append(label)
-        await aztek_form.select_by_options(
-            page, spec.get('type') or 'ALL', ('WINNER', 'ALL'), self.log)
+        # Always ALL: an Item Code is a code anyone holding it may redeem, and
+        # WINNER is the Event's idea, not this one's.
+        await aztek_form.select_by_options(page, 'ALL', ('WINNER', 'ALL'), self.log)
         await aztek_form.fill(page, 'input[name="per_player_limit"]',
                               spec.get('uses_per_user') or '1', self.log,
                               'จำนวนการใช้งานต่อ 1 User')
-        limited = bool(spec.get('limited'))
-        await aztek_form.set_switch(page, 'จำกัดจำนวน', limited, self.log)
-        if limited:
-            await aztek_form.fill(page, 'input[name="quantity"]',
-                                  spec.get('quantity') or '', self.log,
-                                  'จำนวนครั้งที่สามารถใช้งานได้')
-            await aztek_form.fill(page, 'input[name="remaining"]',
-                                  spec.get('remaining') or '', self.log,
-                                  'จำนวนคงเหลือ')
         for key, label in (('start_time', 'เวลาเริ่มใช้งาน'),
                            ('end_time', 'เวลาสิ้นสุด')):
             if not await aztek_form.set_datetime(
@@ -83,12 +74,6 @@ class ItemCodeBuilder(ActivityBuilder):
                 self.log, label)
             if required and (not ok or not text):
                 missing.append('%s: %s' % (where, label))
-        for field, value in (('desc_th', reward.get('desc_th')),
-                             ('desc_en', reward.get('desc_en'))):
-            if str(value or ''):
-                await aztek_form.fill(
-                    page, 'textarea[name="rewards.%d.%s"]' % (index, field),
-                    value, self.log, field)
         await aztek_form.fill(
             page, 'input[name="rewards.%d.per_player_limit"]' % index,
             reward.get('uses_per_user') or '1', self.log,

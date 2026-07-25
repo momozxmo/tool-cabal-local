@@ -254,3 +254,28 @@
     #itemsTable{width:100%;table-layout:auto}
     #itemsTable td:nth-child(3),#itemsTable td:nth-child(4){white-space:normal;min-width:190px}
     @media(max-width:1100px){.editline{grid-template-columns:1fr}}
+
+/* ---- ปฏิทิน 24 ชม. (console.js attachPicker) ----
+   The browser's own datetime-local picker follows the browser's locale, so an
+   English Windows draws AM/PM whatever the page says. Aztek's field is 24-hour
+   and so is every plan file, so the tool draws its own. */
+.dtwrap{position:relative;display:block}
+.dtwrap input{width:100%;cursor:pointer}
+.dtpop{position:absolute;z-index:40;top:calc(100% + 6px);left:0;min-width:262px;
+  background:var(--obsidian);border:1px solid var(--edge);border-radius:12px;
+  box-shadow:var(--shadow);padding:11px;display:grid;gap:9px}
+.dthead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dthead b{font-size:13.5px}
+.dthead button{padding:3px 10px;line-height:1}
+.dtgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dtgrid .dtdow{text-align:center;font-size:10.5px;color:var(--faint);
+  font-family:var(--mono);padding-bottom:3px}
+.dtgrid button{padding:0;height:29px;border-radius:7px;background:transparent;
+  border-color:transparent;justify-content:center;font-size:12.5px}
+.dtgrid button:hover{background:var(--raise);border-color:var(--edge)}
+.dtgrid button.on{background:linear-gradient(150deg,var(--arc),#5563e6);color:#fff}
+.dttime{display:flex;gap:7px;border-top:1px solid var(--edge-soft);padding-top:9px}
+.dttime label{display:grid;gap:3px;font-size:10.5px;color:var(--muted);flex:1}
+.dttime select{width:100%;padding:5px 6px;font-family:var(--mono)}
+.dtfoot{display:flex;gap:7px;justify-content:space-between}
+.dtfoot button{padding:6px 11px;font-size:12px}

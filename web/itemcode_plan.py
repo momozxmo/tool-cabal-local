@@ -120,7 +120,7 @@ def _how_many_sets(meta):
 
 def _reward(name, uses_per_user, *, limited=False, quantity='', remaining='',
             code_type='1', code_list='', prefix='', num_codes=''):
-    return {'name_th': name, 'name_en': name, 'desc_th': '', 'desc_en': '',
+    return {'name_th': name, 'name_en': name,
             'uses_per_user': uses_per_user, 'limited': limited,
             'quantity': quantity, 'remaining': remaining,
             'code_type': code_type, 'code_list': code_list,
@@ -153,10 +153,11 @@ def _from_event(meta, game, name, now, notes):
             code_type='2' if server else '1',
             num_codes=each if server else ''))
     start, end = _window(meta, game, now, notes)
+    # Nothing is set at the Item Code level beyond the name, the window and how
+    # many times one player may use it: the counts belong to the reward set,
+    # which is where the codes are.
     return {'name_th': name, 'name_en': name, 'slug': _slug(name, game, notes),
-            'kind': 'ALL', 'uses_per_user': uses,
-            'limited': bool(item_total), 'quantity': str(item_total or ''),
-            'remaining': str(item_total or ''),
+            'uses_per_user': uses,
             'start_time': start, 'end_time': end, 'rewards': rewards}
 
 
@@ -173,8 +174,7 @@ def _from_pride(meta, game, name, now, notes):
         notes.append('ไฟล์ไม่มีตัวโค้ด — ใส่รายการ Code เองก่อนสร้าง')
     start, end = _window(meta, game, now, notes)
     return {'name_th': name, 'name_en': name, 'slug': _slug(name, game, notes),
-            'kind': 'ALL', 'uses_per_user': '1',
-            'limited': bool(limit), 'quantity': limit, 'remaining': limit,
+            'uses_per_user': '1',
             'start_time': start, 'end_time': end,
             'rewards': [_reward(
                 name, '1', limited=bool(limit), quantity=limit, remaining=limit,
