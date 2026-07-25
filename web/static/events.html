@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>All for Cabal — สร้าง Event</title>
+  <link rel="stylesheet" href="/static/console.css">
+  <style>
+    /* ---- หน้านี้โดยเฉพาะ ---- */
+    .topline{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+    .topline label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
+    .topline label:first-child{min-width:190px}
+    .topline label:nth-child(2){flex:1;min-width:300px}
+    .topline select{width:100%}
+    .formgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .formgrid label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
+    .formgrid label.wide{grid-column:span 2}
+    .formgrid label.full{grid-column:1/-1}
+    .formgrid label.inline{display:flex;align-items:center;gap:8px;color:var(--ink);padding-bottom:9px}
+    .formgrid input[type=text],.formgrid input[type=number],.formgrid input[type=datetime-local],
+    .formgrid select{width:100%}
+    .formgrid input[type=checkbox]{width:auto}
+    .slugline{display:flex;gap:6px}
+    .slugline input{flex:1}
+    /* The two windows are different things — when the activity runs, and how
+       long the prize can still be claimed — so they get their own headings. */
+    .win-head{grid-column:1/-1;color:var(--arc-bright);font-weight:700;font-size:12.5px;
+      border-top:1px solid var(--edge-soft);padding-top:11px}
+    .rset{border:1px solid var(--edge);border-left:3px solid var(--arc);border-radius:10px;
+      background:var(--onyx);padding:12px;display:grid;gap:11px}
+    .rset-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .rset-head b{color:var(--arc-bright)}
+    .rsets{display:grid;gap:12px}
+    .rset:not([data-limited="yes"]) .limit-only{display:none}
+    .idtable{width:100%;margin-top:10px}
+    .idtable td,.idtable th{white-space:normal}
+    tr.r-ok td{background:#12301f}tr.r-fail td{background:#301518}tr.r-noid td{background:#302a12}
+    @media(max-width:1100px){.formgrid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="gem"></span><div><h1>All for Cabal</h1><p>Create Event · Operator Console</p></div></div>
+    <div class="userbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      <span id="aztekStatus" class="badge" style="background:#3a2f14;color:var(--yellow)">Aztek: กำลังตรวจสอบ…</span>
+      <span id="currentUser" class="hint"></span>
+      <a class="button" href="/account">บัญชี / เชื่อม Aztek</a>
+      <button id="btnLogout" type="button" class="danger">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <nav class="spine" aria-label="ขั้นตอนการทำงาน (pipeline)">
+    <a class="snode go" href="/"><span class="k">1</span><span class="lab"><b>หาไอดีไอเทม</b><span>Item Finder</span></span></a>
+    <a class="snode go" href="/bundles"><span class="k">2</span><span class="lab"><b>สร้าง Bundle</b><span>Create Bundle</span></span></a>
+    <a class="snode go" href="/itemcodes"><span class="k">3</span><span class="lab"><b>โค้ดแลกของ</b><span>Item Code</span></span></a>
+    <div class="snode active"><span class="k">4</span><span class="lab"><b>อีเวนต์</b><span>Event</span></span></div>
+  </nav>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-body">
+        <div class="topline">
+          <label>เกม / เซิร์ฟ<select id="game"></select></label>
+          <label>Event ในคิว <span id="queueCount" class="count">0</span><select id="queuePick"></select></label>
+          <button id="btnQueueNew" class="success">+ Event ใหม่</button>
+          <button id="btnQueueDel">✕ เอาออก</button>
+          <button id="btnQueueClear" class="danger">ล้างคิว</button>
+        </div>
+        <p class="hint" id="queueHint">ยังไม่มีอะไรในคิว — กด “+ Event ใหม่” หรือสร้างบันเดิลแล้วส่งเลขมาจากหน้า “สร้าง Bundle”</p>
+      </div>
+    </section>
+
+    <section class="card" id="editor" hidden>
+      <div class="card-head"><h2>แก้ Event</h2><span id="editorWhich" class="hint"></span></div>
+      <div class="card-body section">
+        <div class="formgrid">
+          <label class="wide">ชื่อ Event (ไทย) *<input id="nameTh" type="text"></label>
+          <label class="wide">ชื่อ Event (อังกฤษ) *<input id="nameEn" type="text"></label>
+          <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
+            <span class="slugline"><input id="slug" type="text" spellcheck="false">
+              <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
+          <label>ผู้มีสิทธิ์รับรางวัล<select id="kind"><option value="WINNER">WINNER</option><option value="ALL">ALL</option></select></label>
+          <label>จำกัดต่อผู้เล่น<input id="usesPerUser" type="number" min="1" value="1"></label>
+          <label>จำนวนรางวัลทั้งหมด<input id="quantity" type="number" min="0" value="0"></label>
+          <label>คงเหลือ<input id="remaining" type="number" min="0" value="0"></label>
+          <div class="win-head">ช่วงเวลากิจกรรม</div>
+          <label class="wide">วันเริ่มกิจกรรม *<input id="startEvent" type="datetime-local" step="1"></label>
+          <label class="wide">วันสิ้นสุดกิจกรรม *<input id="endEvent" type="datetime-local" step="1"></label>
+          <div class="win-head">ช่วงเวลารับรางวัล</div>
+          <label class="wide">วันเริ่มรับรางวัล *<input id="startClaim" type="datetime-local" step="1"></label>
+          <label class="wide">วันสิ้นสุดการรับรางวัล *<input id="endClaim" type="datetime-local" step="1"></label>
+          <label class="full inline"><input id="sameWindow" type="checkbox">ช่วงรับรางวัล = ช่วงกิจกรรม (คัดลอกให้อัตโนมัติ)</label>
+        </div>
+      </div>
+      <div class="card-body section">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <b>ชุดรางวัล <span id="rsetCount" class="count">0</span></b>
+          <button id="btnAddSet" type="button">+ เพิ่มชุดรางวัล</button>
+        </div>
+        <p class="hint">หนึ่งชุดรางวัล = หนึ่ง bundle — เลข bundle อยู่ในเอกสารแผนอยู่แล้ว ไม่ต้องค้นหาไอเทมใหม่</p>
+        <div id="rsets" class="rsets"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>สร้างบนเว็บจริง</h2></div>
+      <div class="card-body">
+        <div class="result-actions">
+          <button id="btnPreview" class="primary" disabled>👁 เปิดหน้าเว็บดูก่อน (อันที่เลือก)</button>
+          <button id="btnCreateOne" class="warn" disabled title="กด “เปิดหน้าเว็บดูก่อน” ตรวจฟอร์มก่อน">🚀 สร้างจริง (อันที่เลือก)</button>
+          <button id="btnCreateAll" class="warn" disabled>⚡ สร้างทุกอันในคิว (0)</button>
+        </div>
+        <p id="runMsg" class="hint" role="status" aria-live="polite"></p>
+        <div id="results"></div>
+        <div id="shot" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Log</h2><button id="btnClearLog">ล้าง Log</button></div>
+      <div id="log" class="log" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+
+<script src="/static/console.js"></script>
+<script>
+const queue = new Queue('afc.eventQueue');
+let pendingGame = '';
+
+function blankReward(bundleId, name) {
+  return {name_th: name || '', name_en: name || '', uses_per_user: '1',
+          limited: false, quantity: '', remaining: '',
+          bundle_id: String(bundleId || '')};
+}
+function blankEvent(name) {
+  return {key: nextKey('e'), name: queue.uniqueName(name || 'Event ใหม่'),
+          name_th: name || '', name_en: '', slug: '', kind: 'WINNER',
+          uses_per_user: '1', quantity: '0', remaining: '0',
+          start_event: '', end_event: '', start_claim: '', end_claim: '',
+          same_window: true, group: '', rewards: [blankReward('')]};
+}
+
+// ---- คิว ----
+function renderQueue() {
+  const pick = $('queuePick'); pick.replaceChildren();
+  $('queueCount').textContent = String(queue.items.length);
+  $('queueHint').hidden = queue.items.length > 0;
+  $('editor').hidden = !queue.current();
+  queue.items.forEach(entry => {
+    const option = document.createElement('option');
+    option.value = entry.key;
+    option.textContent = `${entry.name} — ${entry.rewards.length} ชุดรางวัล`
+      + (entry.slug ? ` · ${entry.slug}` : ' · ยังไม่มี slug');
+    pick.appendChild(option);
+  });
+  if (queue.current()) pick.value = queue.active;
+  ['btnQueueDel', 'btnQueueClear'].forEach(id => $(id).disabled = !queue.items.length);
+  $('btnCreateAll').textContent = `⚡ สร้างทุกอันในคิว (${queue.items.length})`;
+  $('btnCreateAll').disabled = !queue.items.length;
+  $('btnPreview').disabled = !queue.current();
+  if (!queue.current()) $('btnCreateOne').disabled = true;
+  queue.save();
+}
+
+const FIELDS = {nameTh: 'name_th', nameEn: 'name_en', slug: 'slug', kind: 'kind',
+                usesPerUser: 'uses_per_user', quantity: 'quantity',
+                remaining: 'remaining', startEvent: 'start_event',
+                endEvent: 'end_event', startClaim: 'start_claim',
+                endClaim: 'end_claim'};
+
+/** Keep the claim window in step with the activity window while it is tied. */
+function mirrorWindow(entry) {
+  if (!entry.same_window) return;
+  entry.start_claim = entry.start_event; entry.end_claim = entry.end_event;
+  $('startClaim').value = entry.start_claim || '';
+  $('endClaim').value = entry.end_claim || '';
+}
+
+function select(key) {
+  queue.active = key;
+  const entry = queue.current();
+  if (entry) {
+    Object.entries(FIELDS).forEach(([id, field]) => { $(id).value = entry[field] || ''; });
+    $('sameWindow').checked = !!entry.same_window;
+    ['startClaim', 'endClaim'].forEach(id => $(id).disabled = !!entry.same_window);
+    $('editorWhich').textContent = entry.name;
+  }
+  renderQueue(); renderSets();
+  $('btnCreateOne').disabled = true; $('shot').replaceChildren();
+}
+
+Object.entries(FIELDS).forEach(([id, field]) => {
+  $(id).oninput = () => {
+    const entry = queue.current(); if (!entry) return;
+    entry[field] = $(id).value;
+    if (field === 'name_th') { entry.name = $(id).value || 'Event'; $('editorWhich').textContent = entry.name; }
+    if (field === 'start_event' || field === 'end_event') mirrorWindow(entry);
+    renderQueue();
+  };
+});
+$('sameWindow').onchange = () => {
+  const entry = queue.current(); if (!entry) return;
+  entry.same_window = $('sameWindow').checked;
+  ['startClaim', 'endClaim'].forEach(id => $(id).disabled = entry.same_window);
+  mirrorWindow(entry); queue.save();
+};
+$('btnSlug').onclick = () => {
+  const entry = queue.current(); if (!entry) return;
+  const made = slugify($('nameEn').value || $('nameTh').value);
+  if (!made) { log('ชื่ออังกฤษว่างหรือเป็นภาษาไทยล้วน — พิมพ์ slug เอง', 'WARNING'); return; }
+  $('slug').value = entry.slug = made; renderQueue();
+};
+
+$('queuePick').onchange = () => select($('queuePick').value);
+$('btnQueueNew').onclick = () => { select(queue.add(blankEvent()).key); $('nameTh').focus(); };
+$('btnQueueDel').onclick = () => { if (!queue.current()) return; queue.removeActive(); select(queue.active); };
+$('btnQueueClear').onclick = () => {
+  if (!queue.items.length) return;
+  if (!confirm(`ล้างคิวทั้งหมด ${queue.items.length} รายการ? (ที่แก้ไว้จะหายหมด)`)) return;
+  queue.clear(); $('results').replaceChildren(); $('runMsg').textContent = ''; select('');
+};
+
+// ---- ชุดรางวัล ----
+function renderSets() {
+  const box = $('rsets'); box.replaceChildren();
+  const entry = queue.current(); if (!entry) return;
+  $('rsetCount').textContent = String(entry.rewards.length);
+  entry.rewards.forEach((reward, index) => box.appendChild(setCard(entry, reward, index)));
+}
+
+function field(label, node, cls) {
+  const wrap = document.createElement('label');
+  wrap.className = cls || '';
+  wrap.append(label, node);
+  return wrap;
+}
+function input(value, type, oninput, attrs) {
+  const box = document.createElement('input');
+  box.type = type || 'text'; box.value = value == null ? '' : value;
+  Object.entries(attrs || {}).forEach(([k, v]) => box.setAttribute(k, v));
+  box.oninput = () => oninput(box.value);
+  return box;
+}
+
+function setCard(entry, reward, index) {
+  const card = document.createElement('div');
+  card.className = 'rset';
+  card.dataset.limited = reward.limited ? 'yes' : 'no';
+
+  const head = document.createElement('div'); head.className = 'rset-head';
+  const title = document.createElement('b'); title.textContent = `ชุดรางวัลที่ ${index + 1}`;
+  const remove = document.createElement('button');
+  remove.type = 'button'; remove.className = 'danger'; remove.textContent = '✕ ลบชุดนี้';
+  remove.onclick = () => {
+    if (entry.rewards.length === 1) { log('ต้องมีอย่างน้อย 1 ชุดรางวัล', 'WARNING'); return; }
+    entry.rewards.splice(index, 1); queue.save(); renderSets(); renderQueue();
+  };
+  head.append(title, remove);
+
+  const grid = document.createElement('div'); grid.className = 'formgrid';
+  grid.append(
+    field('ชื่อรางวัล (ไทย) *', input(reward.name_th, 'text', v => { reward.name_th = v; queue.save(); }), 'wide'),
+    field('ชื่อรางวัล (อังกฤษ) *', input(reward.name_en, 'text', v => { reward.name_en = v; queue.save(); }), 'wide'),
+    field('จำกัดต่อผู้เล่น', input(reward.uses_per_user, 'number', v => { reward.uses_per_user = v; queue.save(); }, {min: '1'})),
+    field('Bundle ID *', input(reward.bundle_id, 'text', v => { reward.bundle_id = v; queue.save(); }, {inputmode: 'numeric'})));
+
+  const limited = document.createElement('input');
+  limited.type = 'checkbox'; limited.checked = !!reward.limited;
+  limited.onchange = () => {
+    reward.limited = limited.checked; card.dataset.limited = reward.limited ? 'yes' : 'no'; queue.save();
+  };
+  grid.append(field('จำกัดจำนวน', limited, 'inline'));
+  grid.append(
+    field('จำนวนรางวัลทั้งหมด', input(reward.quantity, 'number', v => { reward.quantity = v; queue.save(); }, {min: '0'}), 'limit-only'),
+    field('คงเหลือ', input(reward.remaining, 'number', v => { reward.remaining = v; queue.save(); }, {min: '0'}), 'limit-only'));
+
+  card.append(head, grid);
+  return card;
+}
+
+$('btnAddSet').onclick = () => {
+  const entry = queue.current(); if (!entry) return;
+  entry.rewards.push(blankReward('')); queue.save(); renderSets(); renderQueue();
+};
+
+// ---- รับเลข bundle จากหน้าสร้าง Bundle ----
+// Every bundle of one handoff belongs to the same plan, so they arrive as
+// reward sets of one Event rather than as an Event each.
+function drainHandoff() {
+  const payload = drainBundleIds(); if (!payload) return;
+  const rows = payload.rows.filter(row => row.bundle_id);
+  if (!rows.length) return;
+  const entry = blankEvent('');
+  entry.rewards = rows.map(row => blankReward(row.bundle_id, row.name || row.group || ''));
+  queue.add(entry);
+  log(`รับ ${rows.length} bundle จากหน้าสร้าง Bundle — ใส่เป็นชุดรางวัลของ Event เดียวกัน`, 'SUCCESS');
+  if (payload.game) pendingGame = payload.game;
+}
+
+// ---- สร้างจริง ----
+function jobFrom(entry) {
+  return {slug: entry.slug, name_th: entry.name_th, name_en: entry.name_en,
+          kind: entry.kind, uses_per_user: String(entry.uses_per_user || '1'),
+          quantity: String(entry.quantity || '0'),
+          remaining: String(entry.remaining || '0'),
+          start_event: withSeconds(entry.start_event),
+          end_event: withSeconds(entry.end_event),
+          start_claim: withSeconds(entry.same_window ? entry.start_event : entry.start_claim),
+          end_claim: withSeconds(entry.same_window ? entry.end_event : entry.end_claim),
+          group: entry.group || '', rewards: entry.rewards};
+}
+
+function renderResults(results) {
+  const box = $('results'); box.replaceChildren();
+  if (!results.length) return;
+  const table = document.createElement('table'); table.className = 'idtable';
+  table.innerHTML = '<thead><tr><th>ชื่อ</th><th>เลข Event</th><th>ผล</th></tr></thead>';
+  table.appendChild(document.createElement('tbody'));
+  results.forEach(row => {
+    const tr = document.createElement('tr');
+    const outcome = row.saved ? (row.made_id ? 'ok' : 'noid') : 'fail';
+    tr.className = 'r-' + outcome;
+    [row.name, row.made_id || (row.saved ? 'อ่านเลขไม่ได้' : '-'),
+     outcome === 'ok' ? 'สร้างแล้ว'
+       : outcome === 'noid' ? 'สร้างแล้ว (เช็คเลขบนเว็บ)'
+       : (row.error || (row.missing || []).join(', ') || 'ไม่สำเร็จ')
+    ].forEach(value => { const td = document.createElement('td'); td.textContent = value; tr.appendChild(td); });
+    table.tBodies[0].appendChild(tr);
+  });
+  box.appendChild(table);
+}
+
+async function run(entries, doSave) {
+  ['btnPreview', 'btnCreateOne', 'btnCreateAll'].forEach(id => $(id).disabled = true);
+  $('shot').replaceChildren();
+  try {
+    const response = await apiFetch('/api/events/run', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({game: $('game').value, events: entries.map(jobFrom), do_save: doSave})});
+    const data = await response.json();
+    if (!response.ok) { $('runMsg').textContent = data.detail || 'ทำรายการไม่สำเร็จ'; return null; }
+    (data.logs || []).forEach(line => log('[event] ' + line.msg, line.level));
+    showShot(data.screenshot_b64);
+    return data;
+  } catch (e) { $('runMsg').textContent = 'เชื่อมต่อไม่สำเร็จ'; return null; }
+  finally { renderQueue(); }
+}
+
+$('btnPreview').onclick = async () => {
+  const entry = queue.current(); if (!entry) return;
+  $('runMsg').textContent = 'กำลังเปิดหน้าเว็บและกรอกฟอร์ม…'; $('results').replaceChildren();
+  const data = await run([entry], false); if (!data) return;
+  const row = (data.results || [])[0] || {};
+  const missing = row.missing || [];
+  $('runMsg').textContent = missing.length
+    ? `⚠️ กรอกแล้วแต่ยังไม่ครบ: ${missing.join(', ')} — แก้แล้วดูใหม่อีกที`
+    : '✓ กรอกฟอร์มครบแล้ว · ' + (row.kept_open
+        ? 'หน้าต่าง Chrome เปิดค้างไว้ให้ตรวจ — ตรวจแล้วกด “สร้างจริง”'
+        : 'ยังไม่กดสร้าง — ตรวจแล้วกด “สร้างจริง”');
+  $('btnCreateOne').disabled = missing.length > 0;
+};
+
+async function createThese(entries) {
+  if (!confirm(`สร้างจริงบน Aztek ${entries.length} Event ใช่ไหม?\n\nกดแล้วสร้างทีละอันจนครบ ย้อนกลับเองไม่ได้`)) return;
+  $('runMsg').textContent = `กำลังสร้าง ${entries.length} รายการ…`;
+  $('results').replaceChildren();
+  const data = await run(entries, true); if (!data) return;
+  renderResults(data.results || []);
+  const made = new Set((data.results || []).filter(row => row.saved).map(row => row.slug));
+  queue.items = queue.items.filter(entry => !made.has(entry.slug));
+  queue.active = queue.items.length ? queue.items[0].key : '';
+  select(queue.active);
+  $('runMsg').textContent = data.created === data.planned
+    ? `✅ สร้างครบ ${data.created}/${data.planned} — เลขอยู่ในตารางด้านล่าง`
+    : `⚠️ สร้างได้ ${data.created}/${data.planned} — ที่ไม่ผ่านยังอยู่ในคิว`;
+}
+$('btnCreateOne').onclick = () => { const entry = queue.current(); return entry ? createThese([entry]) : null; };
+$('btnCreateAll').onclick = () => queue.items.length ? createThese(queue.items.slice()) : null;
+
+async function init() {
+  queue.load(); drainHandoff();
+  await loadShell(pendingGame);
+  if (!queue.active && queue.items.length) queue.active = queue.items[0].key;
+  select(queue.active);
+}
+init().catch(e => log(e.message, 'ERROR'));
+</script>
+</body>
+</html>

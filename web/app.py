@@ -17,7 +17,8 @@ from typing import Literal
 from fastapi import (APIRouter, Cookie, Depends, FastAPI, File, Form,
                      HTTPException, Request, Response, UploadFile, WebSocket,
                      WebSocketDisconnect)
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
+                               RedirectResponse)
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,7 +28,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import item_finder  # noqa: E402
-from web import item_service, search_runner  # noqa: E402
+from web import aztek_form, item_service, search_runner  # noqa: E402
 from web.audit import write_audit  # noqa: E402
 from web.auth_service import AuthService  # noqa: E402
 from web.aztek_sessions import (AztekSessionService, InvalidStorageState,  # noqa: E402
@@ -79,6 +80,61 @@ class BundleRunRequest(BaseModel):
     # Off by default: bundles are only written on an explicit opt-in, so a
     # replayed or malformed preview request can never reach the live site.
     # A preview takes exactly one bundle; a create takes the whole queue.
+    do_save: bool = False
+
+
+class ItemCodeSpec(BaseModel):
+    """One Item Code as the operator filled it in.
+
+    ``rewards`` is a list of sets: each carries its own codes and exactly one
+    bundle, because v2 replaces a reward set's bundle rather than adding to it.
+    """
+    name_th: str = Field(default='', max_length=200)
+    name_en: str = Field(default='', max_length=200)
+    slug: str = Field(default='', max_length=120)
+    desc_th: str = Field(default='', max_length=1000)
+    desc_en: str = Field(default='', max_length=1000)
+    kind: Literal['ALL', 'WINNER'] = 'ALL'
+    uses_per_user: str = Field(default='1', max_length=12)
+    limited: bool = False
+    quantity: str = Field(default='', max_length=12)
+    remaining: str = Field(default='', max_length=12)
+    start_time: str = Field(default='', max_length=32)
+    end_time: str = Field(default='', max_length=32)
+    # Which bundle group this came from, so a page that handed it over can show
+    # the outcome against the right row.
+    group: str = Field(default='', max_length=200)
+    rewards: list[dict] = Field(default_factory=list)
+
+
+class ItemCodeRunRequest(BaseModel):
+    game: str = Field(min_length=1, max_length=64)
+    itemcodes: list[ItemCodeSpec] = Field(default_factory=list)
+    # Off by default, like the bundle route: writing to the live site is always
+    # an explicit opt-in, so a replayed preview can never create anything.
+    do_save: bool = False
+
+
+class EventSpec(BaseModel):
+    """One Event. The bundle ids come from the plan, so nothing is searched."""
+    slug: str = Field(default='', max_length=120)
+    name_th: str = Field(default='', max_length=200)
+    name_en: str = Field(default='', max_length=200)
+    kind: Literal['WINNER', 'ALL'] = 'WINNER'
+    uses_per_user: str = Field(default='1', max_length=12)
+    quantity: str = Field(default='0', max_length=12)
+    remaining: str = Field(default='0', max_length=12)
+    start_event: str = Field(default='', max_length=32)
+    end_event: str = Field(default='', max_length=32)
+    start_claim: str = Field(default='', max_length=32)
+    end_claim: str = Field(default='', max_length=32)
+    group: str = Field(default='', max_length=200)
+    rewards: list[dict] = Field(default_factory=list)
+
+
+class EventRunRequest(BaseModel):
+    game: str = Field(min_length=1, max_length=64)
+    events: list[EventSpec] = Field(default_factory=list)
     do_save: bool = False
 
 
@@ -290,6 +346,42 @@ def account_page(
         return stream.read()
 
 
+def _tool_page(request, afc_session, db, filename):
+    """Serve a tool page, or send someone without a session to log in.
+
+    Every tool drives the operator's own Aztek session, so none of these pages
+    is public — and they all answer the question the same way.
+    """
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is None:
+        return RedirectResponse('/login')
+    with open(os.path.join(STATIC_DIR, filename), encoding='utf-8') as stream:
+        return stream.read()
+
+
+@router.get('/static/console.css')
+def console_css():
+    """The stylesheet the tool pages share.
+
+    Public because it is styling and nothing else: the pages that use it are
+    behind a session, and a login screen that cannot fetch its own CSS helps
+    nobody.
+    """
+    return FileResponse(os.path.join(STATIC_DIR, 'console.css'),
+                        media_type='text/css')
+
+
+@router.get('/static/console.js')
+def console_js():
+    """The plumbing the tool pages share — top bar, server picker, queue, log.
+
+    It holds no data of its own: everything it shows it fetches through the
+    session-checked APIs.
+    """
+    return FileResponse(os.path.join(STATIC_DIR, 'console.js'),
+                        media_type='application/javascript')
+
+
 @router.get('/bundles', response_class=HTMLResponse)
 def bundles_page(
     request: Request,
@@ -299,11 +391,25 @@ def bundles_page(
     # Create Bundle is a tool of its own, not a view over a search: it builds
     # bundles from typed or pasted item ids just as well as from ones Item
     # Finder sent over, so it gets its own page rather than a panel on that one.
-    user = request.app.state.auth_service.resolve_session(db, afc_session)
-    if user is None:
-        return RedirectResponse('/login')
-    with open(os.path.join(STATIC_DIR, 'bundles.html'), encoding='utf-8') as stream:
-        return stream.read()
+    return _tool_page(request, afc_session, db, 'bundles.html')
+
+
+@router.get('/itemcodes', response_class=HTMLResponse)
+def itemcodes_page(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    return _tool_page(request, afc_session, db, 'itemcodes.html')
+
+
+@router.get('/events', response_class=HTMLResponse)
+def events_page(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    return _tool_page(request, afc_session, db, 'events.html')
 
 
 @router.get('/pair-bridge', response_class=HTMLResponse)
@@ -952,6 +1058,223 @@ async def bundles_run(payload: BundleRunRequest, request: Request,
             'screenshot_b64': screenshot_b64,
             'created': sum(1 for r in results if r['saved']),
             'planned': len(jobs)}
+
+MAX_ACTIVITIES = 30
+MAX_REWARD_SETS = 20
+_SLUG = re.compile(r'^[a-z0-9-]+$')
+
+
+def _collect(logs: list):
+    """A log sink that keeps the lines for the response."""
+    return lambda message, level='INFO': logs.append(
+        {'msg': message, 'level': level})
+
+
+def _require_slug(slug: str, where: str) -> str:
+    """Aztek only takes lowercase-and-hyphens, and says so after the trip.
+
+    Checking here costs nothing and saves opening a browser to be told.
+    """
+    slug = str(slug or '').strip()
+    if not _SLUG.match(slug):
+        raise HTTPException(
+            status_code=400,
+            detail='slug ของ%s ต้องเป็น a-z 0-9 และขีดกลางเท่านั้น: %r'
+                   % (where, slug))
+    return slug
+
+
+def _require_datetime(value: str, label: str, where: str) -> str:
+    value = str(value or '').strip()
+    if aztek_form.parse_datetime(value) is None:
+        raise HTTPException(
+            status_code=400,
+            detail='%s ของ%s ต้องเป็นวันเวลาที่ถูกต้อง: %r' % (label, where, value))
+    return value
+
+
+def _reward_head(entry: dict) -> dict:
+    """The fields every reward set has, whichever form it belongs to."""
+    return {
+        'name_th': str(entry.get('name_th') or '').strip(),
+        'name_en': str(entry.get('name_en') or '').strip(),
+        'desc_th': str(entry.get('desc_th') or ''),
+        'desc_en': str(entry.get('desc_en') or ''),
+        'uses_per_user': str(entry.get('uses_per_user') or '1').strip() or '1',
+        'limited': bool(entry.get('limited')),
+        'quantity': str(entry.get('quantity') or '').strip(),
+        'remaining': str(entry.get('remaining') or '').strip(),
+        'bundle_id': str(entry.get('bundle_id') or '').strip(),
+    }
+
+
+def _clean_itemcode_rewards(raw: list[dict]) -> list[dict]:
+    """Reward sets with a name, in order. Codes are kept as the operator typed
+    them; whether they are complete enough to save is the filler's call."""
+    from web import itemcode_runner
+
+    cleaned = []
+    for entry in raw[:MAX_REWARD_SETS]:
+        reward = _reward_head(entry)
+        if not reward['name_th'] and not reward['name_en']:
+            continue
+        reward['code_type'] = itemcode_runner.code_type_value(
+            entry.get('code_type'))
+        reward['code_list'] = str(entry.get('code_list') or '')
+        reward['prefix'] = str(entry.get('prefix') or '').strip()
+        reward['num_codes'] = str(entry.get('num_codes') or '').strip()
+        cleaned.append(reward)
+    return cleaned
+
+
+def _clean_event_rewards(raw: list[dict]) -> list[dict]:
+    cleaned = []
+    for entry in raw[:MAX_REWARD_SETS]:
+        reward = _reward_head(entry)
+        if not reward['name_th'] and not reward['name_en']:
+            continue
+        cleaned.append(reward)
+    return cleaned
+
+
+async def _run_activity(builder, specs, *, game, do_save, request, db, user,
+                        tool, action, headed):
+    """Preview one form, or create the whole queue — shared by both tools."""
+    # Imported here, like the runners themselves, so importing this module does
+    # not pull in playwright.
+    from web import activity_runner
+
+    storage_state = request.app.state.aztek_session_service.load_storage_state(
+        db, user)
+    if storage_state is None:
+        raise HTTPException(status_code=409, detail='ยังไม่ได้เชื่อมเซสชัน Aztek')
+    try:
+        if do_save:
+            # This run owns the single browser slot, so a window an earlier
+            # preview left standing has to go first.
+            await activity_runner.close_kept(str(user.id))
+            results = await builder.run_many(
+                game=game, specs=specs, storage_state=storage_state,
+                headed=headed)
+        else:
+            spec = specs[0]
+            outcome = await builder.run(
+                game=game, spec=spec, storage_state=storage_state,
+                headed=headed, keep_open_key=str(user.id))
+            results = [{'name': spec.get('name_th') or spec.get('slug') or '',
+                        'slug': spec.get('slug', ''),
+                        'group': spec.get('group', ''), 'saved': False,
+                        'made_id': None, 'missing': outcome['missing'],
+                        'error': None, 'kept_open': outcome['kept_open'],
+                        'screenshot': outcome.get('screenshot')}]
+    except Exception as exc:
+        write_audit(
+            db, user_id=user.id, action=action, status='failed',
+            summary={'error': str(exc)[:200], 'game': game,
+                     'planned': len(specs)},
+            tool=tool, resource_type='aztek_session', resource_id=user.id,
+            request=request)
+        raise HTTPException(status_code=502, detail='ทำรายการไม่สำเร็จ: %s' % exc)
+
+    screenshot_b64 = None
+    for entry in results:
+        shot = entry.pop('screenshot', None)
+        if shot and screenshot_b64 is None:
+            import base64
+            screenshot_b64 = base64.b64encode(shot).decode('ascii')
+        # One record each: a run that half-succeeds must leave a trail of
+        # exactly which ones exist now.
+        write_audit(
+            db, user_id=user.id, action=action,
+            status='success' if (entry['saved'] or not do_save) else 'failed',
+            summary={'game': game, 'name': entry['name'],
+                     'slug': entry['slug'], 'made_id': entry['made_id'],
+                     'missing': entry['missing'][:5], 'error': entry['error']},
+            tool=tool, resource_type='aztek_session', resource_id=user.id,
+            request=request)
+    return {'results': results, 'headed': headed,
+            'screenshot_b64': screenshot_b64,
+            'created': sum(1 for r in results if r['saved']),
+            'planned': len(specs)}
+
+
+def _prepare(payload_game, jobs, do_save):
+    """Shared gatekeeping: a known game, something to do, one at a time to preview."""
+    if payload_game not in item_finder.GAMES:
+        raise HTTPException(status_code=400,
+                            detail='ไม่รู้จักเกม: %s' % payload_game)
+    if not jobs:
+        raise HTTPException(status_code=400, detail='ยังไม่มีรายการให้ทำ')
+    if not do_save and len(jobs) != 1:
+        raise HTTPException(status_code=400, detail='ดูตัวอย่างได้ทีละรายการเท่านั้น')
+
+
+@router.post('/api/itemcodes/run')
+async def itemcodes_run(payload: ItemCodeRunRequest, request: Request,
+                        user: User = Depends(require_user),
+                        db: Session = Depends(get_db)):
+    """Fill — and only when asked, create — the Item Codes in the queue."""
+    from web import itemcode_runner
+
+    settings: Settings = request.app.state.settings
+    jobs = []
+    for index, spec in enumerate(payload.itemcodes[:MAX_ACTIVITIES]):
+        where = spec.name_th.strip() or 'Item Code ที่ %d' % (index + 1)
+        jobs.append({
+            'name_th': spec.name_th.strip(), 'name_en': spec.name_en.strip(),
+            'slug': _require_slug(spec.slug, where),
+            'desc_th': spec.desc_th, 'desc_en': spec.desc_en,
+            'type': spec.kind, 'uses_per_user': spec.uses_per_user.strip() or '1',
+            'limited': spec.limited, 'quantity': spec.quantity.strip(),
+            'remaining': spec.remaining.strip(),
+            'start_time': _require_datetime(spec.start_time, 'เวลาเริ่มใช้งาน', where),
+            'end_time': _require_datetime(spec.end_time, 'เวลาสิ้นสุด', where),
+            'group': spec.group,
+            'rewards': _clean_itemcode_rewards(spec.rewards)})
+    _prepare(payload.game, jobs, payload.do_save)
+    builder = itemcode_runner.ItemCodeBuilder(_collect(logs := []))
+    result = await _run_activity(
+        builder, jobs, game=payload.game, do_save=payload.do_save,
+        request=request, db=db, user=user, tool='create_itemcode',
+        action='itemcode.create' if payload.do_save else 'itemcode.preview_open',
+        headed=settings.app_env != 'production')
+    return dict(result, logs=logs)
+
+
+@router.post('/api/events/run')
+async def events_run(payload: EventRunRequest, request: Request,
+                     user: User = Depends(require_user),
+                     db: Session = Depends(get_db)):
+    """Fill — and only when asked, create — the Events in the queue."""
+    from web import event_runner
+
+    settings: Settings = request.app.state.settings
+    jobs = []
+    for index, spec in enumerate(payload.events[:MAX_ACTIVITIES]):
+        where = spec.name_th.strip() or 'Event ที่ %d' % (index + 1)
+        job = {'slug': _require_slug(spec.slug, where),
+               'name_th': spec.name_th.strip(), 'name_en': spec.name_en.strip(),
+               'type': spec.kind,
+               'uses_per_user': spec.uses_per_user.strip() or '1',
+               'quantity': spec.quantity.strip() or '0',
+               'remaining': spec.remaining.strip() or '0',
+               'group': spec.group,
+               'rewards': _clean_event_rewards(spec.rewards)}
+        for key, label in (('start_event', 'วันเริ่มกิจกรรม'),
+                           ('end_event', 'วันสิ้นสุดกิจกรรม'),
+                           ('start_claim', 'วันเริ่มรับรางวัล'),
+                           ('end_claim', 'วันสิ้นสุดการรับรางวัล')):
+            job[key] = _require_datetime(getattr(spec, key), label, where)
+        jobs.append(job)
+    _prepare(payload.game, jobs, payload.do_save)
+    builder = event_runner.EventBuilder(_collect(logs := []))
+    result = await _run_activity(
+        builder, jobs, game=payload.game, do_save=payload.do_save,
+        request=request, db=db, user=user, tool='create_event',
+        action='event.create' if payload.do_save else 'event.preview_open',
+        headed=settings.app_env != 'production')
+    return dict(result, logs=logs)
+
 
 @router.websocket('/ws/search')
 async def ws_search(ws: WebSocket):
