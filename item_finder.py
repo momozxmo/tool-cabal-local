@@ -19,6 +19,7 @@ import threading
 import asyncio
 import traceback
 import os
+import re
 import sys
 import json
 import csv
@@ -284,6 +285,10 @@ def _event_is_generic(v):
 
 _EVENT_LEGEND_COL = 17   # คอลัมน์ >= นี้ = ข้อความอธิบาย template (มี Unique/Master Code ปนกัน) -> ข้าม
 
+# หัวคอลัมน์เขียนได้หลายแบบ ('Number [codes per set]' / 'Number [code/set]') —
+# ตัดอักขระที่ไม่ใช่ตัวอักษร/ตัวเลขออกก่อนเทียบ จะได้ไม่ต้องไล่เดาวงเล็บกับทับ
+_re_nonword = re.compile(r'[^a-z0-9ก-๙]')
+
 
 def _event_extract_meta(buf):
     """สแกนแถว "บล็อกเงื่อนไข" ที่อยู่เหนือ header ของตาราง Prize ดึงค่า (เฉพาะคอลัมน์ข้อมูลจริง
@@ -334,14 +339,17 @@ def _event_extract_meta(buf):
                     meta['code_no'] = 'Code No. %s' % mm.group(1)
             if key.startswith('codeexpiredate') or 'วันหมดอายุ' in key:
                 meta['expire'] = right() or below() or meta['expire']
-            # จำนวนโค้ด/ชุด — EN 'Number [codes per set]' / TH 'จำนวน [โค้ด/ชุด]'
-            if 'codesperset' in key or ('โค้ด' in key and 'ชุด' in key):
+            # จำนวนโค้ด/ชุด — EN 'Number [codes per set]' / 'Number [code/set]'
+            # / TH 'จำนวน [โค้ด/ชุด]'  (แผ่นเก่าเขียน code เอกพจน์ ไม่มี 'per')
+            plain = _re_nonword.sub('', key)
+            if ('code' in plain and 'set' in plain) or ('โค้ด' in key and 'ชุด' in key):
                 for cand in (right(), below()):     # เลือกค่าที่เป็น "ตัวเลข" (ข้ามหัวคอลัมน์อื่น)
                     if _event_isnum(cand):
                         meta['codes_per_set'] = _event_num(cand)
                         break
             # จำนวนชุด — EN 'Number [set]' / TH 'จำนวน [ชุด]' (มี 'ชุด' แต่ไม่มี 'โค้ด')
-            elif key == 'number[set]' or ('จำนวน' in key and 'ชุด' in key and 'โค้ด' not in key):
+            elif (('set' in plain and 'code' not in plain and 'number' in plain)
+                  or ('จำนวน' in key and 'ชุด' in key and 'โค้ด' not in key)):
                 for cand in (right(), below()):
                     if _event_isnum(cand):
                         meta['set_count'] = _event_num(cand)
@@ -382,6 +390,7 @@ def _parse_event_rows(rows, skipped=None):
     group = ''
     cur_meta = {}
     tbl = 0
+    seen = {}
     buf = []
     sheet_activity = ''                            # ชื่อกิจกรรมระดับชีต (เช่น VICI/VENI) เก็บครั้งเดียว
     for row in rows:
@@ -422,6 +431,11 @@ def _parse_event_rows(rows, skipped=None):
             # ชื่อกลุ่ม (แสดง/จัดกลุ่มผล) = 'ชื่อกิจกรรม ชื่อรางวัล'
             disp = (sheet_activity + ' ' + reward).strip() if reward else sheet_activity
             group = disp or banner or ('ตาราง %d' % tbl)
+            # ตารางที่วางซ้อนกันลงมาในชีตเดียว = คนละโค้ด แม้ไม่มีชื่อ section แยก
+            # (บางชีตไม่มีทั้งแบนเนอร์และเลข Code) — ชื่อกลุ่มซ้ำจะทำให้สองโค้ดถูกยุบเป็นอันเดียว
+            seen[group] = seen.get(group, 0) + 1
+            if seen[group] > 1:
+                group = '%s (%d)' % (group, seen[group])
             cur_meta['event_name'] = group
             buf.append(row)
             buf[:] = buf[-16:]
@@ -658,15 +672,17 @@ def parse_event_workbook(path):
     import warnings
     import openpyxl
 
-    # template 'Pride Code Request' โครงสร้างคนละแบบ (หลายบล็อกโค้ดต่อชีท)
+    # template 'Pride Code Request' โครงสร้างคนละแบบ (หลายบล็อกโค้ดต่อชีท วางข้างกัน)
     # -> ใช้ตัวอ่านเฉพาะ เหมือนโหมด Event เพื่อให้ Import ไฟล์เดียวจบทั้ง 2 โหมด
+    #
+    # ตัดสิน "รายชีต" ไม่ใช่ทั้งไฟล์: ไฟล์ ITEM CODE (BD) มีชีตทั้งสองแบบปนกัน และเดิม
+    # พอเจอบล็อกแบบ Pride ในชีตเล็ก ๆ ก็เหมาเอาทั้งไฟล์ ทำให้ชีตใหญ่ (ที่มี 3 โค้ดต่อชีต)
+    # หายไปทั้งหมด
     try:
         from event_tool import _pride_workbook_items
-        pride = _pride_workbook_items(path)
+        pride = dict(_pride_workbook_items(path) or ())
     except Exception:
-        pride = None
-    if pride is not None:
-        return pride, []
+        pride = {}
 
     # patch openpyxl: อย่าแปลงเลขที่ cell format เป็น "วันที่" ให้เป็น datetime
     # (ItemKind บาง cell ถูก format เป็นวันที่ -> เดิมกลายเป็น #VALUE! ค่าหาย)
@@ -698,10 +714,17 @@ def parse_event_workbook(path):
             try:
                 for sh in wb.sheetnames:
                     items = _parse_event_rows(wb[sh].iter_rows(values_only=True), skipped)
+                    for it in items:
+                        grp = it.pop('group', '')
+                        it['sources'] = [grp] if grp else ['(ไม่มีชื่อกลุ่ม)']
+                    # Blocks side by side share their rows, and a row-wise read
+                    # sees only the leftmost of them. Whichever reader recovers
+                    # more of the sheet wins; a tie goes to the Event reader,
+                    # which is the one that knows the activity's own name.
+                    blocks = pride.get(sh) or []
+                    if len(blocks) > len(items):
+                        items = blocks
                     if items:
-                        for it in items:
-                            grp = it.pop('group', '')
-                            it['sources'] = [grp] if grp else ['(ไม่มีชื่อกลุ่ม)']
                         out.append((sh, items))
             finally:
                 wb.close()

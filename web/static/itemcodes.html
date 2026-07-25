@@ -295,18 +295,65 @@ $('btnAddSet').onclick = () => {
   entry.rewards.push(blankReward('')); queue.save(); renderSets(); renderQueue();
 };
 
+// ---- รับร่างจากไฟล์แผน (หน้าหาไอดีไอเทม) ----
+// One prize table in the plan is one Item Code. The conditions above it —
+// expiry, codes per set, whether a code may be reused — were read at import
+// time, so this arrives filled in and the operator checks rather than copies.
+function drainPlan() {
+  let payload = null;
+  try {
+    const raw = sessionStorage.getItem('afc.itemcodeHandoff');
+    if (!raw) return;
+    sessionStorage.removeItem('afc.itemcodeHandoff');
+    payload = JSON.parse(raw);
+  } catch (e) { return; }
+  if (!payload || !Array.isArray(payload.itemcodes)) return;
+  let added = 0, first = '';
+  payload.itemcodes.forEach(draft => {
+    const entry = blankCode(draft.name_th || draft.group || '');
+    ['name_th', 'name_en', 'slug', 'kind', 'uses_per_user', 'limited',
+     'quantity', 'remaining', 'start_time', 'end_time', 'group']
+      .forEach(field => { if (draft[field] !== undefined) entry[field] = draft[field]; });
+    entry.rewards = (draft.rewards || []).map(
+      reward => Object.assign(blankReward(''), reward));
+    if (!entry.rewards.length) entry.rewards = [blankReward('')];
+    entry.name = queue.uniqueName(entry.name_th || 'Item Code');
+    queue.add(entry); added++;
+    first = first || entry.key;
+    // What the file could not answer for itself, said once and in place.
+    (draft.notes || []).forEach(note => log(`${entry.name}: ${note}`, 'WARNING'));
+  });
+  if (added) {
+    // Land on the first of the batch, not whatever happened to be added last.
+    queue.active = first;
+    log(`รับ ${added} Item Code จากไฟล์แผน — ยังไม่มีเลข bundle `
+        + `(สร้างบันเดิลแล้วส่งกลับมาได้)`, 'SUCCESS');
+  }
+  if (payload.game) pendingGame = payload.game;
+}
+
 // ---- รับเลข bundle จากหน้าสร้าง Bundle ----
 function drainHandoff() {
   const payload = drainBundleIds(); if (!payload) return;
-  let added = 0;
+  let filled = 0, added = 0;
   payload.rows.forEach(row => {
     if (!row.bundle_id) return;
+    // A draft made from the same group of the same plan is what this bundle
+    // was built for — fill its empty slot rather than start a second code.
+    const owner = row.group && queue.items.find(
+      entry => entry.group === row.group && entry.rewards.some(r => !r.bundle_id));
+    if (owner) {
+      owner.rewards.find(r => !r.bundle_id).bundle_id = String(row.bundle_id);
+      filled++;
+      return;
+    }
     const entry = blankCode(row.name || row.group || '');
     entry.group = row.group || '';
     entry.rewards = [blankReward(row.bundle_id, row.name || '')];
     entry.slug = slugify(row.name || '');
     queue.add(entry); added++;
   });
+  if (filled) log(`ใส่เลข bundle ให้ร่างที่มีอยู่แล้ว ${filled} ชุด`, 'SUCCESS');
   if (added) log(`รับ ${added} bundle จากหน้าสร้าง Bundle — ใส่เป็นชุดรางวัลให้แล้ว`, 'SUCCESS');
   if (payload.game) pendingGame = payload.game;
 }
@@ -394,7 +441,7 @@ $('btnCreateOne').onclick = () => { const entry = queue.current(); return entry 
 $('btnCreateAll').onclick = () => queue.items.length ? createThese(queue.items.slice()) : null;
 
 async function init() {
-  queue.load(); drainHandoff();
+  queue.load(); drainPlan(); drainHandoff();
   await loadShell(pendingGame);
   if (!queue.active && queue.items.length) queue.active = queue.items[0].key;
   select(queue.active);

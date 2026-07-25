@@ -290,6 +290,10 @@
             <button id="btnImportTemplate" class="primary">📂 Import Template</button>
             <button id="btnImportPlan" class="success">🎁 Import Event/Prize</button>
             <button id="btnClearWorkspace">ล้างรายการ</button>
+            <!-- The conditions block (expiry, codes per set, repeatable) is read
+                 at import time, so this needs no search to be useful. -->
+            <button id="btnToItemCode" class="primary" disabled
+                    title="อ่านเงื่อนไขในไฟล์มากรอกหน้า Item Code ให้ กลุ่มละ 1 โค้ด">➡ ส่งเข้าสร้าง Item Code</button>
           </div>
           <input id="templateFile" class="hidden" type="file" accept=".xlsx,.xlsm,.csv">
           <input id="planFile" class="hidden" type="file" accept=".xlsx,.xlsm">
@@ -462,6 +466,7 @@ function useWorkspace(data){ state.workspaceId=data.workspace_id; rememberWorksp
   document.querySelector(`input[name=mode][value="${state.mode}"]`).checked=true; applyMode(state.mode,false); renderCriteria();resetResults();renderNotFound(data.not_found||[]);
   const summary=$('workspaceSummary'), strong=document.createElement('strong');strong.textContent=`✓ ${data.count} รายการ`;summary.replaceChildren(strong,document.createTextNode(` จาก ${data.filename||''} · occurrence ${data.occurrence_count||0}`));
   if(data.skipped?.length){const warning=document.createElement('span');warning.className='warning';warning.textContent=` · ข้าม ${data.skipped.length}`;summary.appendChild(warning);}
+  $('btnToItemCode').disabled=false;
   setBusy(false); if(data.results?.length){state.results=data.results;renderResults();} }
 async function upload(kind,file){ if(!file)return; const form=new FormData(); form.append('file',file);form.append('mode',state.mode);if(state.workspaceId)form.append('workspace_id',state.workspaceId);
   setBusy(true); try{const response=await apiFetch(kind==='template'?'/api/import-template':'/api/import-plan',{method:'POST',body:form});const data=await response.json();if(!response.ok)throw new Error(data.detail||'Import ไม่สำเร็จ');
@@ -477,7 +482,7 @@ $('btnApplySheets').onclick=async()=>{const selected=[...document.querySelectorA
 document.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>$(button.dataset.close).close());
 
 async function clearWorkspace(){ if(state.socket)state.socket.close();if(state.workspaceId)await apiFetch('/api/workspaces/'+state.workspaceId,{method:'DELETE'});
-  state.workspaceId='';rememberWorkspace('');state.criteria=[];state.results=[];state.selected.clear();renderCriteria();renderResults();renderNotFound([]);$('workspaceSummary').textContent='ล้างรายการแล้ว';setBusy(false);}
+  state.workspaceId='';rememberWorkspace('');state.criteria=[];state.results=[];state.selected.clear();renderCriteria();renderResults();renderNotFound([]);$('workspaceSummary').textContent='ล้างรายการแล้ว';$('btnToItemCode').disabled=true;setBusy(false);}
 $('btnClearWorkspace').onclick=clearWorkspace;
 
 function setRowSelected(index,tr,select,on){select.checked=on;on?state.selected.add(index):state.selected.delete(index);tr.classList.toggle('row-selected',on);resultActions();}
@@ -569,6 +574,24 @@ async function sendToBundlePage(){
   }catch(e){alert('ส่งไปหน้าสร้างบันเดิลไม่สำเร็จ');}
   finally{resultActions();}}
 $('btnBundleOpen').onclick=sendToBundlePage;
+
+// ---- ส่งเงื่อนไขในไฟล์ไปหน้าสร้าง Item Code ----
+// Each prize table in the plan is its own Item Code, and the conditions above
+// it say how long it lives and how many codes it needs. That is all readable
+// the moment the file is imported, so this does not wait for a search.
+async function sendToItemCodePage(){
+  if(!state.workspaceId)return;
+  $('btnToItemCode').disabled=true;
+  try{const r=await apiFetch(`/api/workspaces/${state.workspaceId}/itemcodes`);
+    const d=await r.json();
+    if(!r.ok){alert(d.detail||'ส่งไปหน้า Item Code ไม่สำเร็จ');return;}
+    if(!(d.itemcodes||[]).length){alert('ไฟล์นี้ไม่มีเงื่อนไข Item Code ให้ส่งต่อ');return;}
+    sessionStorage.setItem('afc.itemcodeHandoff',JSON.stringify({
+      game:$('game').value||d.game||'',itemcodes:d.itemcodes}));
+    window.location.href='/itemcodes';
+  }catch(e){alert('ส่งไปหน้า Item Code ไม่สำเร็จ');}
+  finally{$('btnToItemCode').disabled=!state.workspaceId;}}
+$('btnToItemCode').onclick=sendToItemCodePage;
 
 $('btnClearLog').onclick=()=>$('log').replaceChildren();
 

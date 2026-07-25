@@ -857,6 +857,34 @@ def export_xlsx(workspace_id: str, request: Request,
     )
 
 
+@router.get('/api/workspaces/{workspace_id}/itemcodes')
+def workspace_itemcodes(workspace_id: str, request: Request,
+                        user: User = Depends(require_user),
+                        db: Session = Depends(get_db)):
+    """Draft one Item Code per group, from what the imported plan said.
+
+    Available as soon as the file is imported: the conditions block — expiry,
+    codes per set, whether a code may be reused — is read at import time and
+    has nothing to do with whether the items have been found yet.
+    """
+    from web import itemcode_plan
+
+    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
+    if not workspace.group_meta:
+        raise HTTPException(
+            status_code=400,
+            detail='ไฟล์นี้ไม่มีเงื่อนไข Item Code (นำเข้าไฟล์ Event/Prize ก่อน)')
+    drafts = itemcode_plan.build_itemcodes(workspace.group_meta, workspace.game)
+    write_audit(
+        db, user_id=user.id, action='itemcode.drafted', status='success',
+        summary={'count': len(drafts), 'mode': workspace.mode,
+                 'game': workspace.game},
+        tool='item_finder', resource_type='workspace', resource_id=workspace_id,
+        request=request,
+    )
+    return {'itemcodes': drafts, 'game': workspace.game or ''}
+
+
 @router.post('/api/workspaces/{workspace_id}/bundles')
 def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
                    user: User = Depends(require_user), db: Session = Depends(get_db)):
@@ -1093,6 +1121,19 @@ def _require_datetime(value: str, label: str, where: str) -> str:
     return value
 
 
+def _require_order(start: str, end: str, labels: tuple, where: str) -> None:
+    """An end before its start is never what was meant.
+
+    Plan files get re-used for the next run of the same activity, so a date
+    that has already passed reaches this route more often than it should.
+    """
+    if aztek_form.parse_datetime(start) >= aztek_form.parse_datetime(end):
+        raise HTTPException(
+            status_code=400,
+            detail='%s ของ%s ต้องมาก่อน%s (ตอนนี้ %s → %s)'
+                   % (labels[0], where, labels[1], start, end))
+
+
 def _reward_head(entry: dict) -> dict:
     """The fields every reward set has, whichever form it belongs to."""
     return {
@@ -1231,6 +1272,8 @@ async def itemcodes_run(payload: ItemCodeRunRequest, request: Request,
             'end_time': _require_datetime(spec.end_time, 'เวลาสิ้นสุด', where),
             'group': spec.group,
             'rewards': _clean_itemcode_rewards(spec.rewards)})
+        _require_order(jobs[-1]['start_time'], jobs[-1]['end_time'],
+                       ('เวลาเริ่มใช้งาน', 'เวลาสิ้นสุด'), where)
     _prepare(payload.game, jobs, payload.do_save)
     builder = itemcode_runner.ItemCodeBuilder(_collect(logs := []))
     result = await _run_activity(
@@ -1265,6 +1308,10 @@ async def events_run(payload: EventRunRequest, request: Request,
                            ('start_claim', 'วันเริ่มรับรางวัล'),
                            ('end_claim', 'วันสิ้นสุดการรับรางวัล')):
             job[key] = _require_datetime(getattr(spec, key), label, where)
+        _require_order(job['start_event'], job['end_event'],
+                       ('วันเริ่มกิจกรรม', 'วันสิ้นสุดกิจกรรม'), where)
+        _require_order(job['start_claim'], job['end_claim'],
+                       ('วันเริ่มรับรางวัล', 'วันสิ้นสุดการรับรางวัล'), where)
         jobs.append(job)
     _prepare(payload.game, jobs, payload.do_save)
     builder = event_runner.EventBuilder(_collect(logs := []))

@@ -212,6 +212,70 @@ def test_a_valid_request_still_needs_a_paired_aztek_session(client, path, key, s
     assert 'Aztek' in response.json()['detail']
 
 
+@pytest.mark.parametrize('path, key, spec, labels', [
+    ('/api/itemcodes/run', 'itemcodes',
+     _itemcode(start_time='2026-09-01 00:00:00', end_time='2026-08-01 00:00:00'),
+     'เวลาเริ่มใช้งาน'),
+    ('/api/events/run', 'events',
+     _event(start_event='2026-09-01 00:00:00', end_event='2026-08-01 00:00:00'),
+     'วันเริ่มกิจกรรม'),
+])
+def test_an_end_before_its_start_is_refused(client, path, key, spec, labels):
+    """Plan files are re-used for the next run of the same activity, so a date
+    that has already passed reaches this more often than it should."""
+    response = client.post(path, json={'game': GAME, key: [spec]})
+    assert response.status_code == 400
+    assert labels in response.json()['detail']
+
+
+# ------------------------- drafts from the plan file -------------------------
+
+def test_the_draft_api_needs_a_session(anonymous_client):
+    assert anonymous_client.get(
+        '/api/workspaces/w1/itemcodes').status_code == 401
+
+
+def test_a_file_with_no_conditions_has_nothing_to_draft(client, workspace_for_member):
+    response = client.get('/api/workspaces/%s/itemcodes' % workspace_for_member.id)
+    assert response.status_code == 400
+    assert 'Event/Prize' in response.json()['detail']
+
+
+def test_each_group_of_the_plan_comes_back_as_its_own_draft(
+        client, test_database, workspace_for_member):
+    from web.models import WorkspaceRecord
+
+    with test_database.session() as db:
+        record = db.get(WorkspaceRecord, workspace_for_member.id)
+        record.game = 'CabalM SEA'
+        record.group_meta = {
+            'Storm Chaser WINNER REWARDS': {
+                'activity': 'Storm Chaser', 'reward': 'WINNER REWARDS',
+                'expire': '2026-08-31 00:00:00', 'codes_per_set': '35',
+                'set_count': '1', 'total': '35', 'unique_code': True,
+                'cannot_repeat': True},
+            'Storm Chaser Audience Reward': {
+                'activity': 'Storm Chaser', 'reward': 'Audience Reward',
+                'expire': '2026-08-31 00:00:00', 'codes_per_set': '400',
+                'set_count': '1', 'total': '400', 'unique_code': True,
+                'cannot_repeat': True},
+        }
+
+    body = client.get('/api/workspaces/%s/itemcodes'
+                      % workspace_for_member.id).json()
+    assert [d['name_th'] for d in body['itemcodes']] == [
+        'Storm Chaser - WINNER REWARDS', 'Storm Chaser - Audience Reward']
+    assert body['itemcodes'][0]['rewards'][0]['num_codes'] == '40'
+    assert body['game'] == 'CabalM SEA'
+
+
+def test_a_draft_belongs_to_someone_else_is_not_readable(
+        client_for, other_member, workspace_for_member):
+    stranger = client_for(other_member)
+    assert stranger.get('/api/workspaces/%s/itemcodes'
+                        % workspace_for_member.id).status_code == 404
+
+
 # --------------------------- filling and saving ---------------------------
 
 class FakePage:
