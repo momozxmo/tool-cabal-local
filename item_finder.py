@@ -50,6 +50,37 @@ GAME_NAMES = core.GAME_NAMES
 TMPL_HEADERS = ['ItemKind', 'itemOption', 'durationIndex', 'ItemName',
                 'web', 'img', 'qty', 'trade', 'socket', 'crit']
 
+def criteria_label(index, criteria):
+    """How a criterion is named in the 'not found' list: '#3 Kind=... Opt=...'.
+
+    A row may carry its own '_label' — a re-run over only the missing criteria
+    numbers them 1..N of that run, and the operator is owed the number the row
+    had in the plan, not its position in the retry.
+    """
+    fixed = criteria.get('_label')
+    if fixed:
+        return fixed
+    parts = ["Kind=%r" % criteria.get('kind', '')]
+    for key, name in (('opt', 'Opt'), ('dur', 'Dur'), ('name', 'Name')):
+        if criteria.get(key):
+            parts.append('%s=%r' % (name, criteria[key]))
+    return '#%d %s' % (index + 1, ' '.join(parts))
+
+
+# Open an item by clicking its row — the fallback for a game whose detail page
+# has no address of its own. Module level rather than a class attribute: the web
+# engine borrows App's methods one by one, not the class body around them.
+_CLICK_ROW = """([aid])=>{
+    for(const tr of document.querySelectorAll('table tbody tr')){
+        const tds=tr.querySelectorAll('td');
+        if(tds.length&&(tds[0].innerText||'').trim()===aid){
+            const btn=tr.querySelector('a,button');
+            if(btn){btn.click();return true;}
+        }
+    }
+    return false;
+}"""
+
 
 def _norm_name(s):
     """normalize ชื่อไอเทมเพื่อเทียบแบบยืดหยุ่น (ไม่สนตัวพิมพ์/ช่องว่าง)"""
@@ -434,7 +465,40 @@ _SHOP_HDR = {
     'itemkind': 'kind', 'itemoption': 'opt', 'durationindex': 'dur',
     'itemname': 'name', 'itemindex': 'index', 'amt': 'amt', 'amount': 'amt',
     'itemmove': 'move', 'stackable': 'stack',
+    # A random box lists its contents in a table with a draw-rate column. The
+    # plan writes that header a few ways; any of them means the product is a
+    # RANDOM bundle and these are the odds.
+    'rate': 'rate', 'randomrate': 'rate', 'drawrate': 'rate',
+    'เรทสุ่ม': 'rate', 'อัตราสุ่ม': 'rate',
 }
+
+
+def _shop_rate_percent(raw_rates):
+    """Draw rates as Aztek wants them: percent, 0-100.
+
+    A plan writes the odds as fractions of one ('0.1' for a tenth) — that is
+    what makes the column add up to 1. Aztek's field is a percentage, so a
+    column that sums to about 1 is scaled and one that already sums to about
+    100 is left alone. Anything else is passed through untouched rather than
+    guessed at, and shows up as-is for the operator to read.
+    """
+    values = []
+    for raw in raw_rates:
+        try:
+            values.append(float(str(raw).strip().rstrip('%')))
+        except (TypeError, ValueError):
+            values.append(None)
+    total = sum(v for v in values if v is not None)
+    scale = 100.0 if 0.5 <= total <= 1.5 else 1.0
+    out = []
+    for value in values:
+        if value is None:
+            out.append('')
+            continue
+        scaled = value * scale
+        # Trailing zeros off a percentage read as noise: 10.0 -> '10'.
+        out.append(('%.3f' % scaled).rstrip('0').rstrip('.') or '0')
+    return out
 
 
 def _shop_sheet_items(rows, sheet_title, skipped=None):
@@ -500,6 +564,9 @@ def _shop_sheet_items(rows, sheet_title, skipped=None):
                 'dur': _event_num(get('dur')),
                 'name': str(nm).strip() if name_filled else '',
                 'amt': _event_num(get('amt')),
+                # Raw for now; the whole table is needed before fractions can be
+                # told apart from percentages, so it is scaled below.
+                'rate': ('' if get('rate') is None else str(get('rate')).strip()),
                 'group': group,
                 'group_meta': {'is_shop': True, 'shop_sheet': sheet_title, 'product': group},
                 # โหมด Shop: ทุกตัวต้องมีรูปภาพไอเท็ม (ช่องรูปอยู่นอกกล่อง 'พารามิเตอร์แสดงบนเว็บ'
@@ -515,7 +582,28 @@ def _shop_sheet_items(rows, sheet_title, skipped=None):
                 skipped.append(str(nm).strip())
         else:
             col = None
+    _finish_shop_rates(items)
     return items
+
+
+def _finish_shop_rates(items):
+    """Scale each product's rates together and mark the ones that have any.
+
+    Scaling is per product because that is the table the odds add up over. A
+    product with rates is a random box, and the bundle it becomes has to be
+    created as RANDOM — the operator should not have to notice and switch it.
+    """
+    by_product = {}
+    for item in items:
+        by_product.setdefault(item['group'], []).append(item)
+    for rows in by_product.values():
+        if not any(r.get('rate') for r in rows):
+            for r in rows:
+                r.pop('rate', None)
+            continue
+        for r, value in zip(rows, _shop_rate_percent(r.get('rate') for r in rows)):
+            r['rate'] = value
+            r['group_meta'] = dict(r['group_meta'], is_random=True)
 
 
 def parse_shop_workbook(path):
@@ -1821,15 +1909,7 @@ class App:
         self.nb.select(1)              # แท็บ ผลลัพธ์ (index 1 หลังเอาแท็บค้นหาเดี่ยวออก)
         base_url = data['url']
 
-        def _clabel(i, cr):
-            parts = [f"Kind={cr.get('kind', '')!r}"]
-            if cr.get('opt'):
-                parts.append(f"Opt={cr['opt']!r}")
-            if cr.get('dur'):
-                parts.append(f"Dur={cr['dur']!r}")
-            if cr.get('name'):
-                parts.append(f"Name={cr['name']!r}")
-            return f"#{i + 1} " + ' '.join(parts)
+        _clabel = criteria_label
 
         for idx, criteria in enumerate(multi):
             if self._cancel:
@@ -2289,28 +2369,38 @@ class App:
 
     async def _check_item_detail(self, page, item, data):
         aztek_id = item['aztek_id']
-        back_url = data.get('list_url', data['url'])
+        list_url = data.get('list_url', data['url'])
+        # Go straight to the item's own page instead of clicking its row.
+        #
+        # The list is only there to collect ids; once they are known, returning
+        # to it between items doubles the navigations. Worse, it always reopens
+        # on page 1, so any item found further in could never be clicked and
+        # fell through to this very URL anyway — the trip back bought nothing.
+        #
+        # ``return_to`` stays None while that holds. It is only set if the row
+        # has to be clicked after all, because then the next item needs the list
+        # on screen.
+        return_to = None
         try:
-            clicked = await page.evaluate("""([aid])=>{
-                for(const tr of document.querySelectorAll('table tbody tr')){
-                    const tds=tr.querySelectorAll('td');
-                    if(tds.length&&(tds[0].innerText||'').trim()===aid){
-                        const btn=tr.querySelector('a,button');
-                        if(btn){btn.click();return true;}
-                    }
-                }
-                return false;
-            }""", [aztek_id])
-            if not clicked:
-                for url_try in (f"{data['url']}/{aztek_id}", f"{data['url']}/{aztek_id}/edit"):
-                    try:
-                        await page.goto(url_try, wait_until='domcontentloaded', timeout=12000)
-                        if aztek_id in page.url:
-                            break
-                    except Exception:
-                        continue
-            else:
-                await page.wait_for_timeout(1500)
+            for url_try in (f"{data['url']}/{aztek_id}", f"{data['url']}/{aztek_id}/edit"):
+                try:
+                    await page.goto(url_try, wait_until='domcontentloaded', timeout=12000)
+                    if aztek_id in page.url:
+                        break
+                except Exception:
+                    continue
+            if aztek_id not in page.url:
+                # This game's detail page is not addressable — fall back to the
+                # row link, and keep the list in reach from here on.
+                return_to = list_url
+                try:
+                    await page.goto(list_url, wait_until='domcontentloaded',
+                                    timeout=15000)
+                    await page.wait_for_timeout(800)
+                except Exception:
+                    pass
+                if await page.evaluate(_CLICK_ROW, [aztek_id]):
+                    await page.wait_for_timeout(1500)
 
             self.log(f'    URL: {page.url}', 'INFO')
             try:
@@ -2330,7 +2420,7 @@ class App:
             if not loaded:
                 # อ่านไม่ได้จริง -> ไม่นับผ่าน (กันผ่านผิดเพราะฟอร์มเปล่า)
                 self.log(f'    ✗ {aztek_id}: โหลดรายละเอียดไม่สำเร็จ ข้าม (ไม่นับผ่าน)', 'WARNING')
-                await self._go_back(page, back_url)
+                await self._go_back(page, return_to)
                 return (False, '')
 
             detail = await page.evaluate("""()=>{
@@ -2460,7 +2550,7 @@ class App:
                 if not active:
                     continue
                 if not fn():
-                    await self._go_back(page, back_url)
+                    await self._go_back(page, return_to)
                     return (False, '')
                 # web=No short-circuit — ใช้ได้เฉพาะตอนไม่มีพารามิเตอร์อื่นให้เช็คเท่านั้น
                 # ถ้ามีอย่างอื่นด้วย (เช่น 'แลกเปลี่ยนได้' ของโหมด Shop) ต้องเช็คให้ครบ
@@ -2472,18 +2562,25 @@ class App:
             # โหมด "มี": เก็บค่าจริงบนเว็บของช่องที่ไม่ได้เช็ค ไว้โชว์ในตาราง (ไม่กระทบผ่าน/ตก)
             if item.get('_show_web_vals'):
                 item['_web_vals'] = web_values_summary(data, detail)
-            await self._go_back(page, back_url)
+            await self._go_back(page, return_to)
             return (True, ', '.join(notes_parts) if notes_parts else 'passed')
         except Exception as ex:
             self.log(f'    ⚠ {aztek_id}: {ex}', 'WARNING')
             try:
-                await self._go_back(page, back_url)
+                await self._go_back(page, return_to)
             except Exception:
                 pass
             return (False, '')
 
     async def _go_back(self, page, back_url):
-        """Navigate back to the list page (filtered URL preferred over base URL)."""
+        """Return to the list page, if the caller still needs it.
+
+        ``back_url`` of None means it does not: an item reached by its own URL
+        leaves nothing on the list to come back for, and the next item goes
+        straight to its own URL too.
+        """
+        if not back_url:
+            return
         try:
             await page.go_back(wait_until='domcontentloaded', timeout=8000)
             await page.wait_for_timeout(600)

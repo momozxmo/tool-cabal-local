@@ -101,6 +101,49 @@ def test_slugify_basic():
     assert slugify("  A/B  C  ") == "ab-c"
 
 
+# ----------------------------------------------------------- shop draw rates
+import item_finder
+
+
+def test_a_plan_writes_odds_as_fractions_and_aztek_wants_percent():
+    """A random box's rates add up to one in the plan; the site's field is a
+    percentage. The real Cash Shop sheet's column is the case that matters."""
+    soccer = ['0.1', 0.1, '0.12', 0.12, '0.12', 0.1, '0.1', 0.12, '0.12']
+    assert item_finder._shop_rate_percent(soccer) == [
+        '10', '10', '12', '12', '12', '10', '10', '12', '12']
+    # Already a percentage — left alone.
+    assert item_finder._shop_rate_percent(['25', '25', '50']) == ['25', '25', '50']
+
+
+def test_a_rate_column_that_adds_up_to_neither_is_left_as_written():
+    """Half a column cannot be told apart from percentages — 0.5 is a real
+    half-percent odds. Guessing would silently multiply someone's rates by a
+    hundred, so the values are passed through for the operator to read."""
+    assert item_finder._shop_rate_percent(['0.1', '0.12']) == ['0.1', '0.12']
+    assert item_finder._shop_rate_percent(['7', '9']) == ['7', '9']
+    assert item_finder._shop_rate_percent(['', 'n/a', '1']) == ['', '', '100']
+
+
+def test_a_product_with_draw_rates_is_marked_random():
+    """The bundle has to be created as RANDOM, and the operator should not have
+    to notice that themselves."""
+    rows = [
+        ['Item Kind', 'Item Name', 'Amt', 'Rate'],
+        ['111', 'A', '1', 0.4],
+        ['222', 'B', '1', 0.6],
+    ]
+    items = item_finder._shop_sheet_items(rows, 'Cash Shop 1.7')
+    assert [it['rate'] for it in items] == ['40', '60']
+    assert all(it['group_meta']['is_random'] for it in items)
+
+
+def test_a_product_without_a_rate_column_stays_fixed():
+    rows = [['Item Kind', 'Item Name', 'Amt'], ['111', 'A', '1']]
+    items = item_finder._shop_sheet_items(rows, 'Cash Shop 1.7')
+    assert 'rate' not in items[0]
+    assert 'is_random' not in items[0]['group_meta']
+
+
 # --------------------------------------------------------------- runner (ไม่มี pytest ก็รันได้)
 if __name__ == "__main__":
     import traceback
