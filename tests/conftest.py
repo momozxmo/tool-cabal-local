@@ -10,10 +10,25 @@ import pytest
 from fastapi.testclient import TestClient
 
 from web import app as web_app
+from web import settings as settings_module
 from web.db import Database
 from web.models import Base, User
 from web.settings import Settings
 from web.workspaces import WorkspaceRepository
+
+
+@pytest.fixture(autouse=True)
+def ignore_local_env_file(monkeypatch):
+    """Keep the developer's own .env out of the tests.
+
+    ``Settings.from_env`` reads it so a local server keeps its signing key across
+    restarts; a suite that picked it up would pass or fail depending on whose
+    machine it ran on.
+    """
+    monkeypatch.setattr(settings_module, '_ENV_FILE',
+                        os.path.join(tempfile.gettempdir(), 'afc-no-such.env'))
+    monkeypatch.delenv('APP_SECRET_KEY', raising=False)
+    monkeypatch.delenv('AZTEK_SESSION_ENCRYPTION_KEY', raising=False)
 
 
 @pytest.fixture
