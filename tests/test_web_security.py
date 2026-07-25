@@ -1,4 +1,6 @@
 import base64
+# 'inspect' alone is taken by sqlalchemy's below.
+import inspect as pyinspect
 import os
 import shutil
 import tempfile
@@ -517,3 +519,18 @@ def test_headed_search_is_refused_in_production(settings, test_database):
         aztek_session_service=None)
     assert hosted.resolve_headed(True) is False
     assert hosted.resolve_headed(False) is False
+
+
+def test_the_socket_only_watches_the_search_it_asked_for():
+    """Create Bundle is a page of its own now, so leaving mid-search is normal.
+
+    The run has to belong to the application, not to the socket: the endpoint
+    starts it and then subscribes, and only an explicit stop cancels it.
+    """
+    start = pyinspect.getsource(SearchCoordinator.start)
+    assert 'ensure_future' in start, 'the run must outlive the caller'
+    assert '_cancel' not in start
+    # Cancelling is its own request now.
+    assert '_cancel = True' in pyinspect.getsource(SearchCoordinator.stop)
+    # And a run cannot survive the process, so nothing may be left claiming to.
+    assert 'failed' in pyinspect.getsource(SearchCoordinator.sweep_interrupted_jobs)

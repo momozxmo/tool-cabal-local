@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>All for Cabal — สร้าง Bundle</title>
+  <style>
+    :root{color-scheme:dark;
+      /* base — obsidian, indigo-biased (not pure black) */
+      --void:#0b0d13;--obsidian:#111420;--onyx:#191d2b;--raise:#212636;--edge:#272d40;--edge-soft:#1e2334;
+      --ink:#e7eaf3;--ink-dim:#c3c9db;--faint:#5b6076;
+      /* arcane accent — "Force" */
+      --arc:#6d7cf5;--arc-bright:#8b96ff;--arc-dim:rgba(109,124,245,.15);--arc-line:rgba(109,124,245,.42);
+      /* rarity ramp (Cabal tier) — functional signature palette */
+      --common:#8b93a6;--rare:#3f8bea;--epic:#b45ef0;--mystic:#2fcabe;--legend:#e0a63c;
+      --rail:linear-gradient(90deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend));
+      --sans:"Segoe UI","Leelawadee UI","IBM Plex Sans Thai",Tahoma,system-ui,sans-serif;
+      --mono:"Cascadia Code","JetBrains Mono","SF Mono",Consolas,monospace;
+      /* legacy aliases kept so existing CSS + inline JS (var(--line)/(--red)/(--yellow)) keep working */
+      --bg:var(--void);--panel:var(--obsidian);--panel2:var(--raise);--line:var(--edge);
+      --text:var(--ink);--muted:#868da3;--blue:var(--arc);--green:#3fc98a;--yellow:#e0b03a;
+      --red:#ef5b67;--shadow:0 18px 44px -20px #000a}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Tahoma,sans-serif}
+    button,input,select{font:inherit} button,.button{border:1px solid transparent;border-radius:8px;padding:8px 13px;
+      background:var(--panel2);color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    button:hover,.button:hover{border-color:#536579} button:disabled{opacity:.45;cursor:not-allowed}
+    .primary{background:var(--blue);color:#fff}.success{background:#167d5c;color:#fff}.warn{background:var(--yellow);color:#17120a}
+    .danger{background:#8d2d37;color:#fff}.shell{max-width:1500px;margin:auto;padding:20px}.topbar{display:flex;align-items:end;
+      justify-content:space-between;gap:20px;margin-bottom:16px}.brand h1{margin:0;font-size:25px}.brand p{margin:3px 0 0;color:var(--muted)}
+    .badge{padding:5px 9px;border-radius:999px;background:#163b31;color:#69e0b5;font-weight:600}
+    .grid{display:grid;grid-template-columns:minmax(360px,42%) minmax(480px,58%);gap:14px;align-items:start}
+    .stack{display:grid;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .card-head h2{font-size:16px;margin:0}.card-body{padding:15px}.section{display:grid;gap:12px}.field{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:10px}
+    .field>label{color:var(--muted)}select{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px}
+    .choice{display:flex;flex-wrap:wrap;gap:12px}.choice label{display:inline-flex;align-items:center;gap:6px}.actions{display:flex;flex-wrap:wrap;gap:8px}
+    .hint{color:var(--muted);font-size:12px}.ok{color:var(--green)}.error{color:var(--red)}.warning{color:var(--yellow)}
+    .summary{background:#0e151e;border:1px solid var(--line);border-radius:8px;padding:10px}.summary strong{color:var(--green)}
+    .table-wrap{overflow:auto;max-height:355px;border-top:1px solid var(--line)}table{border-collapse:collapse;min-width:100%;width:max-content}
+    th,td{padding:8px 10px;border-right:1px solid #26313e;border-bottom:1px solid #26313e;text-align:left;white-space:nowrap;max-width:520px;overflow:hidden;text-overflow:ellipsis}
+    th{position:sticky;top:0;background:#202b38;color:#cbd6e2;z-index:1}tr:hover td{background:#1a2430}.num{text-align:right;color:var(--muted)}
+    tr.needs-review td{background:#2a2410}tr.needs-review:hover td{background:#332c14}tr.needs-review td:first-child{box-shadow:inset 3px 0 0 var(--yellow)}
+    td.review-cell{color:var(--yellow);font-weight:600}
+    tr.pick-row{cursor:pointer}input.pick{width:18px;height:18px;cursor:pointer;accent-color:var(--green)}
+    tr.row-selected td{background:#123322!important}tr.row-selected td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+    .log{height:230px;overflow:auto;background:#080c12;padding:10px;font:12px/1.55 Consolas,monospace;white-space:pre-wrap}
+    .log .SUCCESS{color:var(--green)}.log .WARNING{color:var(--yellow)}.log .ERROR{color:var(--red)}.log .STEP{color:#7ab8ff}
+    progress{width:100%;height:9px;accent-color:var(--green)}.result-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+    .count{color:var(--green);font-weight:700}.not-found{margin:0;padding-left:20px;color:var(--yellow);max-height:160px;overflow:auto}
+    .desc-col{display:none}body[data-mode="shop"] .desc-col{display:table-cell}dialog{width:min(720px,92vw);max-height:85vh;
+      color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}dialog::backdrop{background:#000a}
+    dialog h3{margin-top:0}.sheet-list,.bundle-list{display:grid;gap:7px;max-height:430px;overflow:auto;margin:12px 0}.sheet-row,.bundle{
+      background:#0e151e;border:1px solid var(--line);border-radius:8px;padding:9px}.bundle h4{margin:0 0 5px;color:var(--green)}
+    .hidden{display:none!important}@media(max-width:980px){.grid{grid-template-columns:1fr}.field{grid-template-columns:110px 1fr}.shell{padding:12px}}
+
+    /* ===================== Arcane Operator Console — visual overhaul ===================== */
+    /* Windows draws a wide light-grey scrollbar, which reads as a hole punched
+       through a dark console — worst of all on the dropdown, where it sat right
+       against the menu border. Both spellings are set: newer Chrome honours the
+       standard properties and then ignores the ::-webkit- rules entirely. */
+    *{scrollbar-width:thin;scrollbar-color:var(--raise) transparent}
+    ::-webkit-scrollbar{width:10px;height:10px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--raise);background-clip:content-box;
+      border:2px solid transparent;border-radius:8px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--edge);background-clip:content-box}
+    ::-webkit-scrollbar-corner{background:transparent}
+    body{font-family:var(--sans);background:
+        radial-gradient(1100px 480px at 85% -10%,rgba(109,124,245,.09),transparent 60%),
+        radial-gradient(720px 420px at 5% 108%,rgba(224,166,60,.05),transparent 55%),var(--void)}
+    button,.button{border-color:var(--edge);border-radius:9px;background:var(--raise);transition:border-color .15s,box-shadow .15s,transform .05s}
+    button:hover,.button:hover{border-color:var(--faint)}
+    button:active,.button:active{transform:translateY(1px)}
+    button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--arc-bright);outline-offset:2px}
+    .primary{background:linear-gradient(150deg,var(--arc),#5563e6);color:#fff;box-shadow:0 6px 18px -9px var(--arc)}
+    .primary:hover{border-color:transparent;box-shadow:0 9px 24px -9px var(--arc)}
+    .success{background:linear-gradient(150deg,#1f9c74,#167d5c);color:#fff}
+    .warn{background:linear-gradient(150deg,#caa03a,#b0862a);color:#17120a}
+    .danger{background:#8d2d37;color:#fff}
+    input[type=radio],input[type=checkbox]{accent-color:var(--arc)}
+    input[type=text],input[type=number],textarea{background:#0d111a;border:1px solid var(--edge);border-radius:8px;color:var(--ink);padding:8px 10px}
+    input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{outline:none;border-color:var(--arc);box-shadow:0 0 0 3px var(--arc-dim)}
+    select{background:#0d111a;border:1px solid var(--edge)}
+
+    /* command bar */
+    .topbar{align-items:center;background:linear-gradient(180deg,var(--obsidian),#0e111b);border:1px solid var(--edge);border-radius:14px;padding:13px 18px;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:13px}
+    .brand h1{font-size:20px;font-weight:800;letter-spacing:.01em}
+    .brand p{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+    .gem{width:28px;height:28px;transform:rotate(45deg);border-radius:7px;flex:none;position:relative;
+      background:conic-gradient(from 45deg,var(--common),var(--rare),var(--epic),var(--mystic),var(--legend),var(--common));
+      box-shadow:0 0 18px -4px var(--arc)}
+    .gem::after{content:"";position:absolute;inset:6px;border-radius:4px;background:var(--obsidian)}
+    .badge{background:#0e121c;border:1px solid var(--edge);color:var(--muted);font-family:var(--mono);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+
+    /* pipeline spine — status for the steps that have no page, navigation for
+       the ones that do. Buttons need the browser chrome stripped so a step
+       still looks like the plain <div> beside it. */
+    .spine{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:14px;background:var(--obsidian);border:1px solid var(--edge);border-radius:14px;overflow:hidden}
+    .snode{display:flex;align-items:center;gap:11px;padding:11px 15px;border:0;border-right:1px solid var(--edge-soft);position:relative;
+      width:100%;text-align:left;font:inherit;background:transparent;color:inherit}
+    .snode:last-child{border-right:0}
+    .snode.go{cursor:pointer}
+    .snode.go:hover{background:var(--edge-soft)}
+    .snode.go.active:hover{background:linear-gradient(180deg,var(--arc-dim),var(--edge-soft))}
+    /* A step with nowhere to go says so instead of swallowing the click. */
+    .snode.off{opacity:.42;cursor:not-allowed}
+    .snode .k{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;font-family:var(--mono);font-weight:700;font-size:13px;color:var(--faint);background:#0e121c;border:1px solid var(--edge)}
+    .snode .lab b{display:block;font-size:13px;font-weight:700;color:var(--muted)}
+    .snode .lab span{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+    .snode.active{background:linear-gradient(180deg,var(--arc-dim),transparent)}
+    .snode.active .k{color:#fff;background:linear-gradient(150deg,var(--arc),#5563e6);border-color:transparent;box-shadow:0 0 15px -3px var(--arc);animation:pulse 3s ease-in-out infinite}
+    .snode.active .lab b{color:var(--ink)}
+    .snode.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--arc),transparent)}
+    @keyframes pulse{0%,100%{box-shadow:0 0 15px -3px var(--arc)}50%{box-shadow:0 0 23px 0 var(--arc)}}
+
+    /* cards + rarity rail signature */
+    .card{background:var(--obsidian);border:1px solid var(--edge);border-radius:14px;box-shadow:var(--shadow);position:relative}
+    .card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--rail);opacity:.65;z-index:2}
+    .card-head{border-bottom:1px solid var(--edge-soft);padding:14px 16px 13px}
+    .card-head h2{font-size:15px;font-weight:800}
+    .summary{background:#0d111a;border:1px solid var(--edge);border-radius:9px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+    .summary strong{color:var(--green)}
+
+    /* tables — mono for machine data (id/kind/opt/dur), sans for human text */
+    .table-wrap{border-top:1px solid var(--edge-soft)}
+    th{background:#0e121c;color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+    th,td{border-right:1px solid var(--edge-soft);border-bottom:1px solid var(--edge-soft)}
+    tr:hover td{background:#151a27}
+    #resultsTable td:nth-child(2),#criteriaTable td:nth-child(1){font-family:var(--mono);color:var(--muted);text-align:right}
+    #resultsTable td:nth-child(3){font-family:var(--mono);color:var(--arc-bright);font-weight:600}
+    #criteriaTable td:nth-child(2),#criteriaTable td:nth-child(3),#criteriaTable td:nth-child(4){font-family:var(--mono);color:var(--ink-dim)}
+    tr.needs-review td{background:rgba(224,176,58,.06)}
+    tr.needs-review:hover td{background:rgba(224,176,58,.1)}
+    tr.row-selected td{background:rgba(109,124,245,.12)!important}
+    tr.row-selected td:first-child{box-shadow:inset 3px 0 0 var(--arc)}
+    input.pick{accent-color:var(--arc);width:17px;height:17px}
+    .count{color:var(--arc-bright);font-family:var(--mono);font-weight:800}
+    tbody tr{animation:feed .32s ease}
+    @keyframes feed{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+    /* log + progress */
+    .log{background:#080b11;font-family:var(--mono);color:var(--muted)}
+    .log .STEP{color:var(--arc-bright)}
+    progress{height:8px;border:0;background:#0d111a;border-radius:99px;overflow:hidden}
+    progress::-webkit-progress-bar{background:#0d111a}
+    progress::-webkit-progress-value{background:linear-gradient(90deg,var(--arc),var(--arc-bright))}
+    progress::-moz-progress-bar{background:var(--arc)}
+
+    /* dialogs */
+    dialog{background:var(--obsidian);border:1px solid var(--edge);border-radius:16px;padding:20px}
+    dialog::backdrop{background:#000b}
+    dialog h3{font-weight:800}
+    .sheet-row,.bundle{background:#0d111a;border:1px solid var(--edge);border-radius:9px}
+    .sheet-row{display:flex;align-items:center;gap:8px;cursor:pointer}
+    .bundle h4{color:var(--arc-bright)}
+    /* Review dialog: one row per item beats a run-on sentence of them. */
+    .bundle{padding:0;overflow:hidden}
+    .bhead{display:flex;align-items:baseline;gap:9px;padding:10px 12px;border-bottom:1px solid var(--edge-soft);
+      background:linear-gradient(90deg,var(--arc-dim),transparent)}
+    .bhead h4{margin:0;flex:1;font-size:14px;line-height:1.4}
+    .bhead .n{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+    table.bitems{width:100%;border-collapse:collapse;font-size:13px}
+    table.bitems td{padding:5px 12px;border-top:1px solid var(--edge-soft);vertical-align:top}
+    table.bitems tr:first-child td{border-top:0}
+    table.bitems .i{width:1%;color:var(--faint);font-family:var(--mono);font-size:11.5px;text-align:right}
+    table.bitems .id{width:1%;font-family:var(--mono);color:var(--arc-bright);white-space:nowrap}
+    table.bitems .q{width:1%;font-family:var(--mono);color:var(--muted);text-align:right;white-space:nowrap}
+    /* Long item names wrap instead of pushing the box wider (td is nowrap by default). */
+    table.bitems .nm{white-space:normal;word-break:break-word}
+    #itemsTable td:nth-child(2){font-family:var(--mono);color:var(--arc-bright);font-weight:600}
+    /* The draw-rate column only exists for RANDOM bundles. */
+    .rate-col{display:none}
+    body[data-btype="RANDOM"] .rate-col{display:table-cell}
+
+    /* คิวบันเดิล — one row per bundle waiting to be created. */
+    .rewardbox{margin-top:14px;border:1px solid var(--edge);border-radius:11px;background:#0d111a;padding:12px}
+    .rewardhead{font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+    .rewardhead #btnRewardFetch{margin-left:auto;padding:5px 11px;font-size:12px}
+    .rewardform{display:grid;grid-template-columns:150px 1fr 90px auto;gap:9px;align-items:end}
+    .rewardform label{display:grid;gap:5px;font-size:12.5px;color:var(--muted)}
+    .rewardform button{align-self:end;padding:8px 14px}
+    /* A native <datalist> draws OS chrome: unstyled, unsearchable-looking and
+       nothing like the rest of the console. This is the replacement listbox. */
+    .picker{position:relative;display:block}
+    .picker input{width:100%;padding-right:30px}
+    .picker .caret{position:absolute;right:2px;top:2px;bottom:2px;width:26px;padding:0;border:0;
+      background:none;color:var(--faint);font-size:10px;line-height:1;cursor:pointer}
+    .picker.open .caret{color:var(--arc-bright)}
+    /* Fixed, not absolute: the dialog clips its own overflow, and the menu has to
+       be able to flip above the field when it sits near the bottom of the screen. */
+    /* overscroll-behavior: reaching the end of this list must not hand the wheel
+       to the dialog underneath — scrolling a dropdown should never move the page
+       behind it. */
+    .pickmenu{position:fixed;z-index:60;overflow-y:auto;overscroll-behavior:contain;
+      padding:4px;background:var(--obsidian);
+      border:1px solid var(--edge);border-radius:10px;box-shadow:0 16px 38px rgba(0,0,0,.6)}
+    .pickmenu[hidden]{display:none}
+    .pickopt{display:block;padding:7px 10px;border-radius:7px;font-size:13px;color:var(--ink);cursor:pointer;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pickopt:hover{background:var(--edge-soft)}
+    .pickopt[aria-selected="true"]{background:var(--arc-dim);color:var(--arc-bright)}
+    .pickopt mark{background:none;color:var(--arc-bright);font-weight:700}
+    .pickempty{display:block;padding:9px 10px;font-size:12.5px;color:var(--faint);white-space:normal;line-height:1.5}
+    #rewardList{display:grid;gap:6px;margin-top:10px}
+    #rewardList:empty{display:none}
+    .rwrow{display:flex;align-items:center;gap:10px;background:var(--raise);border:1px solid var(--edge);
+      border-left:3px solid var(--mystic);border-radius:8px;padding:7px 10px;font-size:13px}
+    .rwrow .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--mystic)}
+    .rwrow .v{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rwrow .q{font-family:var(--mono);color:var(--ink)}
+    @media(max-width:760px){.rewardform{grid-template-columns:1fr 1fr}}
+
+    /* เลข Bundle — the outcome of a create-all run, one row per bundle. The id
+       is what the operator carries to Item Code / Event, so it is the one cell
+       that gets the mono face and full contrast. */
+    #bundleResults{margin-top:12px}
+    #bundleResults:empty{display:none}
+    .idtable{width:100%;border:1px solid var(--edge);border-radius:10px;overflow:hidden;font-size:13px}
+    .idtable th{background:var(--onyx);color:var(--faint);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+    .idtable td:nth-child(2){font-family:var(--mono);color:var(--ink);font-weight:700}
+    /* On the first cell rather than the row: border-collapse drops row borders. */
+    .idtable tbody td:first-child{border-left:3px solid transparent}
+    .idtable tr.r-ok td:first-child{border-left-color:var(--green)}
+    .idtable tr.r-noid td:first-child{border-left-color:var(--yellow)}
+    .idtable tr.r-fail td:first-child{border-left-color:var(--red)}
+    .idtable tr.r-fail td{color:var(--red)}
+
+    @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+    @media(max-width:760px){.spine{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:980px){.topbar{flex-direction:column;align-items:stretch}.userbar{justify-content:flex-start}}
+    /* ---- หน้านี้โดยเฉพาะ ---- */
+    /* Server + which bundle, on one line. The queue is a picker rather than a
+       list so the item table below gets the whole window. */
+    .topline{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+    .topline label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
+    .topline label:first-child{min-width:190px}
+    .topline label:nth-child(2){flex:1;min-width:280px}
+    .topline select{width:100%}
+    .editline{display:grid;grid-template-columns:1fr 190px auto;gap:12px;align-items:end}
+    .editline label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
+    .editline label.inline{display:flex;align-items:center;gap:8px;padding-bottom:9px;color:var(--ink)}
+    /* The document columns only mean something for a bundle that came from one;
+       on a hand-typed bundle they would be a row of dashes. */
+    .doc-col{display:none}
+    body[data-doc="yes"] .doc-col{display:table-cell}
+    /* The description comes from the same place, so it needs the document too —
+       the shared rule only checks the mode. */
+    body:not([data-doc="yes"]) .desc-col{display:none}
+    #itemsTable td.desc-col{white-space:normal;min-width:220px;max-width:340px;
+      font-size:12.5px;color:var(--muted)}
+    #itemsTable td.doc-col{font-size:12.5px}
+    #reviewNote.warning{font-weight:700}
+    /* Full width, no inner scroller: the point of one column is that the whole
+       row is readable at once. Long item names wrap rather than push the table
+       wider than the window. */
+    #itemsTable{width:100%;table-layout:auto}
+    #itemsTable td:nth-child(3),#itemsTable td:nth-child(4){white-space:normal;min-width:190px}
+    @media(max-width:1100px){.editline{grid-template-columns:1fr}}
+  </style>
+</head>
+<body data-btype="FIXED">
+<main class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="gem"></span><div><h1>All for Cabal</h1><p>Create Bundle · Operator Console</p></div></div>
+    <div class="userbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      <span id="aztekStatus" class="badge" style="background:#3a2f14;color:var(--yellow)">Aztek: กำลังตรวจสอบ…</span>
+      <span id="currentUser" class="hint"></span>
+      <a class="button" href="/account">บัญชี / เชื่อม Aztek</a>
+      <button id="btnLogout" type="button" class="danger">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <nav class="spine" aria-label="ขั้นตอนการทำงาน (pipeline)">
+    <a class="snode go" href="/"><span class="k">1</span><span class="lab"><b>หาไอดีไอเทม</b><span>Item Finder</span></span></a>
+    <div class="snode active"><span class="k">2</span><span class="lab"><b>สร้าง Bundle</b><span>Create Bundle</span></span></div>
+    <div class="snode off" title="ยังไม่ได้ย้ายขึ้นเว็บ ตอนนี้ใช้บนโปรแกรมเดสก์ท็อป"><span class="k">3</span><span class="lab"><b>โค้ดแลกของ</b><span>Item Code</span></span></div>
+    <div class="snode off" title="ยังไม่ได้ย้ายขึ้นเว็บ ตอนนี้ใช้บนโปรแกรมเดสก์ท็อป"><span class="k">4</span><span class="lab"><b>อีเวนต์</b><span>Event</span></span></div>
+  </nav>
+
+  <!-- One column, full width. The item table carries a dozen columns of document
+       detail; a sidebar next to it meant reading them sideways. -->
+  <div class="stack">
+    <section class="card">
+      <div class="card-body">
+        <div class="topline">
+          <label>เกม / เซิร์ฟ<select id="game"></select></label>
+          <label>บันเดิลในคิว <span id="queueCount" class="count">0</span><select id="queuePick"></select></label>
+          <button id="btnQueueNew" class="success" title="สร้างบันเดิลเปล่า แล้วพิมพ์ไอเทมเอง">+ บันเดิลใหม่</button>
+          <button id="btnQueueDel" title="เอาบันเดิลที่เลือกออกจากคิว">✕ เอาออก</button>
+          <button id="btnQueueClear" class="danger">ล้างคิว</button>
+        </div>
+        <p class="hint" id="queueHint">ยังไม่มีบันเดิลในคิว — กด “+ บันเดิลใหม่” หรือไปหน้า “หาไอดีไอเทม” แล้วส่งมา</p>
+      </div>
+    </section>
+
+    <section class="card" id="editor" hidden>
+      <div class="card-head"><h2>แก้บันเดิล</h2>
+        <span><span id="reviewNote" class="hint"></span> <span id="editorWhich" class="hint"></span></span></div>
+      <div class="card-body section">
+        <div class="editline">
+          <label>ชื่อบันเดิล<input id="bundleName" type="text"></label>
+          <label>ประเภท<select id="bundleType"><option value="FIXED">FIXED</option><option value="CHOICE">CHOICE</option><option value="RANDOM">RANDOM</option></select></label>
+          <label class="inline"><input id="bundleDeliver" type="checkbox" style="width:auto">ส่งทันที</label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="hint">ตั้งทุกไอเทม:</span>
+          <input id="bulkQty" type="number" min="1" value="1" style="width:70px">
+          <select id="bulkTier" style="width:auto"><option>Common</option><option>Rare</option><option>Epic</option><option>Mystic</option><option>Legend</option></select>
+          <button id="btnApplyAll" type="button">ใช้กับทุกไอเทม</button>
+          <button id="btnAddRow" type="button">+ เพิ่มไอเทม</button>
+          <span class="hint" style="margin-left:6px">เรียงบน→ล่าง = ลำดับบนเว็บ · แถวเหลือง = ต้องตรวจเอง</span>
+        </div>
+      </div>
+      <div class="table-wrap" style="max-height:none"><table id="itemsTable"><thead><tr>
+          <th>#</th><th>ID</th><th>ชื่อในเว็บ</th><th class="doc-col">ชื่อในเอกสาร</th>
+          <th>จำนวน</th><th class="doc-col">เอกสาร</th><th>Tier</th><th class="rate-col">เรทสุ่ม %</th>
+          <th class="doc-col">พารามิเตอร์ที่เช็ค</th><th class="desc-col">คำอธิบายไอเทม</th><th>ลำดับ</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="card-body">
+          <div class="rewardbox">
+            <div class="rewardhead">Reward <span class="hint">— เงิน/ยศที่แถมไปกับบันเดิลนี้ (แยกรายบันเดิล)</span>
+              <button id="btnRewardFetch" type="button" title="เปิดหน้า Aztek แบบอ่านอย่างเดียวเพื่อดึงรายการ">⤓ ดึงตัวเลือกจาก Aztek</button></div>
+            <div class="rewardform">
+              <label>ชนิด<select id="rewardKind"><option value="CREDIT">Credit</option><option value="DEBIT">Debit</option><option value="MILEAGE">Mileage</option><option value="PLAYER_EXP">Player Experience</option></select></label>
+              <label>ค่า<span class="picker" id="rewardPicker">
+                <input id="rewardValue" type="text" autocomplete="off" spellcheck="false" role="combobox"
+                       aria-expanded="false" aria-autocomplete="list" aria-controls="rewardMenu"
+                       placeholder="กด “ดึงตัวเลือกจาก Aztek” เพื่อโหลดรายการ">
+                <button class="caret" id="rewardCaret" type="button" tabindex="-1" aria-label="ดูตัวเลือกทั้งหมด">▼</button>
+                <span id="rewardMenu" class="pickmenu" role="listbox" hidden></span></span></label>
+              <label>จำนวน<input id="rewardQty" type="number" min="1" value="1"></label>
+              <button id="btnRewardAdd" type="button">+ เพิ่ม</button>
+            </div>
+            <div id="rewardList"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>สร้างบนเว็บจริง</h2></div>
+        <div class="card-body">
+          <div class="result-actions">
+            <button id="btnPreview" class="primary" disabled>👁 เปิดหน้าเว็บดูก่อน (บันเดิลที่เลือก)</button>
+            <button id="btnCreateOne" class="warn" disabled title="กด “เปิดหน้าเว็บดูก่อน” ตรวจฟอร์มก่อน">🚀 สร้างจริง (บันเดิลที่เลือก)</button>
+            <button id="btnCreateAll" class="warn" disabled>⚡ สร้างทุกบันเดิลในคิว (0)</button>
+          </div>
+          <p id="runMsg" class="hint" role="status" aria-live="polite"></p>
+          <div id="bundleResults"></div>
+          <div id="shot" style="margin-top:10px"></div>
+        </div>
+      </section>
+
+      <!-- The document asked for these and no item is going in. They used to be
+           visible only on the search page, which is the one place the operator
+           is no longer looking once the bundles are here. -->
+      <section class="card" id="missCard" hidden>
+        <div class="card-head"><h2>เอกสารสั่งไว้แต่หาไม่เจอ <span id="missCount" class="warning">0</span></h2>
+          <button id="btnMissClear">ซ่อน</button></div>
+        <div class="card-body"><ol id="missList" class="not-found"></ol></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Log</h2><button id="btnClearLog">ล้าง Log</button></div>
+        <div id="log" class="log" aria-live="polite"></div>
+      </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const TIERS=['Common','Rare','Epic','Mystic','Legend'];
+// The queue lives in this browser: it is a working scratchpad, and a page
+// reload or a trip to Item Finder must not throw away half-built bundles.
+const QUEUE_KEY='afc.bundleQueue';
+// Shared with Item Finder so the chosen server, the mode and the document's
+// misses follow the operator between the two pages.
+const GAME_KEY='afc.game', MODE_KEY='afc.mode', MISS_KEY='afc.notFound';
+const state={queue:[],active:'',rewardOptions:{},rewardOptionsGame:''};
+
+async function apiFetch(url, options){
+  const response = await fetch(url, Object.assign({credentials:'same-origin'}, options||{}));
+  if(response.status===401){ window.location.replace('/login'); throw new Error('เซสชันหมดอายุ'); }
+  return response;
+}
+function log(message, level='INFO'){
+  const line=document.createElement('div'); line.className=level;
+  line.textContent=`[${new Date().toLocaleTimeString()}] ${message}`;
+  $('log').appendChild(line); $('log').scrollTop=$('log').scrollHeight;
+}
+$('btnClearLog').onclick=()=>$('log').replaceChildren();
+$('btnLogout').onclick=async()=>{ $('btnLogout').disabled=true;
+  try{ await fetch('/api/auth/logout',{method:'POST'}); } finally{ window.location.replace('/login'); } };
+
+// ---- คิว ----
+function loadQueue(){try{const raw=localStorage.getItem(QUEUE_KEY);
+    const parsed=raw?JSON.parse(raw):[];state.queue=Array.isArray(parsed)?parsed:[];}
+  catch(e){state.queue=[];}}
+function saveQueue(){try{localStorage.setItem(QUEUE_KEY,JSON.stringify(state.queue));}catch(e){}}
+function current(){return state.queue.find(b=>b.key===state.active);}
+function liveItems(b){return b?b.items:[];}
+function nextKey(){return 'b'+(Date.now().toString(36))+Math.floor(Math.random()*1e6).toString(36);}
+function uniqueName(name){const taken=new Set(state.queue.map(b=>b.name));
+  let out=name||'Bundle',n=2;while(taken.has(out)){out=`${name} (${n})`;n++;}return out;}
+
+// The queue is a picker, not a list: every bundle's detail belongs in the table
+// below, and that table wants the whole width.
+function renderQueue(){const pick=$('queuePick');pick.replaceChildren();
+  $('queueCount').textContent=String(state.queue.length);
+  $('queueHint').hidden=state.queue.length>0;
+  $('editor').hidden=!current();
+  state.queue.forEach(b=>{const option=document.createElement('option');
+    option.value=b.key;
+    const rewards=(b.rewards||[]).length?` · reward ${b.rewards.length}`:'';
+    option.textContent=`${b.name} — ${b.items.length} ไอเทม · ${b.type}`
+      +(b.deliver?' · ส่งทันที':'')+rewards;
+    pick.appendChild(option);});
+  if(current())pick.value=state.active;
+  ['btnQueueDel','btnQueueClear'].forEach(id=>$(id).disabled=!state.queue.length);
+  paintRunButtons();saveQueue();}
+$('queuePick').onchange=()=>select($('queuePick').value);
+$('btnQueueDel').onclick=()=>{const b=current();if(!b)return;
+  state.queue=state.queue.filter(x=>x.key!==b.key);
+  select(state.queue.length?state.queue[0].key:'');};
+$('btnQueueNew').onclick=()=>{
+  state.queue.push({key:nextKey(),name:uniqueName('บันเดิลใหม่'),type:'FIXED',
+    deliver:true,items:[{id:'',name:'',qty:'1',tier:'Common',rate:'',shared:false}],
+    rewards:[]});
+  select(state.queue[state.queue.length-1].key);
+  $('bundleName').focus();$('bundleName').select();};
+
+function select(key){state.active=key;const b=current();
+  if(b){$('editorWhich').textContent=`${b.items.length} ไอเทม`;
+    $('bundleName').value=b.name;$('bundleType').value=b.type;$('bundleDeliver').checked=b.deliver;
+    document.body.dataset.btype=b.type;
+    // Only a bundle that came from a plan file has anything to compare against.
+    document.body.dataset.doc=b.items.some(it=>it.file_name||it.params||it.doc_qty)?'yes':'no';}
+  renderQueue();renderItems();renderRewards();
+  // A preview belongs to the bundle it ran for, so switching re-locks create.
+  $('btnCreateOne').disabled=true;$('shot').replaceChildren();}
+
+$('btnQueueClear').onclick=()=>{if(!state.queue.length)return;
+  if(!confirm(`ล้างคิวทั้งหมด ${state.queue.length} บันเดิล? (ที่แก้ไว้จะหายหมด)`))return;
+  state.queue=[];state.active='';$('bundleResults').replaceChildren();$('runMsg').textContent='';select('');};
+
+// ---- รับของจาก Item Finder ----
+// Item Finder writes here and sends the operator over; the handoff is one-way
+// and consumed once so a refresh cannot re-add the same bundles.
+function drainHandoff(){
+  let payload=null;
+  try{const raw=sessionStorage.getItem('afc.bundleHandoff');
+    if(raw){payload=JSON.parse(raw);sessionStorage.removeItem('afc.bundleHandoff');}}
+  catch(e){return;}
+  if(!payload||!Array.isArray(payload.bundles))return;
+  let added=0;
+  payload.bundles.forEach(b=>{
+    const items=(b.items||[]).map(it=>({id:String(it.id),name:it.name||'',
+      qty:String(it.qty||'1'),tier:'Common',rate:String(it.rate||''),shared:!!it.shared,
+      // Carried so the bundle can be checked against the document right here.
+      file_name:it.file_name||'',name_mismatch:!!it.name_mismatch,
+      params:it.params||'',desc:it.desc||'',doc_qty:String(it.doc_qty||'')}));
+    if(!items.length)return;
+    // The plan gave this product draw rates, so it is a random box — created as
+    // RANDOM with the odds already filled in, not left for the operator to spot.
+    const random=!!b.is_random||items.some(it=>it.rate);
+    state.queue.push({key:nextKey(),name:uniqueName(b.name||'Bundle'),
+      type:random?'RANDOM':'FIXED',deliver:true,items,rewards:[]});
+    if(random)log(`"${b.name}" มีเรทสุ่มในเอกสาร — ตั้งเป็น RANDOM และกรอกเรทให้แล้ว`,'SUCCESS');
+    added++;});
+  if(added){state.active=state.queue[state.queue.length-added].key;
+    log(`รับ ${added} บันเดิลจาก Item Finder เข้าคิว — เลือกดูทีละอันจาก “บันเดิลในคิว”`,'SUCCESS');}
+  if(payload.game)state.pendingGame=payload.game;
+  // The mode decides which of the document columns are worth reading, and the
+  // misses have to survive the trip over.
+  if(payload.mode)try{localStorage.setItem(MODE_KEY,payload.mode);}catch(e){}
+  try{localStorage.setItem(MISS_KEY,JSON.stringify(payload.not_found||[]));}catch(e){}}
+
+function renderMisses(){let misses=[];
+  try{misses=JSON.parse(localStorage.getItem(MISS_KEY)||'[]');}catch(e){}
+  if(!Array.isArray(misses)||!misses.length){$('missCard').hidden=true;return;}
+  $('missCard').hidden=false;$('missCount').textContent=String(misses.length);
+  const list=$('missList');list.replaceChildren();
+  misses.forEach(row=>{const li=document.createElement('li');
+    li.textContent=Array.isArray(row)?row.filter(Boolean).join(' — '):String(row);
+    list.appendChild(li);});}
+$('btnMissClear').onclick=()=>{try{localStorage.removeItem(MISS_KEY);}catch(e){}renderMisses();};
+// Every mode wants the web parameters absent; Shop is the exception that also
+// wants an image and a description, and is the only mode that reads the
+// description at all. A Shop item with Itemmove=Yes is the one case where a
+// parameter must be set ('แลกเปลี่ยนได้') with the rest still blank. Same rule
+// the search page uses, so the two tables read alike.
+function applyMode(){let mode='event';
+  try{mode=localStorage.getItem(MODE_KEY)||'event';}catch(e){}
+  document.body.dataset.mode=mode;}
+
+// ---- ตารางไอเทม ----
+function cell(text,cls,title){const td=document.createElement('td');td.textContent=text;
+  if(cls)td.className=cls;if(title)td.title=title;return td;}
+function renderItems(){const b=current();const body=$('itemsTable').tBodies[0];body.replaceChildren();if(!b)return;
+  b.items.forEach((it,i)=>{const tr=document.createElement('tr');
+    const idTd=document.createElement('td');const idIn=document.createElement('input');
+    idIn.type='text';idIn.value=it.id;idIn.style.width='84px';
+    idIn.oninput=()=>{it.id=idIn.value.replace(/\D/g,'');saveQueue();};
+    idTd.appendChild(idIn);
+    const numTd=cell(String(i+1));
+    const nameTd=cell((it.shared?'⚠ ':'')+(it.name||''));
+    if(it.shared){nameTd.className='review-cell';nameTd.title='ไอเทมนี้อยู่หลายบันเดิล';}
+    // ชื่อในเอกสาร: the search matches on kind/opt/dur and never on the name, so
+    // a name that does not line up is exactly what a human has to settle. The
+    // row is flagged here rather than left for a trip back to the results table.
+    const fileName=it.file_name||'';
+    const docTd=cell(fileName?(it.name_mismatch?'⚠ '+fileName:fileName):'—',
+      it.name_mismatch?'doc-col review-cell':'doc-col',
+      it.name_mismatch?'ชื่อในเอกสารไม่ตรงกับชื่อบนเว็บ — ตรวจเอง (ค้นด้วย kind/opt/dur ถูกแล้ว)':'');
+    const qtyTd=document.createElement('td');const qi=document.createElement('input');
+    qi.type='number';qi.min='1';qi.value=it.qty||'1';qi.style.width='64px';
+    qi.oninput=()=>{it.qty=qi.value;renderItems();saveQueue();};qtyTd.appendChild(qi);
+    // เอกสาร: the Amt column as imported. Shown beside the editable count so a
+    // value typed over it is visible instead of silently replacing the document.
+    const docQty=String(it.doc_qty||'');
+    const drift=docQty&&docQty!==String(it.qty||'');
+    const docQtyTd=cell(docQty?(drift?docQty+' ⚠':docQty):'—',
+      drift?'doc-col review-cell':'doc-col',
+      drift?'จำนวนถูกแก้ไปจากที่เอกสารระบุ':'');
+    const tierTd=document.createElement('td');const ts=document.createElement('select');
+    TIERS.forEach(t=>{const o=document.createElement('option');o.value=o.textContent=t;ts.appendChild(o);});
+    ts.value=it.tier||'Common';ts.onchange=()=>{it.tier=ts.value;saveQueue();};tierTd.appendChild(ts);
+    const rateTd=document.createElement('td');rateTd.className='rate-col';
+    const ri=document.createElement('input');ri.type='number';ri.min='0';ri.max='100';ri.step='0.001';
+    ri.placeholder='0.000';ri.value=it.rate||'';ri.style.width='84px';
+    ri.oninput=()=>{it.rate=ri.value;saveQueue();};rateTd.appendChild(ri);
+    // พารามิเตอร์ที่เช็ค: 'เว็บ✗ รูป✓ เทรด∅ …' — ✓ must be set, ✗ must not,
+    // ∅ must be blank. Shown as deep check recorded it, because what counts as
+    // right differs per mode and per item (a tradable Shop item wants exactly
+    // one parameter set and the rest empty).
+    const paramTd=cell(it.params||'—','doc-col');
+    const descTd=cell(it.desc||'','desc-col',it.desc||'');
+    // ลำดับบนเว็บคือลำดับในตาราง — ย้ายเองได้เมื่อไฟล์เรียงมาไม่ตรงใจ
+    const moveTd=document.createElement('td');
+    [['▲',-1],['▼',1]].forEach(([label,step])=>{const mv=document.createElement('button');
+      mv.type='button';mv.textContent=label;mv.style.padding='3px 7px';
+      mv.disabled=(step<0&&i===0)||(step>0&&i===b.items.length-1);
+      mv.onclick=()=>{const to=i+step;[b.items[i],b.items[to]]=[b.items[to],b.items[i]];
+        renderItems();renderQueue();};
+      moveTd.appendChild(mv);});
+    const xTd=document.createElement('td');const rm=document.createElement('button');
+    rm.type='button';rm.textContent='✕';rm.title='ตัดออกจากบันเดิลนี้';
+    rm.onclick=()=>{b.items.splice(i,1);renderItems();renderQueue();};xTd.appendChild(rm);
+    [numTd,idTd,nameTd,docTd,qtyTd,docQtyTd,tierTd,rateTd,paramTd,descTd,moveTd,xTd]
+      .forEach(td=>tr.appendChild(td));
+    if(it.shared||it.name_mismatch||drift)tr.classList.add('needs-review');
+    body.appendChild(tr);});
+  if(!b.items.length){const tr=document.createElement('tr');
+    tr.appendChild(cell('ไม่มีไอเทม — กด “+ เพิ่มไอเทม”','hint'));
+    tr.firstChild.colSpan=12;body.appendChild(tr);}
+  paintReview();}
+// A short count of what still wants a human look, so the operator knows whether
+// the table needs reading at all.
+function paintReview(){const b=current();if(!b){$('reviewNote').textContent='';return;}
+  const flags=b.items.filter(it=>it.shared||it.name_mismatch
+    ||(it.doc_qty&&String(it.doc_qty)!==String(it.qty||''))).length;
+  const notes=[];
+  if(flags)notes.push(`⚠ ${flags} แถวที่ต้องตรวจเอง`);
+  // A random box's odds have to add up to 100. The plan writes them as
+  // fractions, and a column the import could not confidently rescale (a single
+  // item, say) lands here as something else — worth catching before creating.
+  if(b.type==='RANDOM'){
+    const rates=b.items.map(it=>parseFloat(it.rate)).filter(n=>!isNaN(n));
+    const total=rates.reduce((a,n)=>a+n,0);
+    if(rates.length&&Math.abs(total-100)>0.5)
+      notes.push(`⚠ เรทสุ่มรวม ${(+total.toFixed(3))}% (ไม่ใช่ 100%)`);
+  }
+  $('reviewNote').textContent=notes.join(' · ');
+  $('reviewNote').className=notes.length?'warning':'hint';}
+$('btnAddRow').onclick=()=>{const b=current();if(!b)return;
+  b.items.push({id:'',name:'',qty:'1',tier:'Common',rate:'',shared:false});
+  renderItems();renderQueue();};
+$('btnApplyAll').onclick=()=>{const b=current();if(!b)return;
+  const q=$('bulkQty').value||'1',t=$('bulkTier').value;
+  b.items.forEach(it=>{it.qty=q;it.tier=t;});renderItems();saveQueue();};
+$('bundleName').oninput=()=>{const b=current();if(!b)return;
+  b.name=$('bundleName').value.trim()||'Bundle';renderQueue();};
+$('bundleType').onchange=()=>{const b=current();if(!b)return;
+  b.type=$('bundleType').value;document.body.dataset.btype=b.type;renderQueue();};
+$('bundleDeliver').onchange=()=>{const b=current();if(b)b.deliver=$('bundleDeliver').checked;renderQueue();};
+
+// ---- Reward ----
+function bundleRewards(){const b=current();if(!b)return [];if(!b.rewards)b.rewards=[];return b.rewards;}
+function renderRewards(){const box=$('rewardList');box.replaceChildren();
+  bundleRewards().forEach((rw,i)=>{const row=document.createElement('div');row.className='rwrow';
+    const k=document.createElement('span');k.className='k';k.textContent=rw.type;
+    const v=document.createElement('span');v.className='v';v.textContent=rw.value;
+    const q=document.createElement('span');q.className='q';q.textContent='x'+rw.qty;
+    const rm=document.createElement('button');rm.type='button';rm.textContent='✕';rm.title='เอาออก';
+    rm.onclick=()=>{bundleRewards().splice(i,1);renderRewards();renderQueue();};
+    [k,v,q,rm].forEach(el=>row.appendChild(el));box.appendChild(row);});}
+$('btnRewardAdd').onclick=()=>{const value=$('rewardValue').value.trim();
+  if(!current()){$('runMsg').textContent='เลือกบันเดิลในคิวก่อน';return;}
+  if(!value){$('runMsg').textContent='ใส่ค่า reward ก่อน (เช่น ชื่อสกุลเงิน/ยศ)';return;}
+  bundleRewards().push({type:$('rewardKind').value,value,qty:String(parseInt($('rewardQty').value)||1)});
+  $('rewardValue').value='';$('rewardQty').value='1';renderRewards();renderQueue();};
+
+// Reward value picker: a real listbox, because a native <datalist> cannot be
+// styled, cannot show how many choices there are, and hides which part matched.
+const picker={open:false,active:-1,items:[]};
+function pickerNames(){return (state.rewardOptions||{})[$('rewardKind').value]||[];}
+function closePicker(){picker.open=false;picker.active=-1;$('rewardMenu').hidden=true;
+  $('rewardPicker').classList.remove('open');$('rewardCaret').textContent='▼';
+  $('rewardValue').setAttribute('aria-expanded','false');}
+function placePicker(){const menu=$('rewardMenu'),box=$('rewardValue').getBoundingClientRect();
+  const below=innerHeight-box.bottom-10,above=box.top-10;
+  const flip=below<190&&above>below;
+  menu.style.left=box.left+'px';menu.style.width=box.width+'px';
+  menu.style.maxHeight=Math.max(120,Math.min(300,flip?above:below))+'px';
+  if(flip){menu.style.top='auto';menu.style.bottom=(innerHeight-box.top+4)+'px';}
+  else{menu.style.bottom='auto';menu.style.top=(box.bottom+4)+'px';}}
+function renderPicker(keepScroll){const menu=$('rewardMenu'),all=pickerNames();
+  const typed=$('rewardValue').value.trim().toLowerCase();
+  const matches=typed?all.filter(n=>n.toLowerCase().includes(typed)):all.slice();
+  picker.items=matches;menu.replaceChildren();
+  if(!matches.length){const empty=document.createElement('span');empty.className='pickempty';
+    empty.textContent=all.length?`ไม่พบ “${$('rewardValue').value.trim()}” ใน ${all.length} รายการ`
+      :(state.rewardOptionsGame?'ชนิดนี้ไม่มีตัวเลือกบน Aztek — พิมพ์ค่าเองได้'
+                               :'ยังไม่ได้โหลดรายการ — กด “⤓ ดึงตัวเลือกจาก Aztek” ด้านบน');
+    menu.appendChild(empty);}
+  matches.forEach((name,index)=>{const opt=document.createElement('span');
+    opt.className='pickopt';opt.setAttribute('role','option');
+    opt.setAttribute('aria-selected',String(index===picker.active));
+    if(typed){const at=name.toLowerCase().indexOf(typed);
+      opt.append(name.slice(0,at));const mark=document.createElement('mark');
+      mark.textContent=name.slice(at,at+typed.length);opt.append(mark,name.slice(at+typed.length));}
+    else opt.textContent=name;
+    // mousedown, not click: preventDefault keeps focus in the field so the menu
+    // does not close before the value lands.
+    opt.onmousedown=ev=>{ev.preventDefault();$('rewardValue').value=name;closePicker();};
+    menu.appendChild(opt);});
+  menu.hidden=false;$('rewardPicker').classList.add('open');$('rewardCaret').textContent='▲';
+  $('rewardValue').setAttribute('aria-expanded','true');picker.open=true;placePicker();
+  // One menu element serves every reward kind, and scrollTop survives both the
+  // rebuild and the hide — so a Credit list left halfway down used to open the
+  // Debit list halfway down too.
+  if(!keepScroll)menu.scrollTop=0;
+  const act=menu.querySelector('[aria-selected="true"]');if(act)act.scrollIntoView({block:'nearest'});}
+$('rewardValue').oninput=()=>{picker.active=-1;renderPicker();};
+$('rewardValue').onkeydown=ev=>{
+  if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ev.preventDefault();
+    if(!picker.open){renderPicker();return;}
+    if(!picker.items.length)return;
+    const step=ev.key==='ArrowDown'?1:-1;
+    picker.active=(picker.active+step+picker.items.length)%picker.items.length;
+    renderPicker(true);return;}
+  if(ev.key==='Enter'&&picker.open&&picker.active>=0){
+    ev.preventDefault();$('rewardValue').value=picker.items[picker.active];closePicker();return;}
+  if(ev.key==='Escape'&&picker.open){ev.preventDefault();ev.stopPropagation();closePicker();}};
+$('rewardCaret').onmousedown=ev=>{ev.preventDefault();
+  if(picker.open)closePicker();else{$('rewardValue').focus();openRewardPicker();}};
+document.addEventListener('mousedown',ev=>{
+  if(picker.open&&!$('rewardPicker').contains(ev.target))closePicker();});
+addEventListener('scroll',()=>{if(picker.open)placePicker();},true);
+addEventListener('resize',()=>{if(picker.open)placePicker();});
+function fillRewardOptions(){const names=pickerNames();
+  $('rewardValue').placeholder=names.length?`เลือกจาก ${names.length} รายการ หรือพิมพ์เอง`
+    :(state.rewardOptionsGame?'ชนิดนี้ไม่มีตัวเลือกบน Aztek':'กด “ดึงตัวเลือกจาก Aztek” เพื่อโหลดรายการ');
+  if(picker.open)renderPicker();}
+$('rewardKind').onchange=()=>{picker.active=-1;$('rewardValue').value='';fillRewardOptions();};
+// The lists live on the Aztek page, so filling them costs a read-only page trip.
+async function fetchRewardOptions(){
+  const game=$('game').value;if(!game)return;
+  $('btnRewardFetch').disabled=true;
+  $('runMsg').textContent='กำลังเปิดหน้า Aztek เพื่ออ่านตัวเลือก reward…';
+  try{const r=await apiFetch('/api/reward-options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game})});
+    const d=await r.json();
+    if(!r.ok){$('runMsg').textContent=d.detail||'ดึงตัวเลือกไม่สำเร็จ';return;}
+    (d.logs||[]).forEach(l=>log('[reward] '+l.msg,l.level));
+    state.rewardOptions=d.reward_options||{};state.rewardOptionsGame=game;fillRewardOptions();
+    const total=Object.values(state.rewardOptions).reduce((n,v)=>n+v.length,0);
+    $('runMsg').textContent=total?`โหลดตัวเลือก reward แล้ว ${total} รายการ`:'ไม่พบตัวเลือกบนหน้า Aztek';
+  }catch(e){$('runMsg').textContent='ดึงตัวเลือกไม่สำเร็จ';}
+  finally{$('btnRewardFetch').disabled=false;}}
+$('btnRewardFetch').onclick=fetchRewardOptions;
+function openRewardPicker(){
+  if(state.rewardOptionsGame!==$('game').value)fetchRewardOptions();
+  else picker.active=-1;
+  renderPicker();}
+$('rewardValue').onfocus=openRewardPicker;
+
+// ---- สร้างจริง ----
+function jobFrom(b){const random=b.type==='RANDOM';
+  return {name:b.name,bundle_type:b.type,deliver:b.deliver,rewards:b.rewards||[],
+          items:b.items.filter(it=>String(it.id).trim()).map(it=>({id:it.id,
+            qty:String(parseInt(it.qty)||1),tier:it.tier||'Common',
+            rate:random?String(it.rate||'').trim():''}))};}
+function rateGap(job){return job.bundle_type==='RANDOM'&&job.items.some(it=>!it.rate);}
+function paintRunButtons(){const n=state.queue.length;
+  $('btnCreateAll').textContent=`⚡ สร้างทุกบันเดิลในคิว (${n})`;
+  $('btnCreateAll').disabled=!n;
+  $('btnPreview').disabled=!current();
+  if(!current())$('btnCreateOne').disabled=true;}
+function renderResults(results,append){const box=$('bundleResults');
+  let table=box.querySelector('.idtable');
+  if(!append||!table){box.replaceChildren();
+    if(!results.length)return;
+    table=document.createElement('table');table.className='idtable';
+    table.innerHTML='<thead><tr><th>บันเดิล</th><th>เลข Bundle</th><th>ไอเทม</th><th>reward</th><th>ผล</th></tr></thead>';
+    table.appendChild(document.createElement('tbody'));box.appendChild(table);}
+  results.forEach(r=>{const tr=document.createElement('tr');
+    // A bundle that saved but hid its id is not the same as one that failed —
+    // it exists on the site and has to be looked up by hand.
+    const outcome=r.saved?(r.bundle_id?'ok':'noid'):'fail';
+    tr.className='r-'+outcome;
+    [r.name, r.bundle_id||(r.saved?'อ่านเลขไม่ได้':'-'), `${r.added}/${r.total}`,
+     r.rewards_total?`${r.rewards_added}/${r.rewards_total}`:'-',
+     outcome==='ok'?'สร้างแล้ว':outcome==='noid'?'สร้างแล้ว (เช็คเลขบนเว็บ)':(r.error||'ไม่สำเร็จ')
+    ].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});
+    table.tBodies[0].appendChild(tr);});}
+
+async function runBundles(bundles, doSave){
+  const jobs=bundles.map(jobFrom).filter(j=>j.items.length||j.rewards.length);
+  if(!jobs.length){$('runMsg').textContent='ยังไม่มีไอเทมในบันเดิลนี้';return null;}
+  const short=jobs.filter(rateGap).map(j=>j.name);
+  if(short.length){$('runMsg').textContent='บันเดิล RANDOM ที่เรทสุ่มไม่ครบ: '+short.join(', ');return null;}
+  ['btnPreview','btnCreateOne','btnCreateAll'].forEach(id=>$(id).disabled=true);
+  $('shot').replaceChildren();
+  try{const r=await apiFetch('/api/bundles/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:$('game').value,bundles:jobs,do_save:doSave})});
+    const d=await r.json();
+    if(!r.ok){$('runMsg').textContent=d.detail||'ทำรายการไม่สำเร็จ';return null;}
+    (d.logs||[]).forEach(l=>log('[bundle] '+l.msg,l.level));
+    if(d.screenshot_b64){const img=document.createElement('img');
+      img.src='data:image/png;base64,'+d.screenshot_b64;
+      img.style.cssText='max-width:100%;border:1px solid var(--edge);border-radius:8px';
+      $('shot').appendChild(img);}
+    return d;
+  }catch(e){$('runMsg').textContent='เชื่อมต่อไม่สำเร็จ';return null;}
+  finally{paintRunButtons();}}
+
+$('btnPreview').onclick=async()=>{const b=current();if(!b)return;
+  $('runMsg').textContent='กำลังเปิดหน้าเว็บและกรอกฟอร์ม…';$('bundleResults').replaceChildren();
+  const d=await runBundles([b],false);if(!d)return;
+  const r=(d.results||[])[0]||{};
+  $('runMsg').textContent=`✓ กรอกฟอร์มแล้ว "${r.name}" · ไอเทม ${r.added}/${r.total} · `
+    +(r.kept_open?'หน้าต่าง Chrome เปิดค้างไว้ให้ตรวจเอง — ตรวจแล้วกด “สร้างจริง”'
+                 :'ยังไม่กดสร้าง — ตรวจแล้วกด “สร้างจริง”');
+  $('btnCreateOne').disabled=false;};
+
+async function createThese(bundles){
+  const total=bundles.reduce((n,b)=>n+b.items.filter(it=>String(it.id).trim()).length,0);
+  if(!confirm(`สร้างจริงบน Aztek ${bundles.length} บันเดิล (${total} ไอเทม) ใช่ไหม?\n\n`
+             +`กดแล้วสร้างทีละอันจนครบ ย้อนกลับเองไม่ได้`))return;
+  $('runMsg').textContent=`กำลังสร้าง ${bundles.length} บันเดิล… (ดูความคืบหน้าในหน้าต่าง Chrome)`;
+  $('bundleResults').replaceChildren();
+  const d=await runBundles(bundles,true);if(!d)return;
+  renderResults(d.results||[],false);
+  // Created bundles leave the queue so a second pass cannot duplicate them.
+  const made=new Set((d.results||[]).filter(r=>r.saved).map(r=>r.name));
+  state.queue=state.queue.filter(b=>!made.has(b.name));
+  state.active=state.queue.length?state.queue[0].key:'';select(state.active);
+  $('runMsg').textContent=d.created===d.planned
+    ?`✅ สร้างครบ ${d.created}/${d.planned} บันเดิล — เลข Bundle อยู่ในตารางด้านล่าง`
+    :`⚠️ สร้างได้ ${d.created}/${d.planned} บันเดิล — ที่ไม่ผ่านยังอยู่ในคิว`;}
+$('btnCreateOne').onclick=()=>{const b=current();return b?createThese([b]):null;};
+$('btnCreateAll').onclick=()=>state.queue.length?createThese(state.queue.slice()):null;
+
+// ---- เริ่มต้น ----
+function paintAztek(status){const badge=$('aztekStatus');
+  if(status==='active'){badge.textContent='Aztek: เชื่อมแล้ว';badge.style.background='#163b31';badge.style.color='#69e0b5';}
+  else if(status==='expired'){badge.textContent='Aztek: หมดอายุ — เชื่อมใหม่';badge.style.background='#4a1f24';badge.style.color='var(--red)';}
+  else{badge.textContent='Aztek: ยังไม่ได้เชื่อม';badge.style.background='#3a2f14';badge.style.color='var(--yellow)';}}
+// One chosen server across both pages: a bundle built here has to be created on
+// the server its item ids came from.
+$('game').addEventListener('change',()=>{try{localStorage.setItem(GAME_KEY,$('game').value);}catch(e){}
+  if(state.rewardOptionsGame!==$('game').value){state.rewardOptions={};state.rewardOptionsGame='';fillRewardOptions();}});
+async function init(){
+  loadQueue();drainHandoff();applyMode();renderMisses();
+  try{const me=await apiFetch('/api/auth/me').then(r=>r.json());
+    $('currentUser').textContent=me.username?`ผู้ใช้: ${me.username}`:'';}catch(e){}
+  try{const games=await apiFetch('/api/games').then(r=>r.json());
+    games.games.forEach(g=>{const o=document.createElement('option');o.value=o.textContent=g;$('game').appendChild(o);});
+    let want=state.pendingGame;
+    if(!want)try{want=localStorage.getItem(GAME_KEY)||'';}catch(e){}
+    if(want&&games.games.includes(want))$('game').value=want;
+    try{localStorage.setItem(GAME_KEY,$('game').value);}catch(e){}}catch(e){}
+  if(!state.active&&state.queue.length)state.active=state.queue[0].key;
+  select(state.active);
+  try{const s=await apiFetch('/api/aztek/status').then(r=>r.json());paintAztek(s.status);}
+  catch(e){paintAztek('disconnected');}}
+init().catch(e=>log(e.message,'ERROR'));
+</script>
+</body>
+</html>

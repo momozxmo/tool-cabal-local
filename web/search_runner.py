@@ -231,6 +231,8 @@ def result_view(item):
         # Quantity from the imported 'Amt' column (carried by regroup_results);
         # build_bundles uses it to pre-fill the bundle qty.
         'amt': str(item.get('amt', '') or '').strip(),
+        # Draw rate from a random box's plan table, already a percentage.
+        'rate': str(item.get('rate', '') or '').strip(),
         'desc': item.get('_desc', '') or '',
         'name_mismatch': name_mismatch,
     }

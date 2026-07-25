@@ -189,6 +189,62 @@ def merge_imported(criteria, occurrences, group_meta, items):
     return MergeResult(criteria, occurrences, group_meta, added, merged)
 
 
+def _found_keys(results):
+    """The (kind, opt, dur) triples that some result already covers."""
+    return {(str(row.get('item_kind', '') or '').strip(),
+             str(row.get('item_option', '') or '').strip(),
+             str(row.get('duration_index', '') or '').strip())
+            for row in results}
+
+
+def missing_criteria(criteria, results):
+    """The plan rows that came back with nothing, ready to search again.
+
+    Each carries the label it had in the full run, so a retry's 'not found'
+    list still names rows by their number in the plan rather than by their
+    position in the retry.
+    """
+    found = _found_keys(results)
+    missing = []
+    for index, row in enumerate(criteria):
+        key = (str(row.get('kind', '') or '').strip(),
+               str(row.get('opt', '') or '').strip(),
+               str(row.get('dur', '') or '').strip())
+        if key in found:
+            continue
+        retry = dict(row)
+        retry['_label'] = item_finder.criteria_label(index, row)
+        missing.append(retry)
+    return missing
+
+
+def merge_found(previous, fresh, occurrences):
+    """Fold a retry's finds into what the first pass already found.
+
+    A retry only runs the rows that came back empty, so the earlier results
+    have to survive it. Everything is put back through document order at the
+    end, otherwise the newcomers would simply pile up at the bottom.
+    """
+    seen = set()
+    combined = []
+    for row in list(previous) + list(fresh):
+        key = (str(row.get('aztek_id', '') or ''),
+               str(row.get('item_kind', '') or ''),
+               str(row.get('item_option', '') or ''),
+               str(row.get('duration_index', '') or ''))
+        if key in seen:
+            continue
+        seen.add(key)
+        combined.append(dict(row))
+    if not occurrences:
+        return combined
+    ordered = regroup_results(combined, occurrences)
+    for row in ordered:
+        # regroup rewrites 'sources'; the display column has to follow it.
+        row['groups'] = ' , '.join(str(s) for s in (row.get('sources') or []))
+    return ordered
+
+
 def regroup_results(results, occurrences):
     """Expand found rows back into document/group order, matching desktop."""
     if not occurrences or not results:
@@ -213,6 +269,9 @@ def regroup_results(results, occurrences):
             # Carry the quantity ('Amt' column) from the imported row so the
             # bundle dialog can auto-fill qty instead of defaulting to 1.
             row['amt'] = occurrence.get('amt', '') or ''
+            # A random box's plan lists a draw rate per item; carrying it means
+            # the operator never types the odds back in by hand.
+            row['rate'] = occurrence.get('rate', '') or ''
             expanded.append(row)
     return expanded or [dict(row) for row in results]
 
@@ -231,7 +290,7 @@ def _bundle_name(group, group_meta):
 
 
 def build_bundles(results, group_meta):
-    """Build one ordered bundle per group; shared item IDs are always last."""
+    """Build one bundle per group, items in the order the plan file listed them."""
     item_groups = {}
     for row in results:
         item_id = str(row.get('aztek_id', '') or '').strip()
@@ -250,22 +309,46 @@ def build_bundles(results, group_meta):
         for raw_group in (row.get('sources') or ['(ไม่มีกลุ่ม)']):
             group = str(raw_group or '').strip() or '(ไม่มีกลุ่ม)'
             if group not in grouped:
-                grouped[group] = {'seen': set(), 'normal': [], 'shared': []}
+                grouped[group] = {'seen': set(), 'items': []}
                 order.append(group)
             bucket = grouped[group]
             if item_id in bucket['seen']:
                 continue
             bucket['seen'].add(item_id)
+            # Document order is the operator's order: the plan file lists items
+            # the way the bundle should read, and results are already expanded
+            # back into it. Shared items keep their place and are found by their
+            # highlight, not by being swept to the bottom.
             # 'shared' marks an item that appears in more than one bundle, so the
             # UI can highlight it and let the user drop the duplicate.
             # qty comes from the imported 'Amt' column when present; else 1.
             qty = str(row.get('amt', '') or '').strip() or '1'
-            item = {'id': item_id, 'name': row.get('item_name', '') or '',
-                    'shared': shared, 'qty': qty}
-            bucket['shared' if shared else 'normal'].append(item)
+            # Everything the operator checks a bundle against travels with the
+            # item. Sending only id/name/qty meant the check had to happen back
+            # in the results table, which holds every group at once — far more
+            # to read than the handful of rows actually in this bundle.
+            bucket['items'].append(
+                {'id': item_id, 'name': row.get('item_name', '') or '',
+                 'shared': shared, 'qty': qty,
+                 # The name as the document wrote it. The search matches on
+                 # kind/opt/dur, never on the name, so a name that does not line
+                 # up is the one thing only a human can settle.
+                 'file_name': row.get('file_name', '') or '',
+                 'name_mismatch': bool(row.get('name_mismatch')),
+                 # What deep check verified: 'เว็บ✗ รูป✓ เทรด∅ …' — ✓ must be
+                 # set, ✗ must not, ∅ must be blank. Passed through as recorded,
+                 # because what counts as right differs per mode and per item.
+                 'params': row.get('params', '') or '',
+                 'desc': row.get('desc', '') or '',
+                 'doc_qty': str(row.get('amt', '') or '').strip(),
+                 # Odds from the plan's random-box table, already a percentage.
+                 'rate': str(row.get('rate', '') or '').strip()})
     return [
         {'name': _bundle_name(group, group_meta), 'group': group,
-         'items': grouped[group]['normal'] + grouped[group]['shared']}
+         # A product whose plan gave draw rates is a random box, so the bundle
+         # is created as RANDOM without the operator having to spot it.
+         'is_random': bool((group_meta.get(group) or {}).get('is_random')),
+         'items': grouped[group]['items']}
         for group in order
     ]
 

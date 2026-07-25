@@ -5,6 +5,58 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML = open(os.path.join(ROOT, 'web', 'static', 'index.html'), encoding='utf-8').read()
+BUNDLES = open(os.path.join(ROOT, 'web', 'static', 'bundles.html'),
+               encoding='utf-8').read()
+
+
+def test_create_bundle_stands_on_its_own_page():
+    """It is a tool, not a view of a search: a bundle can be started from
+    nothing and its items typed in, with no workspace anywhere in sight."""
+    for element_id in ('game', 'queuePick', 'btnQueueNew', 'btnQueueDel',
+                       'btnAddRow', 'itemsTable', 'rewardList', 'btnPreview',
+                       'btnCreateOne', 'btnCreateAll', 'bundleResults', 'log'):
+        assert ('id="%s"' % element_id) in BUNDLES, element_id
+    assert '/api/bundles/run' in BUNDLES
+    assert '/api/workspaces/' not in BUNDLES
+
+
+def test_item_finder_hands_bundles_over_rather_than_building_them():
+    """Item Finder's part ends at the handoff — no create button lives there."""
+    assert "window.location.href='/bundles'" in HTML
+    assert 'afc.bundleHandoff' in HTML and 'afc.bundleHandoff' in BUNDLES
+    assert '/api/bundles/run' not in HTML
+
+
+def test_the_queue_outlives_a_reload():
+    """Half-built bundles must survive a refresh or a trip back to the search."""
+    assert 'localStorage' in BUNDLES and 'afc.bundleQueue' in BUNDLES
+
+
+def test_a_bundle_can_be_checked_against_the_document_without_leaving_the_page():
+    """Going back to the results table means reading every group at once; the
+    handful of rows in this bundle carry the document's own words instead."""
+    for column in ('ชื่อในเอกสาร', 'พารามิเตอร์ที่เช็ค', 'คำอธิบายไอเทม'):
+        assert column in BUNDLES, column
+    for field in ('file_name', 'name_mismatch', 'params', 'doc_qty'):
+        assert field in BUNDLES, field
+    # Document rows that found no item are the most dangerous omission, so they
+    # follow the bundles over rather than staying on the search page.
+    assert 'missList' in BUNDLES and 'afc.notFound' in BUNDLES
+
+
+def test_both_pages_agree_on_the_server_and_the_mode():
+    """A bundle has to be created on the server its item ids came from, and the
+    mode decides which document columns are worth reading."""
+    for key in ("'afc.game'", "'afc.mode'"):
+        assert key in HTML, key
+        assert key in BUNDLES, key
+
+
+def test_leaving_the_search_page_does_not_throw_the_search_away():
+    """The workspace already lives on the server; the page just has to ask for
+    it again instead of starting empty."""
+    assert 'afc.workspaceId' in HTML
+    assert 'restoreWorkspace' in HTML
 
 
 def test_ui_exposes_desktop_item_finder_controls():
@@ -14,7 +66,7 @@ def test_ui_exposes_desktop_item_finder_controls():
         'btnClearWorkspace', 'criteriaTable', 'btnSearch', 'btnStop', 'btnSelectAll',
         'btnClearSelection', 'btnCopySelected', 'btnCopyAll', 'btnExportXlsx',
         'btnExportCsv', 'btnBundles', 'resultsTable', 'notFoundList', 'log',
-        'btnClearLog', 'sheetDialog', 'bundleDialog',
+        'btnClearLog', 'sheetDialog', 'bundleDialog', 'btnBundleOpen',
     ]
     for element_id in required_ids:
         assert ('id="%s"' % element_id) in HTML, element_id

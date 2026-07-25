@@ -85,7 +85,13 @@ def test_regroup_and_bundles_carry_amt_as_qty():
     assert blank[0]['items'][0]['qty'] == '1'
 
 
-def test_build_bundles_puts_shared_items_last_in_every_group():
+def test_build_bundles_keeps_the_order_the_plan_file_listed():
+    """The plan file's order is the order the bundle should read in.
+
+    Shared items used to be swept to the bottom of every group, which quietly
+    rearranged bundles the operator had already put in sequence. They keep their
+    place now and are found by their highlight instead.
+    """
     rows = [
         {'aztek_id': '99', 'item_name': 'Shared', 'sources': ['G1']},
         {'aztek_id': '11', 'item_name': 'Only G1', 'sources': ['G1']},
@@ -96,7 +102,87 @@ def test_build_bundles_puts_shared_items_last_in_every_group():
     bundles = svc.build_bundles(rows, meta)
     assert [b['name'] for b in bundles] == ['Event - G1', 'Cash Shop - G2']
     assert [[it['id'] for it in b['items']] for b in bundles] == [
-        ['11', '99'], ['22', '99']]
+        ['99', '11'], ['99', '22']]
+    # Still flagged, just not moved.
+    assert [it['shared'] for it in bundles[0]['items']] == [True, False]
+
+
+def test_missing_criteria_are_the_rows_nothing_came_back_for():
+    """Searching again should cost only the rows that failed, not the whole plan."""
+    criteria = [
+        {'kind': '1', 'opt': '', 'dur': '', 'name': 'found'},
+        {'kind': '2', 'opt': '5', 'dur': '', 'name': 'missing'},
+        {'kind': '3', 'opt': '', 'dur': '7', 'name': 'also missing'},
+    ]
+    results = [{'aztek_id': '10', 'item_kind': '1', 'item_option': '',
+                'duration_index': ''}]
+    missing = svc.missing_criteria(criteria, results)
+    assert [row['name'] for row in missing] == ['missing', 'also missing']
+    # Each keeps the number it had in the plan, not its place in the retry.
+    assert missing[0]['_label'].startswith('#2 ')
+    assert missing[1]['_label'].startswith('#3 ')
+
+
+def test_a_retry_adds_to_what_was_already_found():
+    """The first pass's results have to survive a run that only redoes the
+    misses — and the newcomers belong at their place in the document, not
+    stacked at the bottom."""
+    occurrences = [
+        {'kind': '1', 'opt': '', 'dur': '', 'name': 'first', 'sources': ['G1']},
+        {'kind': '2', 'opt': '', 'dur': '', 'name': 'second', 'sources': ['G1']},
+        {'kind': '3', 'opt': '', 'dur': '', 'name': 'third', 'sources': ['G2']},
+    ]
+    previous = [
+        {'aztek_id': '10', 'item_kind': '1', 'item_option': '', 'duration_index': ''},
+        {'aztek_id': '30', 'item_kind': '3', 'item_option': '', 'duration_index': ''},
+    ]
+    fresh = [
+        {'aztek_id': '20', 'item_kind': '2', 'item_option': '', 'duration_index': ''}]
+    merged = svc.merge_found(previous, fresh, occurrences)
+    assert [row['aztek_id'] for row in merged] == ['10', '20', '30']
+    assert [row['groups'] for row in merged] == ['G1', 'G1', 'G2']
+
+
+def test_a_retry_does_not_duplicate_what_it_finds_again():
+    occurrences = [{'kind': '1', 'opt': '', 'dur': '', 'sources': ['G1']}]
+    row = {'aztek_id': '10', 'item_kind': '1', 'item_option': '',
+           'duration_index': ''}
+    assert len(svc.merge_found([row], [dict(row)], occurrences)) == 1
+
+
+def test_bundle_items_carry_what_the_document_said():
+    """A bundle is checked against the plan file, so the plan file's own words
+    travel with it — otherwise the check means going back to a results table
+    holding every group at once."""
+    rows = [{'aztek_id': '11', 'item_name': 'Leaf Gem [30d]',
+             'file_name': 'Leaf Gem 30 วัน', 'name_mismatch': True,
+             'params': 'เว็บ✓ เทรด✓ จำนวน∅', 'desc': 'ใช้แล้วได้ Gem',
+             'amt': '5', 'sources': ['G1']}]
+    item = svc.build_bundles(rows, {})[0]['items'][0]
+    assert item['file_name'] == 'Leaf Gem 30 วัน'
+    assert item['name_mismatch'] is True
+    assert item['params'] == 'เว็บ✓ เทรด✓ จำนวน∅'
+    assert item['desc'] == 'ใช้แล้วได้ Gem'
+    # The count starts at what the document asked for, and says so separately so
+    # the page can flag a value typed over it.
+    assert (item['qty'], item['doc_qty']) == ('5', '5')
+
+
+def test_a_random_box_arrives_as_a_random_bundle_with_its_odds():
+    """The plan's rate column is the whole reason that product is a random box;
+    re-typing the odds by hand is exactly what the import is there to avoid."""
+    rows = [{'aztek_id': '11', 'item_name': 'A', 'rate': '40', 'sources': ['G1']},
+            {'aztek_id': '22', 'item_name': 'B', 'rate': '60', 'sources': ['G1']}]
+    bundle = svc.build_bundles(rows, {'G1': {'is_random': True}})[0]
+    assert bundle['is_random'] is True
+    assert [it['rate'] for it in bundle['items']] == ['40', '60']
+
+
+def test_a_product_with_no_odds_is_not_a_random_bundle():
+    rows = [{'aztek_id': '11', 'item_name': 'A', 'sources': ['G1']}]
+    bundle = svc.build_bundles(rows, {'G1': {'is_shop': True}})[0]
+    assert bundle['is_random'] is False
+    assert bundle['items'][0]['rate'] == ''
 
 
 def test_bundle_name_uses_event_name_from_import():

@@ -4,10 +4,12 @@ import asyncio
 import hashlib
 import hmac
 import os
+import re
 import sys
 import tempfile
 import threading
 import time
+import warnings
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -17,6 +19,7 @@ from fastapi import (APIRouter, Cookie, Depends, FastAPI, File, Form,
                      WebSocketDisconnect)
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,7 +33,7 @@ from web.auth_service import AuthService  # noqa: E402
 from web.aztek_sessions import (AztekSessionService, InvalidStorageState,  # noqa: E402
                                 PairingTokenNotFound, PairingTokenUnavailable)
 from web.db import Database  # noqa: E402
-from web.models import User, utc_now  # noqa: E402
+from web.models import Job, User, utc_now  # noqa: E402
 from web.search_coordinator import SearchCoordinator  # noqa: E402
 from web.security import hash_password, hash_token, verify_password  # noqa: E402
 from web.settings import Settings  # noqa: E402
@@ -54,18 +57,33 @@ class BundleRequest(BaseModel):
     selected_indexes: list[int] = Field(default_factory=list)
 
 
-class BundleOpenRequest(BaseModel):
-    game: str = Field(min_length=1, max_length=64)
-    # Empty name -> auto name from the group's event title + group.
+class BundleSpec(BaseModel):
+    """One bundle as the operator built it on the Create Bundle page.
+
+    Items are whatever they typed, pasted or sent over from Item Finder — the
+    page is a tool in its own right, so nothing here is tied to a search.
+    """
     name: str = Field(default='', max_length=200)
     bundle_type: Literal['FIXED', 'CHOICE', 'RANDOM'] = 'FIXED'
     deliver: bool = True
-    # Which grouped bundle to open; empty -> the first group.
-    group: str = Field(default='', max_length=200)
-    # Per-item quantity/tier overrides: [{id, qty, tier}]. When empty the group's
-    # items are used with default qty=1 / tier=Common.
+    # [{id, qty, tier, rate}] — id is the only required part.
     items: list[dict] = Field(default_factory=list)
-    selected_indexes: list[int] = Field(default_factory=list)
+    # Rewards are per bundle, not per run: two bundles in the same batch rarely
+    # hand out the same currency.
+    rewards: list[dict] = Field(default_factory=list)
+
+
+class BundleRunRequest(BaseModel):
+    game: str = Field(min_length=1, max_length=64)
+    bundles: list[BundleSpec] = Field(default_factory=list)
+    # Off by default: bundles are only written on an explicit opt-in, so a
+    # replayed or malformed preview request can never reach the live site.
+    # A preview takes exactly one bundle; a create takes the whole queue.
+    do_save: bool = False
+
+
+class RewardOptionsRequest(BaseModel):
+    game: str = Field(min_length=1, max_length=64)
 
 
 class LoginRequest(BaseModel):
@@ -172,10 +190,31 @@ def require_admin(user: User = Depends(require_user)) -> User:
     return user
 
 
-def _workspace_view(workspace):
+def _running_job(db, workspace) -> dict | None:
+    """The search still going for this workspace, if there is one.
+
+    A search outlives the page that started it, so a page coming back has to be
+    able to tell 'no results yet' from 'results are still on their way'.
+    """
+    job = db.scalar(
+        select(Job)
+        .where(Job.workspace_id == workspace.id,
+               Job.status.in_(('queued', 'running')))
+        .order_by(Job.created_at.desc()))
+    if job is None:
+        return None
+    return {'job_id': job.id, 'status': job.status}
+
+
+def _workspace_view(workspace, db=None):
+    running = _running_job(db, workspace) if db is not None else None
     return {
+        'running_job': running,
         'workspace_id': workspace.id,
         'mode': workspace.mode,
+        # The game the search ran against, so reopening the page puts the
+        # operator back on the same server rather than the first in the list.
+        'game': workspace.game or '',
         'filename': workspace.filename,
         'count': len(workspace.criteria),
         'items': workspace.criteria,
@@ -248,6 +287,22 @@ def account_page(
     if user is None:
         return RedirectResponse('/login')
     with open(os.path.join(STATIC_DIR, 'account.html'), encoding='utf-8') as stream:
+        return stream.read()
+
+
+@router.get('/bundles', response_class=HTMLResponse)
+def bundles_page(
+    request: Request,
+    afc_session: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+):
+    # Create Bundle is a tool of its own, not a view over a search: it builds
+    # bundles from typed or pasted item ids just as well as from ones Item
+    # Finder sent over, so it gets its own page rather than a panel on that one.
+    user = request.app.state.auth_service.resolve_session(db, afc_session)
+    if user is None:
+        return RedirectResponse('/login')
+    with open(os.path.join(STATIC_DIR, 'bundles.html'), encoding='utf-8') as stream:
         return stream.read()
 
 
@@ -450,6 +505,29 @@ def games(user: User = Depends(require_user)):
     return {'games': list(item_finder.GAME_NAMES)}
 
 
+def _clean_rewards(raw: list[dict]) -> list[dict]:
+    """Keep only well-formed rewards: a known kind, a value, a positive count."""
+    # Imported here (like the endpoint below) so module import does not pull in
+    # playwright.
+    from web import bundle_runner
+
+    cleaned = []
+    for entry in raw:
+        kind = str(entry.get('type') or '').strip().upper()
+        value = str(entry.get('value') or '').strip()
+        if kind not in bundle_runner.REWARD_KINDS or not value:
+            continue
+        try:
+            qty = int(str(entry.get('qty') or '1').strip())
+        except ValueError:
+            continue
+        if qty < 1:
+            continue
+        cleaned.append({'type': kind, 'value': value, 'qty': str(qty)})
+    return cleaned
+
+
+
 @router.get('/api/capabilities')
 def capabilities(request: Request, user: User = Depends(require_user)):
     """What this deployment can offer the UI.
@@ -607,8 +685,10 @@ def apply_plan(payload: ApplyPlanRequest, request: Request,
 @router.get('/api/workspaces/{workspace_id}')
 def get_workspace(workspace_id: str, user: User = Depends(require_user),
                   db: Session = Depends(get_db)):
+    # Only this route reports a running search: it is the one a page reopening
+    # after a trip elsewhere calls.
     return _workspace_view(
-        _get_workspace(WorkspaceRepository(db), user.id, workspace_id))
+        _get_workspace(WorkspaceRepository(db), user.id, workspace_id), db)
 
 
 @router.delete('/api/workspaces/{workspace_id}', status_code=204)
@@ -690,106 +770,188 @@ def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
         tool='item_finder', resource_type='workspace', resource_id=workspace_id,
         request=request,
     )
-    return {'bundles': bundles}
+    # The mode decides which columns matter when checking a bundle against the
+    # document, and the misses are the most dangerous thing to leave behind on
+    # this page — the document asked for them and no item is going in.
+    return {'bundles': bundles, 'mode': workspace.mode,
+            'game': workspace.game or '',
+            'not_found': workspace.not_found or []}
 
 
-@router.post('/api/workspaces/{workspace_id}/bundle-open')
-async def bundle_open(workspace_id: str, payload: BundleOpenRequest,
-                      request: Request, user: User = Depends(require_user),
+@router.post('/api/reward-options')
+async def reward_options(payload: RewardOptionsRequest, request: Request,
+                         user: User = Depends(require_user),
+                         db: Session = Depends(get_db)):
+    """Read the reward dropdown choices for a game off the live Aztek page.
+
+    Read-only: it opens the create-bundle page, harvests the options and
+    leaves. No workspace is involved because the lists are per-game site data,
+    not per-search results.
+    """
+    from web import bundle_runner
+
+    if payload.game not in item_finder.GAMES:
+        raise HTTPException(status_code=400, detail='ไม่รู้จักเกม: %s' % payload.game)
+    storage_state = request.app.state.aztek_session_service.load_storage_state(db, user)
+    if storage_state is None:
+        raise HTTPException(status_code=409, detail='ยังไม่ได้เชื่อมเซสชัน Aztek')
+
+    logs: list[dict] = []
+    try:
+        options = await bundle_runner.fetch_reward_options(
+            payload.game, storage_state,
+            lambda message, level='INFO': logs.append({'msg': message, 'level': level}))
+    except Exception as exc:
+        write_audit(
+            db, user_id=user.id, action='bundle.reward_options', status='failed',
+            summary={'error': str(exc)[:200], 'game': payload.game},
+            tool='create_bundle', resource_type='aztek_session',
+            resource_id=user.id, request=request)
+        raise HTTPException(status_code=502, detail='ดึงตัวเลือก reward ไม่สำเร็จ: %s' % exc)
+
+    write_audit(
+        db, user_id=user.id, action='bundle.reward_options', status='success',
+        summary={'game': payload.game,
+                 'found': sum(len(v) for v in options.values())},
+        tool='create_bundle', resource_type='aztek_session',
+        resource_id=user.id, request=request)
+    return {'reward_options': options, 'logs': logs}
+
+MAX_BUNDLE_ITEMS = 200
+
+
+def _clean_items(raw: list[dict]) -> list[dict]:
+    """Keep the item rows that name a real id, in the order they were given.
+
+    Order is the operator's: the plan file — or the column they pasted — lists
+    items the way the bundle should read. Duplicates are dropped because Aztek
+    refuses the second copy anyway.
+    """
+    items: list[dict] = []
+    seen: set[str] = set()
+    for entry in raw:
+        digits = re.search(r'\d+', str(entry.get('id') or ''))
+        if not digits or digits.group() in seen:
+            continue
+        item_id = digits.group()
+        seen.add(item_id)
+        try:
+            qty = max(1, int(str(entry.get('qty') or '1').strip() or '1'))
+        except ValueError:
+            qty = 1
+        items.append({'id': item_id, 'qty': str(qty),
+                      'tier': str(entry.get('tier') or 'Common').strip() or 'Common',
+                      'rate': str(entry.get('rate') or '').strip()})
+        if len(items) >= MAX_BUNDLE_ITEMS:
+            break
+    return items
+
+
+@router.post('/api/bundles/run')
+async def bundles_run(payload: BundleRunRequest, request: Request,
+                      user: User = Depends(require_user),
                       db: Session = Depends(get_db)):
-    """Preview: fill the Aztek v2 create-bundle form for the selected items WITHOUT
-    saving. On local (development) runs it opens a real Chrome window; otherwise it
-    returns a screenshot of the filled form. Nothing is created on the live site.
+    """Fill — and, only when asked, create — the bundles the operator built.
+
+    No workspace: the Create Bundle page stands on its own, so items may be
+    typed, pasted or sent over from a search. What guards this route is the
+    session and the operator's own Aztek cookies, exactly as on the desktop
+    tool where any item id can be entered by hand.
+
+    ``do_save=False`` previews a single bundle and never writes. ``True`` runs
+    the whole queue for real, one browser for the batch, and reports each id.
     """
     from web import bundle_runner
 
     settings: Settings = request.app.state.settings
     if payload.game not in item_finder.GAMES:
         raise HTTPException(status_code=400, detail='ไม่รู้จักเกม: %s' % payload.game)
-    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
-    indexes = payload.selected_indexes
-    if indexes:
-        rows = [workspace.results[i] for i in sorted(set(indexes))
-                if isinstance(i, int) and 0 <= i < len(workspace.results)]
-    else:
-        rows = workspace.results
-    if not rows:
-        raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้สร้างบันเดิล')
 
-    # Split the chosen rows into one bundle per group (activity/reward), each with
-    # an auto name of "<event> - <group>". The caller opens one group at a time.
-    bundles = item_service.build_bundles(rows, workspace.group_meta)
-    if not bundles:
-        raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้สร้างบันเดิล')
-    chosen = None
-    if payload.group:
-        chosen = next((b for b in bundles if b['group'] == payload.group), None)
-    if chosen is None:
-        chosen = bundles[0]
-    group_ids = {str(it.get('id') or '').strip()
-                 for it in chosen['items'] if it.get('id')}
-    if payload.items:
-        # The UI sends the exact items to include (duplicates already dropped),
-        # each with its own qty/tier. Keep only ids that belong to this group.
-        items = []
-        for it in payload.items:
-            iid = str(it.get('id') or '').strip()
-            if not iid or iid not in group_ids:
-                continue
-            qty = str(it.get('qty') or '1').strip() or '1'
-            tier = str(it.get('tier') or 'Common').strip() or 'Common'
-            items.append({'id': iid, 'qty': qty, 'tier': tier})
-    else:
-        items = [{'id': str(it['id']), 'qty': '1', 'tier': 'Common'}
-                 for it in chosen['items'] if it.get('id')]
-    if not items:
-        raise HTTPException(status_code=400, detail='กลุ่มนี้ไม่มีไอเทม')
-    bundle_name = payload.name.strip() or chosen['name']
+    jobs = []
+    for index, spec in enumerate(payload.bundles):
+        items = _clean_items(spec.items)
+        rewards = _clean_rewards(spec.rewards)
+        if not items and not rewards:
+            continue
+        if spec.bundle_type == 'RANDOM' and any(not it['rate'] for it in items):
+            raise HTTPException(
+                status_code=400,
+                detail='บันเดิลแบบ RANDOM ต้องใส่เรทสุ่มให้ครบทุกไอเทม: %s'
+                       % (spec.name.strip() or 'บันเดิลที่ %d' % (index + 1)))
+        jobs.append({'name': spec.name.strip() or 'Bundle %d' % (index + 1),
+                     'type': spec.bundle_type, 'deliver': spec.deliver,
+                     'items': items, 'rewards': rewards})
+    if not jobs:
+        raise HTTPException(status_code=400, detail='ไม่มีบันเดิลให้ทำ (ยังไม่มีไอเทม)')
+    if not payload.do_save and len(jobs) != 1:
+        raise HTTPException(status_code=400,
+                            detail='ดูตัวอย่างได้ทีละบันเดิลเท่านั้น')
 
     storage_state = request.app.state.aztek_session_service.load_storage_state(db, user)
     if storage_state is None:
         raise HTTPException(status_code=409, detail='ยังไม่ได้เชื่อมเซสชัน Aztek')
 
     logs: list[dict] = []
-    preview = bundle_runner.BundlePreview(
+    builder = bundle_runner.BundleBuilder(
         lambda message, level='INFO': logs.append({'msg': message, 'level': level}))
     # A real (watchable) window only makes sense where the server shares the
     # user's desktop — i.e. a local development run.
     headed = settings.app_env != 'production'
+    action = 'bundle.create' if payload.do_save else 'bundle.preview_open'
     try:
-        result = await preview.run(
-            game=payload.game, name=bundle_name, btype=payload.bundle_type,
-            deliver=payload.deliver, items=items, storage_state=storage_state,
-            headed=headed)
+        if payload.do_save:
+            # This run owns the single browser slot, so a window an earlier
+            # preview left standing has to go first.
+            await bundle_runner.close_kept(str(user.id))
+            results = await builder.run_many(
+                game=payload.game, bundles=jobs, storage_state=storage_state,
+                headed=headed)
+        else:
+            job = jobs[0]
+            outcome = await builder.run(
+                game=payload.game, name=job['name'], btype=job['type'],
+                deliver=job['deliver'], items=job['items'],
+                storage_state=storage_state, headed=headed,
+                rewards=job['rewards'], do_save=False,
+                # Keyed per operator so one person's leftover window is the only
+                # one their next run closes.
+                keep_open_key=str(user.id))
+            results = [{'name': job['name'], 'saved': False, 'bundle_id': None,
+                        'added': outcome['added'], 'total': outcome['total'],
+                        'rewards_added': outcome['rewards_added'],
+                        'rewards_total': outcome['rewards_total'],
+                        'error': None, 'kept_open': outcome['kept_open'],
+                        'screenshot': outcome.get('screenshot')}]
     except Exception as exc:
         write_audit(
-            db, user_id=user.id, action='bundle.preview_open', status='failed',
-            summary={'error': str(exc)[:200], 'game': payload.game},
-            tool='create_bundle', resource_type='workspace',
-            resource_id=workspace_id, request=request)
-        raise HTTPException(status_code=502, detail='เปิดฟอร์มบันเดิลไม่สำเร็จ: %s' % exc)
-
-    write_audit(
-        db, user_id=user.id, action='bundle.preview_open', status='success',
-        summary={'game': payload.game, 'added': result['added'],
-                 'total': result['total'], 'name': bundle_name,
-                 'group': chosen['group']},
-        tool='create_bundle', resource_type='workspace',
-        resource_id=workspace_id, request=request)
+            db, user_id=user.id, action=action, status='failed',
+            summary={'error': str(exc)[:200], 'game': payload.game,
+                     'planned': len(jobs)},
+            tool='create_bundle', resource_type='aztek_session',
+            resource_id=user.id, request=request)
+        raise HTTPException(status_code=502, detail='ทำรายการบันเดิลไม่สำเร็จ: %s' % exc)
 
     screenshot_b64 = None
-    if result.get('screenshot'):
-        import base64
-        screenshot_b64 = base64.b64encode(result['screenshot']).decode('ascii')
-    return {
-        'url': result['url'], 'added': result['added'], 'total': result['total'],
-        'headed': headed, 'logs': logs, 'screenshot_b64': screenshot_b64,
-        'bundle_name': bundle_name, 'group': chosen['group'],
-        # Every group available from this selection, so the UI can offer them.
-        'groups': [{'group': b['group'], 'name': b['name'],
-                    'count': len(b['items'])} for b in bundles],
-    }
-
+    for entry in results:
+        shot = entry.pop('screenshot', None)
+        if shot and screenshot_b64 is None:
+            import base64
+            screenshot_b64 = base64.b64encode(shot).decode('ascii')
+        # Each bundle is audited on its own: a run that half-succeeds must leave
+        # a record of exactly which bundles exist now.
+        write_audit(
+            db, user_id=user.id, action=action,
+            status='success' if (entry['saved'] or not payload.do_save) else 'failed',
+            summary={'game': payload.game, 'name': entry['name'],
+                     'added': entry['added'], 'total': entry['total'],
+                     'rewards': entry['rewards_added'],
+                     'bundle_id': entry['bundle_id'], 'error': entry['error']},
+            tool='create_bundle', resource_type='aztek_session',
+            resource_id=user.id, request=request)
+    return {'results': results, 'logs': logs, 'headed': headed,
+            'screenshot_b64': screenshot_b64,
+            'created': sum(1 for r in results if r['saved']),
+            'planned': len(jobs)}
 
 @router.websocket('/ws/search')
 async def ws_search(ws: WebSocket):
@@ -820,9 +982,14 @@ async def ws_search(ws: WebSocket):
     async def send(message):
         await ws.send_json(message)
 
+    coordinator = application.state.search_coordinator
     try:
-        await application.state.search_coordinator.run(
-            user_id, workspace_id, request, send)
+        # The socket is a watcher, not the owner. Starting is a no-op when a
+        # search for this workspace is already going — reconnecting after a trip
+        # to another page attaches to it and replays the log so far.
+        started = await coordinator.start(user_id, workspace_id, request, send)
+        if started:
+            await coordinator.attach(workspace_id, send)
     except WebSocketDisconnect:
         pass
     finally:
@@ -830,6 +997,26 @@ async def ws_search(ws: WebSocket):
             await ws.close()
         except Exception:
             pass
+
+
+@router.post('/api/workspaces/{workspace_id}/search/stop')
+def stop_search(workspace_id: str, request: Request,
+                user: User = Depends(require_user),
+                db: Session = Depends(get_db)):
+    """Stop a running search.
+
+    Its own route rather than a closed socket: the run no longer belongs to any
+    one page, so stopping has to be something the operator asks for explicitly
+    — from whichever page they happen to be on.
+    """
+    _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
+    stopped = request.app.state.search_coordinator.stop(workspace_id)
+    if stopped:
+        write_audit(
+            db, user_id=user.id, action='item_finder.stopped', status='success',
+            summary={}, tool='item_finder', resource_type='workspace',
+            resource_id=workspace_id, request=request)
+    return {'stopped': stopped}
 
 
 def create_app(
@@ -848,6 +1035,12 @@ def create_app(
     async def lifespan(application: FastAPI):
         with application.state.database.session() as db:
             application.state.auth_service.bootstrap_admin(db)
+        # A search only lives as long as the process driving it, so anything
+        # still marked running belongs to a process that is gone.
+        stale = application.state.search_coordinator.sweep_interrupted_jobs()
+        if stale:
+            warnings.warn('marked %d interrupted search job(s) as failed' % stale,
+                          RuntimeWarning, stacklevel=2)
         yield
 
     application = FastAPI(title='All for Cabal — Web', lifespan=lifespan)

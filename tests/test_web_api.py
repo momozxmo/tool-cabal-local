@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """Authenticated API-level tests for Item Finder web parity endpoints."""
+import asyncio
 import io
 import os
 import sys
 import tempfile
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+from sqlalchemy import select  # noqa: E402
+
 import item_finder  # noqa: E402
 from web import item_service, search_runner  # noqa: E402
-from web.models import WorkspaceRecord  # noqa: E402
+from web.models import Job, WorkspaceRecord  # noqa: E402
+from web.search_coordinator import SearchCoordinator  # noqa: E402
 from web.workspaces import WorkspaceRepository  # noqa: E402
 
 
@@ -137,8 +142,9 @@ def test_workspace_results_export_and_bundle_preview(client, member, test_databa
     assert response.status_code == 200, response.text
     bundles = response.json()['bundles']
     assert [bundle['name'] for bundle in bundles] == ['Event A - G1', 'Event A - G2']
+    # Plan-file order, shared items included — not shared-last.
     assert [[item['id'] for item in bundle['items']] for bundle in bundles] == [
-        ['11', '99'], ['22', '99'],
+        ['99', '11'], ['99', '22'],
     ]
 
 
@@ -189,6 +195,266 @@ def test_search_websocket_persists_results_not_found_and_regroups(
         # Results are persisted in the streamed result_view shape (sources are
         # joined into the 'groups' field, not a raw 'sources' list).
         assert [row['groups'] for row in saved.results] == ['G1', 'G2']
+
+
+def _searchable_workspace(member, test_database):
+    with test_database.session() as db:
+        workspace = WorkspaceRepository(db).create(member.id, 'event', 'plan.xlsx')
+        workspace.criteria = [{'kind': '1', 'opt': '', 'dur': '', 'name': 'A'}]
+        workspace.occurrences = [
+            {'kind': '1', 'opt': '', 'dur': '', 'name': 'A file', 'sources': ['G1']}]
+        return workspace.id
+
+
+class _StubAztek:
+    """Just enough session service to let a search start."""
+
+    def load_storage_state(self, db, user):
+        return {'cookies': [], 'origins': []}
+
+    def mark_expired(self, db, user):
+        return None
+
+
+def _coordinator(test_settings, test_database):
+    return SearchCoordinator(test_database, test_settings, _StubAztek())
+
+
+def _hold_then_find(release):
+    """A run that produces one row, once the test lets it."""
+    async def fake_run(finder, data, storage_state):
+        await release.wait()
+        row = {'aztek_id': '10', 'item_name': 'A web', 'item_kind': '1',
+               'item_option': '', 'duration_index': '', 'game': data['game']}
+        finder._results = [row]
+        finder.add_result_row(row)
+    return fake_run
+
+
+async def _settle(coordinator, workspace_id, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while coordinator.live(workspace_id) is not None:
+        if time.monotonic() > deadline:
+            raise AssertionError('การค้นหาไม่จบภายในเวลาที่รอ')
+        await asyncio.sleep(0.02)
+
+
+# These drive the coordinator directly rather than through TestClient: its
+# websocket portal ends with the request, which would take a detached task with
+# it and prove nothing about a real server.
+def test_a_search_outlives_the_page_that_started_it(
+    test_settings, test_database, member, monkeypatch
+):
+    """Create Bundle is its own page, so leaving mid-search is normal use.
+
+    The run belongs to the application: the watcher going away must not cancel
+    it, and the results must be recorded with nobody watching at all.
+    """
+    workspace_id = _searchable_workspace(member, test_database)
+    coordinator = _coordinator(test_settings, test_database)
+    request = {'game': 'CabalM SEA', 'web_mode': 'any'}
+
+    async def scenario():
+        release = asyncio.Event()
+        monkeypatch.setattr(search_runner.HeadlessFinder, 'run',
+                            _hold_then_find(release))
+        seen = []
+        assert await coordinator.start(
+            member.id, workspace_id, request, lambda m: seen.append(m) or _noop())
+        # The watcher leaves before a single result exists.
+        release.set()
+        await _settle(coordinator, workspace_id)
+
+    asyncio.run(scenario())
+    with test_database.session() as db:
+        saved = db.get(WorkspaceRecord, workspace_id)
+        assert [row['aztek_id'] for row in saved.results] == ['10']
+        job = db.scalars(select(Job).where(Job.workspace_id == workspace_id)).one()
+        assert job.status == 'done'
+
+
+async def _noop():
+    return None
+
+
+def test_coming_back_replays_the_log_and_streams_the_rest(
+    test_settings, test_database, member, monkeypatch
+):
+    """Reconnecting subscribes to the same run rather than starting a second."""
+    workspace_id = _searchable_workspace(member, test_database)
+    coordinator = _coordinator(test_settings, test_database)
+    request = {'game': 'CabalM SEA', 'web_mode': 'any'}
+    seen = []
+
+    async def scenario():
+        release = asyncio.Event()
+        monkeypatch.setattr(search_runner.HeadlessFinder, 'run',
+                            _hold_then_find(release))
+
+        async def emit(message):
+            seen.append(message)
+
+        assert await coordinator.start(member.id, workspace_id, request, emit)
+        # Starting again is the reconnect: same run, no second job.
+        assert await coordinator.start(member.id, workspace_id, request, emit)
+        watcher = asyncio.ensure_future(coordinator.attach(workspace_id, emit))
+        # Let it subscribe before the run can finish out from under it.
+        while not coordinator.live(workspace_id).subscribers:
+            await asyncio.sleep(0.01)
+        release.set()
+        await _settle(coordinator, workspace_id)
+        await watcher
+
+    asyncio.run(scenario())
+    # The 'job' line was published before this watcher attached — it is replay.
+    assert seen and seen[0]['type'] == 'job'
+    assert [m['type'] for m in seen].count('result') == 1
+    assert seen[-1]['type'] == 'done'
+    with test_database.session() as db:
+        jobs = db.scalars(select(Job).where(Job.workspace_id == workspace_id)).all()
+    assert len(jobs) == 1, 'reconnecting must not start a second search'
+
+
+def test_stopping_is_a_request_of_its_own(
+    test_settings, test_database, member, monkeypatch
+):
+    """A closed socket no longer cancels, so Stop is asked for on its own."""
+    workspace_id = _searchable_workspace(member, test_database)
+    coordinator = _coordinator(test_settings, test_database)
+
+    async def scenario():
+        release = asyncio.Event()
+        monkeypatch.setattr(search_runner.HeadlessFinder, 'run',
+                            _hold_then_find(release))
+        assert await coordinator.start(
+            member.id, workspace_id, {'game': 'CabalM SEA', 'web_mode': 'any'},
+            lambda m: _noop())
+        assert coordinator.stop(workspace_id) is True
+        release.set()
+        await _settle(coordinator, workspace_id)
+        # Nothing running: the answer is no, not an error.
+        assert coordinator.stop(workspace_id) is False
+
+    asyncio.run(scenario())
+    with test_database.session() as db:
+        job = db.scalars(select(Job).where(Job.workspace_id == workspace_id)).one()
+    assert job.status == 'cancelled'
+
+
+def test_searching_again_runs_only_the_misses_and_keeps_the_finds(
+    test_settings, test_database, member, monkeypatch
+):
+    """Re-running the whole plan to chase two stragglers costs the whole plan.
+
+    The retry searches only the rows that came back empty, and what the first
+    pass found is still there when it ends.
+    """
+    with test_database.session() as db:
+        workspace = WorkspaceRepository(db).create(member.id, 'event', 'plan.xlsx')
+        workspace.criteria = [
+            {'kind': '1', 'opt': '', 'dur': '', 'name': 'found'},
+            {'kind': '2', 'opt': '', 'dur': '', 'name': 'missing'},
+        ]
+        workspace.occurrences = [
+            {'kind': '1', 'opt': '', 'dur': '', 'name': 'found', 'sources': ['G1']},
+            {'kind': '2', 'opt': '', 'dur': '', 'name': 'missing', 'sources': ['G1']},
+        ]
+        # As if a first pass had found one of the two.
+        workspace.results = [{'aztek_id': '10', 'item_name': 'A', 'item_kind': '1',
+                              'item_option': '', 'duration_index': '',
+                              'sources': ['G1'], 'groups': 'G1'}]
+        workspace.not_found = [['#2 Kind=2', 'ไม่พบ row ที่ตรงเงื่อนไข']]
+        workspace_id = workspace.id
+
+    coordinator = _coordinator(test_settings, test_database)
+    ran_with = {}
+
+    async def fake_run(finder, data, storage_state):
+        ran_with['kinds'] = [row['kind'] for row in data['multi']]
+        row = {'aztek_id': '20', 'item_name': 'B', 'item_kind': '2',
+               'item_option': '', 'duration_index': '', 'game': data['game']}
+        finder._results = [row]
+        finder.add_result_row(row)
+
+    async def scenario():
+        monkeypatch.setattr(search_runner.HeadlessFinder, 'run', fake_run)
+        assert await coordinator.start(
+            member.id, workspace_id,
+            {'game': 'CabalM SEA', 'web_mode': 'any', 'only_missing': True},
+            lambda m: _noop())
+        await _settle(coordinator, workspace_id)
+
+    asyncio.run(scenario())
+    assert ran_with['kinds'] == ['2'], 'the row already found must not be searched again'
+    with test_database.session() as db:
+        saved = db.get(WorkspaceRecord, workspace_id)
+    assert [row['aztek_id'] for row in saved.results] == ['10', '20']
+
+
+def test_searching_again_with_nothing_missing_does_not_start_a_browser(
+    test_settings, test_database, member, monkeypatch
+):
+    """Nothing to chase is an answer, not a run — and must not wipe the results."""
+    with test_database.session() as db:
+        workspace = WorkspaceRepository(db).create(member.id, 'event', 'plan.xlsx')
+        workspace.criteria = [{'kind': '1', 'opt': '', 'dur': '', 'name': 'found'}]
+        workspace.results = [{'aztek_id': '10', 'item_kind': '1',
+                              'item_option': '', 'duration_index': ''}]
+        workspace_id = workspace.id
+
+    coordinator = _coordinator(test_settings, test_database)
+    started = []
+
+    async def never(finder, data, storage_state):
+        started.append(True)
+
+    async def scenario():
+        monkeypatch.setattr(search_runner.HeadlessFinder, 'run', never)
+        seen = []
+
+        async def emit(message):
+            seen.append(message)
+
+        assert await coordinator.start(
+            member.id, workspace_id,
+            {'game': 'CabalM SEA', 'web_mode': 'any', 'only_missing': True},
+            emit) is False
+        return seen
+
+    seen = asyncio.run(scenario())
+    assert not started
+    assert seen[-1]['type'] == 'done' and seen[-1]['count'] == 1
+    with test_database.session() as db:
+        assert len(db.get(WorkspaceRecord, workspace_id).results) == 1
+
+
+def test_stop_route_is_owner_checked(client, other_member, client_for, member,
+                                     test_database):
+    """Stopping reaches into another session's run, so it is own-checked."""
+    workspace_id = _searchable_workspace(member, test_database)
+    assert client.post(
+        '/api/workspaces/%s/search/stop' % workspace_id).json()['stopped'] is False
+    intruder = client_for(other_member)
+    assert intruder.post(
+        '/api/workspaces/%s/search/stop' % workspace_id).status_code == 404
+
+
+def test_a_job_from_a_dead_process_is_not_left_running(
+    application, test_database, member
+):
+    """A run cannot survive a restart, so a job still marked running at startup
+    belongs to nobody — and a page would wait on it forever."""
+    workspace_id = _searchable_workspace(member, test_database)
+    with test_database.session() as db:
+        db.add(Job(owner_user_id=member.id, workspace_id=workspace_id,
+                   tool='item_finder', status='running', config={}))
+
+    swept = application.state.search_coordinator.sweep_interrupted_jobs()
+    assert swept == 1
+    with test_database.session() as db:
+        job = db.scalars(select(Job).where(Job.workspace_id == workspace_id)).one()
+    assert job.status == 'failed'
+    assert job.result['code'] == 'interrupted'
 
 
 def test_failed_search_clears_previous_workspace_results(client, member, test_database):

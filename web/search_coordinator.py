@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 
 import aztek_core as core
 
-from web import search_runner
+from web import item_service, search_runner
 from web.audit import write_audit
 from web.models import Job, User, utc_now
 from web.security import InvalidEncryptedState
@@ -21,9 +21,41 @@ from web.workspaces import WorkspaceNotFound, WorkspaceRepository
 
 
 _MAX_LOG_LINES = 500
+# What a page gets replayed when it attaches to a search already in progress.
+# Enough to read the story so far without holding a whole run in memory.
+_MAX_REPLAY = 400
 
 
 Emit = Callable[[dict], Awaitable[None]]
+
+
+class LiveSearch:
+    """A search running on its own, with whoever happens to be watching.
+
+    The run belongs to the application, not to the socket that asked for it —
+    a page that navigates to Create Bundle and back must find its search still
+    going, and the job must be written down even if nobody is watching at all.
+    """
+
+    def __init__(self, job_id: str, finder) -> None:
+        self.job_id = job_id
+        self.finder = finder
+        self.history: list[dict] = []
+        self.subscribers: set[asyncio.Queue] = set()
+        self.done = False
+
+    def publish(self, message: dict) -> None:
+        self.history.append(message)
+        if len(self.history) > _MAX_REPLAY:
+            # Drop from the front: the recent end is the part worth reading.
+            del self.history[:len(self.history) - _MAX_REPLAY]
+        for queue in self.subscribers:
+            queue.put_nowait(message)
+
+    def finish(self) -> None:
+        self.done = True
+        for queue in self.subscribers:
+            queue.put_nowait(None)
 
 
 class SearchCoordinator:
@@ -32,6 +64,45 @@ class SearchCoordinator:
         self._settings = settings
         self._aztek = aztek_session_service
         self._semaphore = asyncio.Semaphore(max(1, settings.browser_concurrency))
+        # Searches in flight, by workspace. One per workspace: starting a search
+        # already wipes that workspace's results, so two at once would fight.
+        self._live: dict[str, LiveSearch] = {}
+
+    def live(self, workspace_id: str) -> LiveSearch | None:
+        return self._live.get(workspace_id)
+
+    def stop(self, workspace_id: str) -> bool:
+        """Ask a running search to wind up. Closing a page no longer does this."""
+        live = self._live.get(workspace_id)
+        if live is None:
+            return False
+        live.finder._cancel = True
+        return True
+
+    async def attach(self, workspace_id: str, emit: Emit) -> bool:
+        """Stream a running search to one more watcher, from the start.
+
+        The log so far is replayed before live events, so a page that comes
+        back mid-run reads the whole story rather than joining silently.
+        """
+        live = self._live.get(workspace_id)
+        if live is None or live.done:
+            return False
+        queue: asyncio.Queue = asyncio.Queue()
+        for message in list(live.history):
+            queue.put_nowait(message)
+        live.subscribers.add(queue)
+        try:
+            while True:
+                message = await queue.get()
+                if message is None:
+                    break
+                await emit(message)
+        except Exception:  # noqa: BLE001 - this watcher left; the run carries on
+            pass
+        finally:
+            live.subscribers.discard(queue)
+        return True
 
     def resolve_headed(self, wants_headed: bool) -> bool:
         """Whether this run may open a watchable window.
@@ -42,8 +113,17 @@ class SearchCoordinator:
         """
         return bool(wants_headed) and self._settings.app_env != 'production'
 
-    async def run(self, user_id: str, workspace_id: str,
-                  request_data: dict, emit: Emit) -> None:
+    async def start(self, user_id: str, workspace_id: str,
+                    request_data: dict, emit: Emit) -> bool:
+        """Set a search going as a task of its own. True if one is now running.
+
+        Everything that can refuse the run — no workspace, no Aztek session, a
+        malformed request — is settled here and reported to the caller, so the
+        detached task only ever contains work that is actually going to happen.
+        """
+        if workspace_id in self._live:
+            # Already running; the caller attaches to it instead.
+            return True
         game = str(request_data.get('game') or '')
         web_mode = request_data.get('web_mode')
         wants_headed = bool(request_data.get('headed'))
@@ -57,10 +137,11 @@ class SearchCoordinator:
             except WorkspaceNotFound:
                 await emit({'type': 'error', 'code': 'workspace_not_found',
                             'msg': 'ไม่พบงาน Item Finder นี้'})
-                return
+                return False
             mode = workspace.mode
             criteria = list(workspace.criteria)
             occurrences = list(workspace.occurrences)
+            kept = list(workspace.results)
             if not web_mode:
                 web_mode = None
             user = db.get(User, user_id)
@@ -74,12 +155,27 @@ class SearchCoordinator:
             await emit({'type': 'error', 'code': 'aztek_session_required',
                         'msg': 'ยังไม่ได้เชื่อมเซสชัน Aztek — ไปที่หน้า /account'})
             await emit({'type': 'done', 'count': 0, 'not_found': []})
-            return
+            return False
 
-        # 3. Starting a search invalidates prior results even if it later fails.
-        with self._database.session() as db:
-            WorkspaceRepository(db).save_results(
-                user_id, workspace_id, game=game, results=[], not_found=[])
+        # 3. A retry runs only the rows that came back empty, and keeps what the
+        # first pass found. A full run starts clean — its results are invalid
+        # from the moment it begins, even if it later fails.
+        only_missing = bool(request_data.get('only_missing'))
+        if only_missing:
+            criteria = item_service.missing_criteria(criteria, kept)
+            if not criteria:
+                await emit({'type': 'log', 'level': 'SUCCESS',
+                            'msg': 'ไม่มีรายการที่หาไม่เจอแล้ว — ไม่ต้องค้นซ้ำ'})
+                await emit({'type': 'done', 'count': len(kept), 'not_found': []})
+                return False
+            await emit({'type': 'log', 'level': 'STEP',
+                        'msg': 'ค้นซ้ำเฉพาะที่หาไม่เจอ %d รายการ (ผลเดิม %d รายการยังอยู่)'
+                               % (len(criteria), len(kept))})
+        else:
+            kept = []
+            with self._database.session() as db:
+                WorkspaceRepository(db).save_results(
+                    user_id, workspace_id, game=game, results=[], not_found=[])
 
         if wants_headed and not headed:
             await emit({'type': 'log', 'level': 'WARNING',
@@ -92,93 +188,125 @@ class SearchCoordinator:
         except Exception as error:
             await emit({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
             await emit({'type': 'done', 'count': 0, 'not_found': []})
-            return
+            return False
 
-        # 5. Persist a queued job, then run under the concurrency gate.
+        # 5. Persist a queued job, then run it as a task of the application.
         with self._database.session() as db:
             job = Job(owner_user_id=user_id, workspace_id=workspace_id,
                       tool='item_finder', status='queued',
                       config={'game': game, 'mode': mode,
-                              'web_mode': web_mode or '', 'headed': headed})
+                              'web_mode': web_mode or '', 'headed': headed,
+                              'only_missing': only_missing})
             db.add(job)
             db.flush()
             job_id = job.id
-        await emit({'type': 'job', 'job_id': job_id, 'status': 'queued'})
 
-        await self._run_job(user_id, workspace_id, job_id, game, data,
-                            occurrences, storage_state, emit)
-
-    async def _run_job(self, user_id, workspace_id, job_id, game, data,
-                       occurrences, storage_state, emit) -> None:
-        queue: asyncio.Queue = asyncio.Queue()
-        finder = search_runner.HeadlessFinder(
-            lambda msg, level='INFO': queue.put_nowait(
+        live = LiveSearch(job_id, None)
+        live.finder = search_runner.HeadlessFinder(
+            lambda msg, level='INFO': live.publish(
                 {'type': 'log', 'msg': msg, 'level': level}),
-            lambda item: queue.put_nowait(
+            lambda item: live.publish(
                 {'type': 'result', 'item': search_runner.result_view(item)}),
-            lambda cur, total, name: queue.put_nowait(
+            lambda cur, total, name: live.publish(
                 {'type': 'progress', 'cur': cur, 'total': total, 'name': name}),
             occurrences=occurrences,
-            on_reset=lambda: queue.put_nowait({'type': 'reset_results'}),
+            on_reset=lambda: live.publish({'type': 'reset_results'}),
         )
+        live.publish({'type': 'job', 'job_id': job_id, 'status': 'queued'})
+        self._live[workspace_id] = live
+        # Not awaited: the run outlives this call, and the caller goes on to
+        # attach to it like any other watcher.
+        asyncio.ensure_future(
+            self._drive(live, user_id, workspace_id, job_id, game, data,
+                        storage_state, kept, occurrences))
+        return True
 
+    async def _drive(self, live: LiveSearch, user_id, workspace_id, job_id,
+                     game, data, storage_state, kept=(), occurrences=()) -> None:
+        """Run one search to its end and write down what happened.
+
+        Nothing in here depends on anyone watching: the job row and the results
+        are recorded whether the page that started it is still open or not.
+        """
+        finder = live.finder
         log_lines: list[str] = []
         outcome = {'status': 'failed', 'code': None, 'reason': None,
                    'results': [], 'not_found': []}
 
-        async def run_search():
-            await self._semaphore.acquire()
-            try:
-                queue.put_nowait({'type': 'job', 'job_id': job_id, 'status': 'running'})
-                self._mark_job_running(job_id)
-                await finder.run(data, storage_state)
-                # Persist the same view that was streamed to the browser so a
-                # workspace reload keeps every derived field (params, groups, and
-                # the name_mismatch highlight flag).
-                outcome['results'] = [
-                    search_runner.result_view(row) for row in finder._results]
-                outcome['not_found'] = list(finder._not_found)
-                outcome['status'] = 'cancelled' if finder._cancel else 'done'
-                queue.put_nowait({'type': 'done', 'count': len(outcome['results']),
-                                  'not_found': outcome['not_found']})
-            except search_runner.AztekSessionExpired as error:
-                outcome['code'] = 'aztek_session_expired'
-                outcome['reason'] = str(error)
-                queue.put_nowait({'type': 'error', 'code': 'aztek_session_expired',
-                                  'msg': str(error)})
-                queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
-            except core.BrowserBusy as error:
-                outcome['code'] = 'browser_busy'
-                outcome['reason'] = str(error)
-                queue.put_nowait({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
-                queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
-            except Exception as error:  # noqa: BLE001 - surface as a failed job
-                outcome['code'] = 'error'
-                outcome['reason'] = str(error)
-                queue.put_nowait({'type': 'log', 'msg': 'error: %s' % error,
-                                  'level': 'ERROR'})
-                queue.put_nowait({'type': 'done', 'count': 0, 'not_found': []})
-            finally:
-                self._semaphore.release()
-                queue.put_nowait(None)
-
-        task = asyncio.create_task(run_search())
-        client_gone = False
-        while True:
-            message = await queue.get()
-            if message is None:
-                break
+        def say(message):
             if message.get('type') == 'log' and len(log_lines) < _MAX_LOG_LINES:
                 log_lines.append('%s: %s' % (
                     message.get('level', 'INFO'), message.get('msg', '')))
-            if not client_gone:
-                try:
-                    await emit(message)
-                except Exception:  # noqa: BLE001 - client vanished mid-stream
-                    client_gone = True
-                    finder._cancel = True
-        await task
-        self._finalize(user_id, workspace_id, job_id, game, outcome, log_lines)
+            live.publish(message)
+
+        await self._semaphore.acquire()
+        try:
+            say({'type': 'job', 'job_id': job_id, 'status': 'running'})
+            self._mark_job_running(job_id)
+            await finder.run(data, storage_state)
+            # Persist the same view that was streamed to the browser so a
+            # workspace reload keeps every derived field (params, groups, and
+            # the name_mismatch highlight flag).
+            fresh = [search_runner.result_view(row) for row in finder._results]
+            # A retry only ran the rows that came back empty, so what the first
+            # pass found has to be folded back in — and put back in document
+            # order, or the newcomers would pile up at the bottom.
+            outcome['results'] = (
+                item_service.merge_found(kept, fresh, occurrences) if kept
+                else fresh)
+            outcome['not_found'] = list(finder._not_found)
+            outcome['status'] = 'cancelled' if finder._cancel else 'done'
+            if kept:
+                say({'type': 'reset_results'})
+                for row in outcome['results']:
+                    say({'type': 'result', 'item': row})
+            say({'type': 'done', 'count': len(outcome['results']),
+                 'not_found': outcome['not_found']})
+        except search_runner.AztekSessionExpired as error:
+            outcome['code'] = 'aztek_session_expired'
+            outcome['reason'] = str(error)
+            say({'type': 'error', 'code': 'aztek_session_expired',
+                 'msg': str(error)})
+            say({'type': 'done', 'count': 0, 'not_found': []})
+        except core.BrowserBusy as error:
+            outcome['code'] = 'browser_busy'
+            outcome['reason'] = str(error)
+            say({'type': 'log', 'msg': str(error), 'level': 'ERROR'})
+            say({'type': 'done', 'count': 0, 'not_found': []})
+        except Exception as error:  # noqa: BLE001 - surface as a failed job
+            outcome['code'] = 'error'
+            outcome['reason'] = str(error)
+            say({'type': 'log', 'msg': 'error: %s' % error, 'level': 'ERROR'})
+            say({'type': 'done', 'count': 0, 'not_found': []})
+        finally:
+            self._semaphore.release()
+            try:
+                self._finalize(user_id, workspace_id, job_id, game, outcome,
+                               log_lines)
+            finally:
+                # Last of all: until this clears, the workspace reports a search
+                # in progress and a second one is refused.
+                self._live.pop(workspace_id, None)
+                live.finish()
+
+    def sweep_interrupted_jobs(self) -> int:
+        """Fail off jobs from a previous process, at startup.
+
+        A run only exists while the task driving it does, so a job still marked
+        running after a restart has nobody left to finish it — and a page would
+        wait on it forever.
+        """
+        from sqlalchemy import select
+
+        with self._database.session() as db:
+            stale = db.scalars(
+                select(Job).where(Job.status.in_(('queued', 'running')))).all()
+            for job in stale:
+                job.status = 'failed'
+                job.finished_at = utc_now()
+                job.result = {'count': 0, 'not_found': [], 'code': 'interrupted',
+                              'reason': 'เซิร์ฟเวอร์รีสตาร์ตระหว่างค้นหา'}
+            return len(stale)
 
     def _mark_job_running(self, job_id: str) -> None:
         with self._database.session() as db:

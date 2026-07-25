@@ -403,6 +403,22 @@ def test_login_and_account_page_routes_follow_authentication_state(
     assert 'changePasswordForm' in authenticated_account.text
 
 
+def test_create_bundle_page_needs_a_session(test_settings, test_database):
+    """It drives the operator's own Aztek session, so it is not a public page."""
+    application = web_app.create_app(test_settings, test_database)
+    _create_user(application, test_database)
+    client = _client(application)
+
+    anonymous = client.get('/bundles')
+    assert anonymous.status_code in (302, 303, 307)
+    assert anonymous.headers['location'] == '/login'
+
+    assert _login(client).status_code == 200
+    authenticated = client.get('/bundles')
+    assert authenticated.status_code == 200
+    assert 'btnQueueNew' in authenticated.text
+
+
 def test_item_finder_apis_require_authentication(test_settings, test_database):
     application = web_app.create_app(test_settings, test_database)
 
