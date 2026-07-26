@@ -5,14 +5,14 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.0](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.0/All.for.Cabal.Web.Setup-0.1.0.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.0/All.for.Cabal.Web.Setup-0.1.0.exe.sha256)
-- [ดูหน้า Release](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.0)
+- [ดาวน์โหลด Setup v0.1.1](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.1/All.for.Cabal.Web.Setup-0.1.1.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.1/All.for.Cabal.Web.Setup-0.1.1.exe.sha256)
+- [ดูหน้า Release](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.1)
 
 SHA-256:
 
 ```text
-45A047C6792057745FCB81D2538D8C92C01D4C3611F499343BF68186F6611933
+684AA4BDCAFD6745A886224BBC0E6237C417F8DE4E94D9361687165C6A95FE5B
 ```
 
 ## คุณสมบัติของเวอร์ชัน Local
@@ -23,8 +23,9 @@ SHA-256:
 - เก็บฐานข้อมูลและ config ไว้ที่ `%LOCALAPPDATA%\AllForCabalWeb`
 - ติดตั้งทับหรือถอนโปรแกรมแล้วข้อมูล Local ยังอยู่
 - รวม Chromium ที่ระบบอัตโนมัติต้องใช้ไว้ใน Setup แล้ว
+- v0.1.1 แก้อาการ Controller ค้างที่ข้อความกำลังปิดโปรแกรม
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.0 ยังไม่มี digital signature Windows อาจแสดง
+> ตัวติดตั้ง v0.1.1 ยังไม่มี digital signature Windows อาจแสดง
 > `Unknown publisher` หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
