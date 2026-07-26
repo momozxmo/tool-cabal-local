@@ -7,13 +7,13 @@
 ## ดาวน์โหลดและตรวจไฟล์
 
 1. ดาวน์โหลดไฟล์สองไฟล์จาก GitHub Release เดียวกัน:
-   - `All for Cabal Web Setup-0.1.0.exe`
-   - `All for Cabal Web Setup-0.1.0.exe.sha256`
+   - `All.for.Cabal.Web.Setup-0.1.0.exe`
+   - `All.for.Cabal.Web.Setup-0.1.0.exe.sha256`
 2. เปิด PowerShell ในโฟลเดอร์ Downloads แล้วตรวจค่า:
 
    ```powershell
-   Get-FileHash ".\All for Cabal Web Setup-0.1.0.exe" -Algorithm SHA256
-   Get-Content ".\All for Cabal Web Setup-0.1.0.exe.sha256"
+   Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.0.exe" -Algorithm SHA256
+   Get-Content ".\All.for.Cabal.Web.Setup-0.1.0.exe.sha256"
    ```
 
 3. ค่า SHA256 จากสองคำสั่งต้องตรงกัน ถ้าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดใหม่
@@ -24,7 +24,7 @@
 
 ## ติดตั้งและเปิดใช้งาน
 
-1. ดับเบิลคลิก `All for Cabal Web Setup-0.1.0.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.0.exe`
 2. ติดตั้งตามขั้นตอนปกติ และเลือกสร้างไอคอน Desktop ได้ตามต้องการ
 3. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้แล้วกด Finish
 4. หน้าต่าง Controller จะเปิด Item Finder ในเบราว์เซอร์ให้อัตโนมัติ
