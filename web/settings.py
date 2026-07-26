@@ -57,6 +57,9 @@ class Settings:
     # Shared SSO login host used by all four game servers; its cookies/origins
     # are equally valid parts of a captured Aztek session.
     aztek_auth_origin: str = 'https://auth.combo-interactive.com'
+    local_desktop_mode: bool = False
+    local_runtime_dir: str = ''
+    local_launcher_secret: str = ''
 
     @classmethod
     def from_env(cls) -> 'Settings':
@@ -71,10 +74,37 @@ class Settings:
 
         app_env = env('APP_ENV', 'development').strip().lower()
         production = app_env == 'production'
+        local_desktop_mode = (
+            env('LOCAL_DESKTOP_MODE', 'false').strip().lower() == 'true')
+        if local_desktop_mode and app_env != 'local-desktop':
+            raise ValueError(
+                'LOCAL_DESKTOP_MODE requires APP_ENV=local-desktop')
+        if app_env == 'local-desktop' and not local_desktop_mode:
+            raise ValueError(
+                'APP_ENV=local-desktop requires LOCAL_DESKTOP_MODE=true')
+        local_runtime_dir = env('LOCAL_RUNTIME_DIR').strip()
+        local_launcher_secret = env('LOCAL_LAUNCHER_SECRET').strip()
+        if local_desktop_mode:
+            missing_local = [
+                name for name, value in (
+                    ('LOCAL_RUNTIME_DIR', local_runtime_dir),
+                    ('LOCAL_LAUNCHER_SECRET', local_launcher_secret),
+                ) if not value
+            ]
+            if missing_local:
+                raise ValueError(
+                    'missing local settings: ' + ', '.join(missing_local))
         app_secret = env('APP_SECRET_KEY').strip()
         encryption_key = env('AZTEK_SESSION_ENCRYPTION_KEY').strip()
-        admin_user = env('BOOTSTRAP_ADMIN_USERNAME', '' if production else 'admin').strip()
-        admin_password = env('BOOTSTRAP_ADMIN_PASSWORD', '' if production else 'admin123456')
+        no_default_admin = production or local_desktop_mode
+        admin_user = env(
+            'BOOTSTRAP_ADMIN_USERNAME',
+            '' if no_default_admin else 'admin',
+        ).strip()
+        admin_password = env(
+            'BOOTSTRAP_ADMIN_PASSWORD',
+            '' if no_default_admin else 'admin123456',
+        )
         if production:
             missing = [name for name, value in (
                 ('APP_SECRET_KEY', app_secret),
@@ -110,4 +140,7 @@ class Settings:
                 else env('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
             ),
             browser_concurrency=browser_concurrency,
+            local_desktop_mode=local_desktop_mode,
+            local_runtime_dir=local_runtime_dir,
+            local_launcher_secret=local_launcher_secret,
         )
