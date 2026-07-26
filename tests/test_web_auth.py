@@ -234,6 +234,7 @@ def test_me_requires_a_session_and_returns_only_safe_user_fields(
         'username': user.username,
         'role': 'member',
         'is_active': True,
+        'local_mode': False,
     }
 
 

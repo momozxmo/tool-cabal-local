@@ -34,6 +34,7 @@ from web.auth_service import AuthService  # noqa: E402
 from web.aztek_sessions import (AztekSessionService, InvalidStorageState,  # noqa: E402
                                 PairingTokenNotFound, PairingTokenUnavailable)
 from web.db import Database  # noqa: E402
+from web.local_access import LocalAccessService  # noqa: E402
 from web.models import Job, User, utc_now  # noqa: E402
 from web.search_coordinator import SearchCoordinator  # noqa: E402
 from web.security import hash_password, hash_token, verify_password  # noqa: E402
@@ -145,6 +146,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class LocalLaunchRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
@@ -200,14 +205,20 @@ def _login_username_fingerprint(username: str, request: Request) -> str:
     return hmac.new(key, normalized, hashlib.sha256).hexdigest()[:32]
 
 
-def _set_session_cookie(response: Response, raw_token: str, settings: Settings) -> None:
+def _set_session_cookie(
+    response: Response,
+    raw_token: str,
+    settings: Settings,
+    *,
+    samesite: str = 'lax',
+) -> None:
     response.set_cookie(
         'afc_session',
         raw_token,
         max_age=settings.session_ttl_seconds,
         httponly=True,
         secure=settings.session_cookie_secure,
-        samesite='lax',
+        samesite=samesite,
         path='/',
     )
 
@@ -324,6 +335,8 @@ def login_page(
     afc_session: str | None = Cookie(default=None),
     db: Session = Depends(get_db),
 ):
+    if request.app.state.settings.local_desktop_mode:
+        return RedirectResponse('/local-start')
     user = request.app.state.auth_service.resolve_session(db, afc_session)
     if user is not None:
         return RedirectResponse('/')
@@ -421,8 +434,62 @@ def pair_bridge_page():
         return stream.read()
 
 
+def _client_host(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
+@router.post('/api/local/launch')
+def local_launch(request: Request):
+    try:
+        token = request.app.state.local_access.issue(
+            request.headers.get('X-AFC-Launcher-Secret'),
+            _client_host(request),
+        )
+    except LookupError:
+        raise HTTPException(status_code=404)
+    return {'token': token}
+
+
+@router.get('/local-start', response_class=HTMLResponse)
+def local_start(request: Request):
+    if not request.app.state.local_access.enabled_for(_client_host(request)):
+        raise HTTPException(status_code=404)
+    with open(
+        os.path.join(STATIC_DIR, 'local_start.html'),
+        encoding='utf-8',
+    ) as stream:
+        return stream.read()
+
+
+@router.post('/api/local/session', status_code=204)
+def local_session(
+    payload: LocalLaunchRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not request.app.state.local_access.consume(
+        payload.token,
+        _client_host(request),
+    ):
+        raise HTTPException(status_code=404)
+    try:
+        owner = request.app.state.local_access.ensure_owner(db)
+    except RuntimeError:
+        raise HTTPException(status_code=409)
+    response = Response(status_code=204)
+    _set_session_cookie(
+        response,
+        request.app.state.auth_service.create_session(db, owner),
+        request.app.state.settings,
+        samesite='strict',
+    )
+    return response
+
+
 @router.post('/api/auth/login')
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    if request.app.state.settings.local_desktop_mode:
+        raise HTTPException(status_code=404)
     client_ip = request.client.host if request.client else 'unknown'
     throttle: LoginThrottle = request.app.state.login_throttle
     if throttle.is_limited(client_ip):
@@ -505,8 +572,10 @@ def logout(
 
 
 @router.get('/api/auth/me')
-def me(user: User = Depends(require_user)):
-    return _safe_user(user)
+def me(request: Request, user: User = Depends(require_user)):
+    result = _safe_user(user)
+    result['local_mode'] = request.app.state.settings.local_desktop_mode
+    return result
 
 
 @router.post('/api/auth/change-password', status_code=204)
@@ -1516,6 +1585,11 @@ def create_app(
     resolved_settings = settings or Settings.from_env()
     resolved_database = database or Database(resolved_settings)
     auth_service = AuthService(resolved_settings)
+    local_access = LocalAccessService(
+        resolved_settings,
+        auth_service,
+        monotonic_clock,
+    )
     aztek_session_service = AztekSessionService(resolved_settings)
     search_coordinator = SearchCoordinator(
         resolved_database, resolved_settings, aztek_session_service)
@@ -1536,6 +1610,7 @@ def create_app(
     application.state.settings = resolved_settings
     application.state.database = resolved_database
     application.state.auth_service = auth_service
+    application.state.local_access = local_access
     application.state.aztek_session_service = aztek_session_service
     application.state.search_coordinator = search_coordinator
     application.state.login_throttle = LoginThrottle(monotonic_clock)
