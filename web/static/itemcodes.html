@@ -86,6 +86,7 @@
           <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
             <span class="slugline"><input id="slug" type="text" spellcheck="false">
               <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
+          <label>ผู้มีสิทธิ์รับรางวัล<select id="kind" disabled aria-readonly="true"><option value="ALL">ALL</option></select></label>
           <label>ใช้ต่อ 1 User<input id="usesPerUser" type="number" min="1" value="1"></label>
           <label class="wide">เวลาเริ่มใช้งาน *<input id="startTime" class="dtpick" type="text"></label>
           <label class="wide">เวลาสิ้นสุด *<input id="endTime" class="dtpick" type="text"></label>
@@ -187,7 +188,11 @@ function select(key) {
   queue.active = key;
   const entry = queue.current();
   if (entry) {
-    Object.entries(FIELDS).forEach(([id, field]) => { $(id).value = entry[field] || ''; });
+    Object.entries(FIELDS).forEach(([id, field]) => {
+      const input = $(id);
+      const value = entry[field] || '';
+      input.value = input.classList.contains('dtpick') ? displayStamp(value) : value;
+    });
     $('editorWhich').textContent = entry.name;
   }
   renderQueue(); renderSets();
@@ -206,7 +211,8 @@ Object.entries(FIELDS).forEach(([id, field]) => {
 });
 $('btnSlug').onclick = () => {
   const entry = queue.current(); if (!entry) return;
-  const made = slugify($('nameEn').value || $('nameTh').value);
+  const made = slugForGame(
+    $('nameEn').value || $('nameTh').value, $('game').value);
   if (!made) { log('ชื่ออังกฤษว่างหรือเป็นภาษาไทยล้วน — พิมพ์ slug เอง', 'WARNING'); return; }
   $('slug').value = entry.slug = made; renderQueue();
 };
@@ -319,12 +325,13 @@ function drainPlan() {
   } catch (e) { return; }
   if (!payload || !Array.isArray(payload.itemcodes) || !payload.itemcodes.length) return;
   if (payload.game) pendingGame = payload.game;
-  addDrafts(payload.itemcodes, 'หน้าหาไอดีไอเทม');
+  addDrafts(payload.itemcodes, 'หน้าหาไอดีไอเทม', payload.game);
 }
 
 // ---- รับเลข bundle จากหน้าสร้าง Bundle ----
 function drainHandoff() {
   const payload = drainBundleIds(); if (!payload) return;
+  if (payload.game) pendingGame = payload.game;
   let filled = 0, added = 0;
   payload.rows.forEach(row => {
     if (!row.bundle_id) return;
@@ -340,12 +347,12 @@ function drainHandoff() {
     const entry = blankCode(row.name || row.group || '');
     entry.group = row.group || '';
     entry.rewards = [blankReward(row.bundle_id, row.name || '')];
-    entry.slug = slugify(row.name || '');
+    entry.slug = slugForGame(
+      row.name || '', payload.game || $('game').value);
     queue.add(entry); added++;
   });
   if (filled) log(`ใส่เลข bundle ให้ร่างที่มีอยู่แล้ว ${filled} ชุด`, 'SUCCESS');
   if (added) log(`รับ ${added} bundle จากหน้าสร้าง Bundle — ใส่เป็นชุดรางวัลให้แล้ว`, 'SUCCESS');
-  if (payload.game) pendingGame = payload.game;
 }
 
 // ---- Import ไฟล์แผนตรงหน้านี้ ----
@@ -402,18 +409,22 @@ $('btnSheetTake').onclick = () => {
   const taken = imported.filter(draft => wanted.has(draft.sheet));
   if (!taken.length) { log('ยังไม่ได้เลือกแท็บไหนเลย', 'WARNING'); return; }
   $('sheetDialog').close();
-  addDrafts(taken, `ไฟล์แผน (${wanted.size} แท็บ)`);
+  addDrafts(taken, `ไฟล์แผน (${wanted.size} แท็บ)`, $('game').value);
 };
 document.querySelectorAll('[data-close]').forEach(
   button => button.onclick = () => $(button.dataset.close).close());
 
 /** Put drafts in the queue and land on the first of them. */
-function addDrafts(drafts, from) {
+function addDrafts(drafts, from, game) {
   let first = '';
   drafts.forEach(draft => {
     const entry = blankCode(draft.name_th || draft.group || '');
     ['name_th', 'name_en', 'slug', 'uses_per_user', 'start_time', 'end_time', 'group']
       .forEach(field => { if (draft[field] !== undefined) entry[field] = draft[field]; });
+    if (entry.slug) {
+      entry.slug = slugForGame(
+        entry.slug, game || $('game').value || pendingGame);
+    }
     entry.rewards = (draft.rewards || []).map(
       reward => Object.assign(blankReward(''), reward));
     if (!entry.rewards.length) entry.rewards = [blankReward('')];

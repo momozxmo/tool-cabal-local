@@ -411,17 +411,12 @@ def events_page(
 
 
 @router.get('/pair-bridge', response_class=HTMLResponse)
-def pair_bridge_page(
-    request: Request,
-    afc_session: str | None = Cookie(default=None),
-    db: Session = Depends(get_db),
-):
+def pair_bridge_page():
     # Landing page for the bookmarklet: it receives the Aztek cookies in the URL
     # fragment (never sent to the server) and POSTs them same-origin to
-    # /api/aztek/pair. Requires a logged-in web session like /account.
-    user = request.app.state.auth_service.resolve_session(db, afc_session)
-    if user is None:
-        return RedirectResponse('/login')
+    # /api/aztek/pair. The short-lived, single-use pairing token authenticates
+    # that POST, so this inert bridge page must not depend on a host-only web
+    # login cookie that the Aztek browser tab may not share.
     with open(os.path.join(STATIC_DIR, 'pair_bridge.html'), encoding='utf-8') as stream:
         return stream.read()
 
@@ -883,9 +878,41 @@ def workspace_itemcodes(workspace_id: str, request: Request,
     return {'itemcodes': drafts, 'game': workspace.game or ''}
 
 
+@router.get('/api/workspaces/{workspace_id}/events')
+def workspace_events(workspace_id: str, request: Request, game: str = '',
+                     user: User = Depends(require_user),
+                     db: Session = Depends(get_db)):
+    """Reassemble the selected Event sheets into editable Event drafts."""
+    from web import event_plan
+
+    workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
+    if workspace.mode != 'event':
+        raise HTTPException(
+            status_code=400, detail='งานนี้ไม่ได้อยู่ในโหมด Event')
+    if not workspace.group_meta:
+        raise HTTPException(
+            status_code=400, detail='ไฟล์นี้ไม่มีข้อมูล Event ที่เลือกไว้')
+    selected_game = game or workspace.game
+    if selected_game and selected_game not in item_finder.GAMES:
+        raise HTTPException(
+            status_code=400, detail='ไม่รู้จักเกม: %s' % selected_game)
+    drafts = event_plan.build_workspace_events(
+        workspace.group_meta, selected_game)
+    write_audit(
+        db, user_id=user.id, action='event.drafted', status='success',
+        summary={'count': len(drafts), 'mode': workspace.mode,
+                 'game': selected_game},
+        tool='item_finder', resource_type='workspace',
+        resource_id=workspace_id, request=request,
+    )
+    return {'events': drafts, 'game': selected_game or ''}
+
+
 @router.post('/api/workspaces/{workspace_id}/bundles')
 def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
                    user: User = Depends(require_user), db: Session = Depends(get_db)):
+    from web import event_plan
+
     workspace = _get_workspace(WorkspaceRepository(db), user.id, workspace_id)
     indexes = payload.selected_indexes
     if indexes:
@@ -896,6 +923,11 @@ def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
     if not rows:
         raise HTTPException(status_code=400, detail='ไม่มีไอเทมให้รวมเป็นบันเดิล')
     bundles = item_service.build_bundles(rows, workspace.group_meta)
+    group_keys = [bundle.get('group_key') for bundle in bundles
+                  if bundle.get('group_key')]
+    event_drafts = event_plan.build_workspace_events(
+        workspace.group_meta, workspace.game, group_keys=group_keys
+    ) if workspace.mode == 'event' else []
     write_audit(
         db, user_id=user.id, action='bundle.previewed', status='success',
         summary={'count': len(rows), 'mode': workspace.mode},
@@ -907,6 +939,7 @@ def bundle_preview(workspace_id: str, payload: BundleRequest, request: Request,
     # this page — the document asked for them and no item is going in.
     return {'bundles': bundles, 'mode': workspace.mode,
             'game': workspace.game or '',
+            'event_drafts': event_drafts,
             'not_found': workspace.not_found or []}
 
 
@@ -1329,6 +1362,45 @@ async def itemcodes_run(payload: ItemCodeRunRequest, request: Request,
         action='itemcode.create' if payload.do_save else 'itemcode.preview_open',
         headed=settings.app_env != 'production')
     return dict(result, logs=logs)
+
+
+@router.post('/api/events/import')
+async def events_import(request: Request, file: UploadFile = File(...),
+                        game: str = Form(''),
+                        user: User = Depends(require_user),
+                        db: Session = Depends(get_db)):
+    """Read a workbook into one editable Event draft per recognized sheet."""
+    import event_tool
+    from web import event_plan
+
+    path = await _temporary_upload(file)
+    try:
+        parsed = await asyncio.to_thread(
+            item_service.parse_workbook_locked,
+            event_tool.parse_event_plan, path)
+    except Exception as error:
+        raise HTTPException(
+            status_code=400, detail='อ่านไฟล์ Event ไม่สำเร็จ: %s' % error)
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+    drafts = event_plan.build_event_drafts(parsed, game)
+    counts = [
+        {'name': sheet, 'count': len((event or {}).get('rewards') or [])}
+        for sheet, event in parsed
+        if (event or {}).get('rewards')
+    ]
+    write_audit(
+        db, user_id=user.id, action='event.imported', status='success',
+        summary={'filename': file.filename or 'plan.xlsx', 'game': game,
+                 'sheets': len(counts), 'drafts': len(drafts)},
+        tool='create_event', resource_type='user', resource_id=user.id,
+        request=request,
+    )
+    return {'sheets': counts, 'events': drafts, 'skipped': []}
 
 
 @router.post('/api/events/run')

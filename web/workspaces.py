@@ -5,7 +5,7 @@ import datetime as _dt
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from web.item_service import merge_imported, mode_policy
+from web.item_service import merge_imported, mode_policy, stamp_sheet_rows
 from web.models import PendingImportRecord, WorkspaceRecord
 
 
@@ -138,7 +138,9 @@ class WorkspaceRepository:
             items = []
             for sheet_name, rows in pending.sheets:
                 if sheet_name in selected:
-                    items.extend(rows)
+                    items.extend(
+                        stamp_sheet_rows(sheet_name, rows)
+                        if workspace.mode == 'event' else rows)
             merged = merge_imported(
                 workspace.criteria, workspace.occurrences, workspace.group_meta, items
             )

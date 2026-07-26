@@ -16,6 +16,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 
 import event_tool
 import item_finder
+from web import event_plan
 
 
 _WORKBOOK_PARSE_LOCK = threading.Lock()
@@ -116,7 +117,9 @@ class WorkspaceStore:
             items = []
             for sheet_name, rows in pending.sheets:
                 if sheet_name in selected:
-                    items.extend(rows)
+                    items.extend(
+                        stamp_sheet_rows(sheet_name, rows)
+                        if workspace.mode == 'event' else rows)
             merged = merge_imported(workspace.criteria, workspace.occurrences,
                                     workspace.group_meta, items)
             workspace.criteria = merged.criteria
@@ -156,6 +159,38 @@ def _criteria_key(row):
             str(row.get('dur', '') or ''), str(row.get('name', '') or '').strip())
 
 
+def stamp_sheet_rows(sheet_name, rows):
+    """Copy imported rows and attach worksheet-aware reward identities."""
+    group_keys = {}
+    stamped = []
+    for source in rows:
+        row = dict(source)
+        sources = list(row.get('sources') or [])
+        raw_meta = dict(row.get('group_meta') or {})
+        reward_index = raw_meta.get('reward_index')
+        internal = []
+        for group in sources:
+            label = str(group or '').strip()
+            identity = (label, reward_index) if reward_index else label
+            if identity not in group_keys:
+                ordinal = reward_index or (len(group_keys) + 1)
+                group_keys[identity] = event_plan.make_group_key(
+                    sheet_name, label, ordinal)
+            internal.append(group_keys[identity])
+        row['sources'] = sources
+        row['group_keys'] = internal
+        if row.get('group_meta'):
+            meta = raw_meta
+            meta['sheet'] = str(sheet_name or '').strip()
+            meta['sheet_key'] = event_plan.make_sheet_key(sheet_name)
+            if internal:
+                meta['group_key'] = internal[0]
+                meta.setdefault('group', str(sources[0] or '').strip())
+            row['group_meta'] = meta
+        stamped.append(row)
+    return stamped
+
+
 def merge_imported(criteria, occurrences, group_meta, items):
     """Mirror App._apply_event_items without any widget dependencies."""
     criteria = [dict(row) for row in criteria]
@@ -164,24 +199,39 @@ def merge_imported(criteria, occurrences, group_meta, items):
     index = {}
     for row in criteria:
         row.setdefault('sources', [])
+        if 'group_keys' in row:
+            row['group_keys'] = list(row.get('group_keys') or [])
         index[_criteria_key(row)] = row
 
     added = merged = 0
     for source in items:
         row = dict(source)
         row['sources'] = list(row.get('sources') or [])
+        keys = (list(row.get('group_keys') or [])
+                if 'group_keys' in row else None)
+        if keys is not None:
+            row['group_keys'] = keys
         meta = row.pop('group_meta', None)
         if meta:
-            for group in row['sources']:
-                group_meta[group] = dict(meta)
+            for group_key, group in zip(
+                    keys or row['sources'], row['sources']):
+                saved = dict(meta)
+                saved['group_key'] = group_key
+                saved.setdefault('group', group)
+                group_meta[group_key] = saved
         occurrences.append(dict(row))
         key = _criteria_key(row)
         if key in index:
             target = index[key]
-            for group in row['sources']:
+            for position, group in enumerate(row['sources']):
                 if group not in target['sources']:
                     target['sources'].append(group)
                     merged += 1
+                if keys is not None:
+                    group_key = keys[position]
+                    target.setdefault('group_keys', [])
+                    if group_key not in target['group_keys']:
+                        target['group_keys'].append(group_key)
         else:
             criteria.append(row)
             index[key] = row
@@ -265,6 +315,9 @@ def regroup_results(results, occurrences):
         for found_row in found.get(key, []):
             row = dict(found_row)
             row['sources'] = list(occurrence.get('sources') or [])
+            if 'group_keys' in occurrence:
+                row['group_keys'] = list(
+                    occurrence.get('group_keys') or [])
             row['file_name'] = occurrence.get('name', '') or ''
             # Carry the quantity ('Amt' column) from the imported row so the
             # bundle dialog can auto-fill qty instead of defaulting to 1.
@@ -276,11 +329,11 @@ def regroup_results(results, occurrences):
     return expanded or [dict(row) for row in results]
 
 
-def _bundle_name(group, group_meta):
+def _bundle_name(group, group_meta, group_key=None):
     # Prefix the bundle name with the activity/event title so the operator sees
     # which event a bundle belongs to. Event imports carry 'event_name'; shop
     # imports carry 'shop_sheet'/'activity'.
-    meta = group_meta.get(group) or {}
+    meta = group_meta.get(group_key or group) or group_meta.get(group) or {}
     title = str(
         meta.get('event_name') or meta.get('shop_sheet') or meta.get('activity')
         or '').strip()
@@ -297,8 +350,10 @@ def build_bundles(results, group_meta):
         if not item_id:
             continue
         groups = row.get('sources') or ['(ไม่มีกลุ่ม)']
+        keys = row.get('group_keys') or groups
         item_groups.setdefault(item_id, set()).update(
-            str(g or '').strip() or '(ไม่มีกลุ่ม)' for g in groups)
+            str(key or group or '').strip() or '(ไม่มีกลุ่ม)'
+            for group, key in zip(groups, keys))
 
     order, grouped = [], {}
     for row in results:
@@ -306,12 +361,16 @@ def build_bundles(results, group_meta):
         if not item_id:
             continue
         shared = len(item_groups.get(item_id, ())) > 1
-        for raw_group in (row.get('sources') or ['(ไม่มีกลุ่ม)']):
+        groups = row.get('sources') or ['(ไม่มีกลุ่ม)']
+        keys = row.get('group_keys') or groups
+        for raw_group, raw_key in zip(groups, keys):
             group = str(raw_group or '').strip() or '(ไม่มีกลุ่ม)'
-            if group not in grouped:
-                grouped[group] = {'seen': set(), 'items': []}
-                order.append(group)
-            bucket = grouped[group]
+            group_key = str(raw_key or '').strip() or group
+            if group_key not in grouped:
+                grouped[group_key] = {
+                    'group': group, 'seen': set(), 'items': []}
+                order.append(group_key)
+            bucket = grouped[group_key]
             if item_id in bucket['seen']:
                 continue
             bucket['seen'].add(item_id)
@@ -344,12 +403,16 @@ def build_bundles(results, group_meta):
                  # Odds from the plan's random-box table, already a percentage.
                  'rate': str(row.get('rate', '') or '').strip()})
     return [
-        {'name': _bundle_name(group, group_meta), 'group': group,
+        {'name': _bundle_name(grouped[key]['group'], group_meta, key),
+         'group': grouped[key]['group'], 'group_key': key,
          # A product whose plan gave draw rates is a random box, so the bundle
          # is created as RANDOM without the operator having to spot it.
-         'is_random': bool((group_meta.get(group) or {}).get('is_random')),
-         'items': grouped[group]['items']}
-        for group in order
+         'is_random': bool(
+             (group_meta.get(key)
+              or group_meta.get(grouped[key]['group'])
+              or {}).get('is_random')),
+         'items': grouped[key]['items']}
+        for key in order
     ]
 
 

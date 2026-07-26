@@ -244,6 +244,86 @@ def test_workspace_store_applies_selected_sheets_and_preserves_state():
     assert store.get(workspace.id) is applied
 
 
+def test_selected_event_sheets_keep_distinct_internal_reward_keys():
+    """The visible reward label may repeat in different worksheets."""
+    store = svc.WorkspaceStore()
+    workspace = store.create('event', 'monthly.xlsx')
+    same_reward = {
+        'kind': '1', 'opt': '', 'dur': '', 'name': 'Prize',
+        'sources': ['Lucky Draw'],
+        'group_meta': {
+            'event_name': 'Event', 'reward': 'Lucky Draw',
+            'end_date': '2026-08-31',
+        },
+    }
+    upload = store.add_pending(workspace.id, [
+        ('Activity A', [same_reward]),
+        ('Activity B', [dict(same_reward)]),
+        ('Not selected', [dict(same_reward, kind='2')]),
+    ])
+
+    applied = store.apply_pending(
+        upload.id, ['Activity A', 'Activity B'])
+
+    assert len(applied.group_meta) == 2
+    metadata = list(applied.group_meta.values())
+    assert [meta['sheet'] for meta in metadata] == [
+        'Activity A', 'Activity B',
+    ]
+    assert len({meta['sheet_key'] for meta in metadata}) == 2
+    assert len({meta['group_key'] for meta in metadata}) == 2
+    assert applied.occurrences[0]['sources'] == ['Lucky Draw']
+    assert applied.occurrences[1]['sources'] == ['Lucky Draw']
+    assert applied.occurrences[0]['group_keys'] != \
+        applied.occurrences[1]['group_keys']
+
+
+def test_regroup_and_bundle_preserve_internal_key_beside_readable_group():
+    occurrences = [{
+        'kind': '1', 'opt': '', 'dur': '', 'name': 'Prize',
+        'sources': ['Lucky Draw'], 'group_keys': ['group-a'],
+    }]
+    found = [{
+        'aztek_id': '10', 'item_kind': '1', 'item_option': '',
+        'duration_index': '', 'item_name': 'Prize',
+    }]
+    rows = svc.regroup_results(found, occurrences)
+    bundles = svc.build_bundles(rows, {
+        'group-a': {'event_name': 'Event A', 'reward': 'Lucky Draw'},
+    })
+
+    assert rows[0]['sources'] == ['Lucky Draw']
+    assert rows[0]['group_keys'] == ['group-a']
+    assert bundles[0]['group'] == 'Lucky Draw'
+    assert bundles[0]['group_key'] == 'group-a'
+    assert bundles[0]['name'] == 'Event A - Lucky Draw'
+
+
+def test_repeated_reward_labels_inside_one_sheet_use_parser_table_identity():
+    rows = [
+        {
+            'kind': '1', 'sources': ['Lucky Draw'],
+            'group_meta': {
+                'event_name': 'Event A', 'reward': 'Lucky Draw',
+                'reward_index': 1,
+            },
+        },
+        {
+            'kind': '2', 'sources': ['Lucky Draw'],
+            'group_meta': {
+                'event_name': 'Event A', 'reward': 'Lucky Draw',
+                'reward_index': 2,
+            },
+        },
+    ]
+
+    stamped = svc.stamp_sheet_rows('Activity A', rows)
+
+    assert stamped[0]['group_keys'] != stamped[1]['group_keys']
+    assert stamped[0]['group_meta']['group_key'] != \
+        stamped[1]['group_meta']['group_key']
+
+
 def test_workspace_store_template_replaces_items_and_clear_removes_workspace():
     store = svc.WorkspaceStore()
     first = store.create('event', 'one.xlsx', [{'kind': '1'}])

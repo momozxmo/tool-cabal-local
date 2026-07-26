@@ -63,24 +63,27 @@
         <div class="topline">
           <label>เกม / เซิร์ฟ<select id="game"></select></label>
           <label>Event ในคิว <span id="queueCount" class="count">0</span><select id="queuePick"></select></label>
+          <button id="btnImport" class="primary" title="อ่านไฟล์แผนแล้วเลือกแท็บที่จะเอา">📂 Import ไฟล์แผน</button>
           <button id="btnQueueNew" class="success">+ Event ใหม่</button>
           <button id="btnQueueDel">✕ เอาออก</button>
           <button id="btnQueueClear" class="danger">ล้างคิว</button>
         </div>
-        <p class="hint" id="queueHint">ยังไม่มีอะไรในคิว — กด “+ Event ใหม่” หรือสร้างบันเดิลแล้วส่งเลขมาจากหน้า “สร้าง Bundle”</p>
+        <input id="planFile" class="hidden" type="file" accept=".xlsx,.xlsm">
+        <p class="hint" id="queueHint">ยังไม่มีอะไรในคิว — Import ไฟล์แผน, ส่งจาก Item Finder หรือกด “+ Event ใหม่”</p>
       </div>
     </section>
 
     <section class="card" id="editor" hidden>
       <div class="card-head"><h2>แก้ Event</h2><span id="editorWhich" class="hint"></span></div>
       <div class="card-body section">
+        <div id="planWarnings" class="summary warning" hidden></div>
         <div class="formgrid">
           <label class="wide">ชื่อ Event (ไทย) *<input id="nameTh" type="text"></label>
           <label class="wide">ชื่อ Event (อังกฤษ) *<input id="nameEn" type="text"></label>
           <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
             <span class="slugline"><input id="slug" type="text" spellcheck="false">
               <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
-          <label>ผู้มีสิทธิ์รับรางวัล<select id="kind"><option value="WINNER">WINNER</option><option value="ALL">ALL</option></select></label>
+          <label>ผู้มีสิทธิ์รับรางวัล<select id="kind" disabled aria-readonly="true"><option value="WINNER">WINNER</option></select></label>
           <label>จำกัดต่อผู้เล่น<input id="usesPerUser" type="number" min="1" value="1"></label>
           <label>จำนวนรางวัลทั้งหมด<input id="quantity" type="number" min="0" value="0"></label>
           <label>คงเหลือ<input id="remaining" type="number" min="0" value="0"></label>
@@ -124,6 +127,20 @@
   </div>
 </main>
 
+<dialog id="sheetDialog">
+  <h3>เลือกแท็บที่จะเอา <span id="sheetTotal" class="hint"></span></h3>
+  <p class="hint">หนึ่งแท็บ/กิจกรรม = หนึ่ง Event และตารางรางวัลในแท็บนั้นจะเป็นหลายชุดรางวัล</p>
+  <div class="actions">
+    <button id="btnSheetAll" type="button">เลือกทั้งหมด</button>
+    <button id="btnSheetNone" type="button">ล้างที่เลือก</button>
+  </div>
+  <div id="sheetList" class="sheet-list"></div>
+  <div class="actions">
+    <button id="btnSheetTake" class="primary" type="button">เอาเข้าคิว</button>
+    <button data-close="sheetDialog" type="button">ปิด</button>
+  </div>
+</dialog>
+
 <script src="/static/console.js"></script>
 <script>
 const queue = new Queue('afc.eventQueue');
@@ -132,10 +149,11 @@ let pendingGame = '';
 function blankReward(bundleId, name) {
   return {name_th: name || '', name_en: name || '', uses_per_user: '1',
           limited: false, quantity: '', remaining: '',
-          bundle_id: String(bundleId || '')};
+          bundle_id: String(bundleId || ''), group: '', group_key: ''};
 }
 function blankEvent(name) {
   return {key: nextKey('e'), name: queue.uniqueName(name || 'Event ใหม่'),
+          sheet: '', sheet_key: '', warnings: [],
           name_th: name || '', name_en: '', slug: '', kind: 'WINNER',
           uses_per_user: '1', quantity: '0', remaining: '0',
           start_event: '', end_event: '', start_claim: '', end_claim: '',
@@ -182,11 +200,19 @@ function select(key) {
   queue.active = key;
   const entry = queue.current();
   if (entry) {
-    Object.entries(FIELDS).forEach(([id, field]) => { $(id).value = entry[field] || ''; });
+    Object.entries(FIELDS).forEach(([id, field]) => {
+      const input = $(id);
+      const value = entry[field] || '';
+      input.value = input.classList.contains('dtpick') ? displayStamp(value) : value;
+    });
     $('sameWindow').checked = !!entry.same_window;
     ['startClaim', 'endClaim'].forEach(id => $(id).disabled = !!entry.same_window);
     $('editorWhich').textContent = entry.name;
   }
+  const warnings = entry ? (entry.warnings || []) : [];
+  $('planWarnings').hidden = !warnings.length;
+  $('planWarnings').textContent = warnings.length
+    ? '⚠ ' + warnings.join(' · ') : '';
   renderQueue(); renderSets();
   $('btnCreateOne').disabled = true; $('shot').replaceChildren();
 }
@@ -208,7 +234,8 @@ $('sameWindow').onchange = () => {
 };
 $('btnSlug').onclick = () => {
   const entry = queue.current(); if (!entry) return;
-  const made = slugify($('nameEn').value || $('nameTh').value);
+  const made = slugForGame(
+    $('nameEn').value || $('nameTh').value, $('game').value);
   if (!made) { log('ชื่ออังกฤษว่างหรือเป็นภาษาไทยล้วน — พิมพ์ slug เอง', 'WARNING'); return; }
   $('slug').value = entry.slug = made; renderQueue();
 };
@@ -285,18 +312,159 @@ $('btnAddSet').onclick = () => {
   entry.rewards.push(blankReward('')); queue.save(); renderSets(); renderQueue();
 };
 
+// ---- Import ไฟล์แผนตรงหน้านี้ ----
+let imported = [];
+
+$('btnImport').onclick = () => $('planFile').click();
+$('planFile').onchange = async event => {
+  const file = event.target.files[0];
+  $('planFile').value = '';
+  if (!file) return;
+  $('btnImport').disabled = true;
+  $('runMsg').textContent = 'กำลังอ่านไฟล์…';
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('game', $('game').value);
+    const response = await apiFetch(
+      '/api/events/import', {method: 'POST', body: form});
+    const data = await response.json();
+    if (!response.ok) {
+      $('runMsg').textContent = data.detail || 'อ่านไฟล์ไม่สำเร็จ';
+      return;
+    }
+    imported = data.events || [];
+    if (!imported.length) {
+      $('runMsg').textContent = 'ไฟล์นี้ไม่มีแท็บ Event ที่อ่านได้';
+      return;
+    }
+    $('runMsg').textContent =
+      `อ่านได้ ${imported.length} Event จาก ${(data.sheets || []).length} แท็บ`;
+    showSheets(data.sheets || []);
+  } catch (e) {
+    $('runMsg').textContent = 'อ่านไฟล์ไม่สำเร็จ';
+  } finally {
+    $('btnImport').disabled = false;
+  }
+};
+
+function showSheets(sheets) {
+  const list = $('sheetList'); list.replaceChildren();
+  $('sheetTotal').textContent = `${sheets.length} แท็บ`;
+  sheets.forEach(sheet => {
+    const row = document.createElement('label');
+    row.className = 'sheet-row';
+    const tick = document.createElement('input');
+    tick.type = 'checkbox'; tick.value = sheet.name; tick.checked = true;
+    const text = document.createElement('span');
+    text.textContent = ` ${sheet.name} — ${sheet.count} ชุดรางวัล`;
+    row.append(tick, text); list.appendChild(row);
+  });
+  $('sheetDialog').showModal();
+}
+$('btnSheetAll').onclick = () =>
+  $('sheetList').querySelectorAll('input').forEach(box => box.checked = true);
+$('btnSheetNone').onclick = () =>
+  $('sheetList').querySelectorAll('input').forEach(box => box.checked = false);
+$('btnSheetTake').onclick = () => {
+  const wanted = new Set([...$('sheetList').querySelectorAll('input')]
+    .filter(box => box.checked).map(box => box.value));
+  const taken = imported.filter(draft => wanted.has(draft.sheet));
+  if (!taken.length) {
+    log('ยังไม่ได้เลือกแท็บไหนเลย', 'WARNING'); return;
+  }
+  $('sheetDialog').close();
+  addDrafts(taken, `ไฟล์แผน (${wanted.size} แท็บ)`, $('game').value);
+};
+document.querySelectorAll('[data-close]').forEach(
+  button => button.onclick = () => $(button.dataset.close).close());
+
+function addDrafts(drafts, from, game) {
+  let first = '';
+  drafts.forEach(draft => {
+    const entry = blankEvent(draft.name_th || '');
+    [
+      'sheet', 'sheet_key', 'name_th', 'name_en', 'slug', 'kind',
+      'uses_per_user', 'quantity', 'remaining', 'start_event', 'end_event',
+      'start_claim', 'end_claim', 'same_window', 'group',
+    ].forEach(field => {
+      if (draft[field] !== undefined) entry[field] = draft[field];
+    });
+    entry.warnings = Array.isArray(draft.warnings)
+      ? draft.warnings.slice() : [];
+    if (entry.slug) {
+      entry.slug = slugForGame(
+        entry.slug, game || $('game').value || pendingGame);
+    }
+    entry.rewards = (draft.rewards || []).map(reward =>
+      Object.assign(blankReward(''), reward));
+    if (!entry.rewards.length) entry.rewards = [blankReward('')];
+    entry.name = queue.uniqueName(
+      entry.name_th || entry.sheet || 'Event');
+    queue.add(entry); first = first || entry.key;
+    entry.warnings.forEach(warning =>
+      log(`${entry.name}: ${warning}`, 'WARNING'));
+  });
+  if (first) queue.active = first;
+  log(`รับ ${drafts.length} Event จาก${from} — ตรวจชื่อ/วัน/Bundle ID ก่อนสร้าง`, 'SUCCESS');
+  select(queue.active);
+}
+
+function drainPlan() {
+  let payload = null;
+  try {
+    const raw = sessionStorage.getItem('afc.eventHandoff');
+    if (!raw) return;
+    sessionStorage.removeItem('afc.eventHandoff');
+    payload = JSON.parse(raw);
+  } catch (e) { return; }
+  if (!payload || !Array.isArray(payload.events)) return;
+  if (payload.game) pendingGame = payload.game;
+  addDrafts(payload.events, 'หน้า Item Finder', payload.game);
+}
+
 // ---- รับเลข bundle จากหน้าสร้าง Bundle ----
-// Every bundle of one handoff belongs to the same plan, so they arrive as
-// reward sets of one Event rather than as an Event each.
-function drainHandoff() {
-  const payload = drainBundleIds(); if (!payload) return;
+function applyBundleHandoff(payload) {
+  if (!payload) return;
   const rows = payload.rows.filter(row => row.bundle_id);
   if (!rows.length) return;
-  const entry = blankEvent('');
-  entry.rewards = rows.map(row => blankReward(row.bundle_id, row.name || row.group || ''));
-  queue.add(entry);
-  log(`รับ ${rows.length} bundle จากหน้าสร้าง Bundle — ใส่เป็นชุดรางวัลของ Event เดียวกัน`, 'SUCCESS');
+  if (Array.isArray(payload.event_drafts) && payload.event_drafts.length) {
+    addDrafts(
+      payload.event_drafts, 'หน้า Bundle', payload.game);
+  }
+  let filled = 0, unmatched = 0;
+  rows.forEach(row => {
+    if (row.group_key) {
+      const reward = queue.items.flatMap(entry => entry.rewards)
+        .find(item => item.group_key === row.group_key);
+      if (!reward) {
+        unmatched++;
+        log(`ไม่พบ reward set สำหรับ group_key ${row.group_key}`, 'WARNING');
+        return;
+      }
+      reward.bundle_id = String(row.bundle_id); filled++;
+      return;
+    }
+    // Compatibility for a manually-created Bundle with no plan identity.
+    let entry = queue.items.find(item => !item.sheet_key && !item.name_th);
+    if (!entry) {
+      entry = blankEvent('');
+      entry.rewards = [];
+      queue.add(entry);
+    }
+    entry.rewards.push(blankReward(
+      row.bundle_id, row.name || row.group || ''));
+    filled++;
+  });
+  queue.save();
+  if (filled) log(`ใส่เลข Bundle ให้ Event ${filled} ชุด`, 'SUCCESS');
+  if (unmatched) log(`มี ${unmatched} Bundle ที่ไม่ถูกใส่ให้ Event ใด`, 'WARNING');
   if (payload.game) pendingGame = payload.game;
+  if (!queue.active && queue.items.length) queue.active = queue.items[0].key;
+  select(queue.active);
+}
+function drainHandoff() {
+  applyBundleHandoff(drainBundleIds());
 }
 
 // ---- สร้างจริง ----
@@ -381,7 +549,7 @@ $('btnCreateAll').onclick = () => queue.items.length ? createThese(queue.items.s
 
 async function init() {
   attachPickers();
-  queue.load(); drainHandoff();
+  queue.load(); drainPlan(); drainHandoff();
   await loadShell(pendingGame);
   if (!queue.active && queue.items.length) queue.active = queue.items[0].key;
   select(queue.active);

@@ -82,24 +82,9 @@ def _parse_plan_sheet(rows):
         if event_name:
             break
 
-    # ระยะเวลากิจกรรม: แถว 'Start' (วันที่ col3 + เวลา 'น.') / 'End' (เวลา 'น.' อาจไม่มีวัน)
-    start_dt = end_date = end_time = None
-    for row in rows[:40]:
-        c2 = _norm(row[2]) if len(row) > 2 else ''
-        if c2 in ('start', 'end'):
-            d = t = None
-            for c in row:
-                if isinstance(c, datetime):
-                    d = c
-                elif isinstance(c, (int, float)) and not isinstance(c, bool) and 20000 < float(c) < 90000:
-                    d = datetime(1899, 12, 30) + timedelta(days=int(c))   # Excel serial (patch ปิด date_formats)
-                elif isinstance(c, str) and 'น.' in c:
-                    t = _parse_thai_time(c)
-            if c2 == 'start' and d:
-                hh, mm = t or (0, 0)
-                start_dt = d.replace(hour=hh, minute=mm, second=0, microsecond=0)
-            elif c2 == 'end':
-                end_date, end_time = d, t
+    # Layouts shift these labels between columns, so use the same scanner as
+    # the Item Finder parser rather than locking Start/End to column C.
+    start_dt, end_date, end_time = _plan_period(rows)
 
     rewards = []
     banner = ''
@@ -162,23 +147,28 @@ def _num(v):
 
 
 def _plan_period(rows):
-    """ระยะเวลากิจกรรม: Start (วันที่+เวลา 'น.') / End (เวลา 'น.') -> (start_dt, end_date, end_time)"""
+    """Find Start/End anywhere in the first 40 rows of a plan layout."""
     start_dt = end_date = end_time = None
     for row in rows[:40]:
-        c2 = _norm(row[2]) if len(row) > 2 else ''
-        if c2 in ('start', 'end'):
+        label = label_index = None
+        for index, cell in enumerate(row):
+            normalized = _norm(cell)
+            if normalized in ('start', 'end'):
+                label, label_index = normalized, index
+                break
+        if label:
             d = t = None
-            for c in row:
+            for c in row[label_index + 1:]:
                 if isinstance(c, datetime):
                     d = c
                 elif isinstance(c, (int, float)) and not isinstance(c, bool) and 20000 < float(c) < 90000:
                     d = datetime(1899, 12, 30) + timedelta(days=int(c))
                 elif isinstance(c, str) and 'น.' in c:
                     t = _parse_thai_time(c)
-            if c2 == 'start' and d:
+            if label == 'start' and d:
                 hh, mm = t or (0, 0)
                 start_dt = d.replace(hour=hh, minute=mm, second=0, microsecond=0)
-            elif c2 == 'end':
+            elif label == 'end':
                 end_date, end_time = d, t
     return start_dt, end_date, end_time
 
@@ -313,6 +303,7 @@ def _plan_sheet_items(rows, skipped):
             ntab += 1
             cur_group = banner or ('รางวัลที่ %d' % ntab)
             cur_meta = {'event_name': event_name, 'reward': cur_group, 'is_event': True,
+                        'reward_index': ntab,
                         'start_dt': start_dt, 'end_date': end_date, 'end_time': end_time}
             banner = ''
             continue
@@ -507,6 +498,7 @@ def _topspender_sheet_items(rows, sheet_title, skipped):
             tier_i += 1
             cur_group = tier or ('รางวัลที่ %d' % tier_i)
             cur_meta = {'event_name': event_name, 'reward': cur_group, 'is_event': True,
+                        'reward_index': tier_i,
                         'start_dt': ev_start, 'end_date': ev_end, 'end_time': end_time}
             col = None
             continue

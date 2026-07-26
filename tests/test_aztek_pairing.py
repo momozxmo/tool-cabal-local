@@ -43,6 +43,20 @@ def issue_pairing_token(client) -> str:
     body = response.json()
     assert 'expires_at' in body
     return body['pairing_token']
+
+
+def test_pair_bridge_uses_the_one_time_token_instead_of_a_web_login(
+        anonymous_client):
+    """The bookmarklet opens from an Aztek tab, which may not share the local
+    app's host-only login cookie. The bridge itself is harmless; /api/aztek/pair
+    still requires the short-lived, single-use pairing token."""
+    response = anonymous_client.get('/pair-bridge', follow_redirects=False)
+
+    assert response.status_code == 200
+    assert 'id="token"' in response.text
+    assert '/api/aztek/pair' in response.text
+
+
 def test_pairing_token_then_pair_connects(client, anonymous_client, member,
                                           test_database, test_settings):
     token = issue_pairing_token(client)

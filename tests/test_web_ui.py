@@ -7,6 +7,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML = open(os.path.join(ROOT, 'web', 'static', 'index.html'), encoding='utf-8').read()
 BUNDLES = open(os.path.join(ROOT, 'web', 'static', 'bundles.html'),
                encoding='utf-8').read()
+EVENTS = open(os.path.join(ROOT, 'web', 'static', 'events.html'),
+              encoding='utf-8').read()
 
 
 def test_create_bundle_stands_on_its_own_page():
@@ -25,6 +27,22 @@ def test_item_finder_hands_bundles_over_rather_than_building_them():
     assert "window.location.href='/bundles'" in HTML
     assert 'afc.bundleHandoff' in HTML and 'afc.bundleHandoff' in BUNDLES
     assert '/api/bundles/run' not in HTML
+
+
+def test_item_finder_can_send_selected_event_sheets_directly():
+    assert 'id="btnToEvent"' in HTML
+    assert '/events?game=' in HTML
+    assert 'afc.eventHandoff' in HTML
+    assert 'afc.eventHandoff' in EVENTS
+
+
+def test_event_drafts_and_group_keys_survive_the_bundle_handoff():
+    assert 'event_drafts:d.event_drafts||[]' in HTML
+    for fragment in ('event_drafts', 'group_key', 'state.eventDrafts'):
+        assert fragment in BUNDLES, fragment
+    assert 'event_drafts:state.eventDrafts' in BUNDLES
+    assert 'row.group_key' in EVENTS
+    assert 'item.group_key === row.group_key' in EVENTS
 
 
 def test_the_queue_outlives_a_reload():

@@ -142,11 +142,14 @@ def test_browser_launch_kwargs():
 
 
 def test_result_view():
-    item = {'aztek_id': '221070', 'item_name': 'Force Wing', 'sources': ['Cash Shop'],
+    item = {'aztek_id': '221070', 'item_name': 'Force Wing',
+            'sources': ['Cash Shop'], 'group_keys': ['group-shop'],
             '_desc': 'แฟชั่น', 'web': 'yes', 'img': 'yes'}
     v = sr.result_view(item)
     check('result_view id/name', v['aztek_id'] == '221070' and v['item_name'] == 'Force Wing')
     check('result_view groups joins sources', v['groups'] == 'Cash Shop')
+    check('result_view preserves internal group keys',
+          v['group_keys'] == ['group-shop'])
     check('result_view desc', v['desc'] == 'แฟชั่น')
     check('result_view params is string', isinstance(v['params'], str) and v['params'])
     check('result_view no file_name -> not flagged', v['name_mismatch'] is False)

@@ -169,7 +169,7 @@ def test_an_expiry_that_arrived_as_an_excel_serial_is_still_a_date():
 
 def test_an_unreadable_expiry_is_reported_not_guessed():
     draft = _one(_event(expire='2 เดือน'))
-    assert draft['end_time'].startswith('2026-08-25')     # today + 30
+    assert draft['end_time'] == ''
     assert any('2 เดือน' in note for note in draft['notes'])
 
 
@@ -179,10 +179,10 @@ def test_an_expiry_that_has_already_passed_is_flagged():
     assert any('ผ่านมาแล้ว' in note for note in draft['notes'])
 
 
-def test_a_missing_expiry_says_nothing_and_takes_the_default():
+def test_a_missing_expiry_stays_blank_and_says_to_fill_it():
     draft = _one(_event(expire=''))
-    assert draft['notes'] == []
-    assert draft['end_time'].startswith('2026-08-25')
+    assert draft['end_time'] == ''
+    assert any('วันหมดอายุ' in note for note in draft['notes'])
 
 
 # --------------------------------- selection ---------------------------------

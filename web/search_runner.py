@@ -213,6 +213,8 @@ def result_view(item):
         and item_finder._norm_name(file_name) not in item_finder._norm_name(web_name)
     )
     sources = [str(s) for s in (item.get('sources') or [])]
+    group_keys = [str(key) for key in (
+        item.get('group_keys') or item.get('sources') or [])]
     return {
         'aztek_id': item.get('aztek_id', ''),
         'item_name': web_name,
@@ -228,6 +230,8 @@ def result_view(item):
         # Keep the raw group list too: build_bundles groups by 'sources', and the
         # persisted results must carry it so bundling works after a reload.
         'sources': sources,
+        # Stable worksheet/reward identity travels beside the readable label.
+        'group_keys': group_keys,
         # Quantity from the imported 'Amt' column (carried by regroup_results);
         # build_bundles uses it to pre-fill the bundle qty.
         'amt': str(item.get('amt', '') or '').strip(),

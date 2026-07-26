@@ -102,6 +102,44 @@ def test_plan_import_returns_sheet_picker_then_applies_selected_sheets(client, m
     assert applied['skipped'] == ['Skipped']
 
 
+def test_sql_pending_import_preserves_same_reward_from_two_event_sheets(
+        client, member, test_database, monkeypatch):
+    row = {
+        'kind': '1', 'opt': '', 'dur': '', 'name': 'Prize',
+        'sources': ['Lucky Draw'],
+        'group_meta': {
+            'event_name': 'Event', 'reward': 'Lucky Draw',
+            'end_date': '2026-08-31',
+        },
+    }
+    monkeypatch.setattr(item_service, 'parser_for_mode', lambda mode: (
+        lambda path: ([
+            ('Activity A', [row]),
+            ('Activity B', [dict(row)]),
+        ], [])
+    ))
+    imported = client.post(
+        '/api/import-plan', data={'mode': 'event'},
+        files={'file': ('plan.xlsx', b'fake', 'application/octet-stream')},
+    ).json()
+
+    response = client.post('/api/import-plan/apply', json={
+        'pending_id': imported['pending_id'],
+        'selected_sheets': ['Activity A', 'Activity B'],
+    })
+
+    assert response.status_code == 200, response.text
+    with test_database.session() as db:
+        workspace = WorkspaceRepository(db).get_owned(
+            member.id, imported['workspace_id'])
+        assert len(workspace.group_meta) == 2
+        assert {meta['sheet'] for meta in workspace.group_meta.values()} == {
+            'Activity A', 'Activity B',
+        }
+        assert workspace.occurrences[0]['group_keys'] != \
+            workspace.occurrences[1]['group_keys']
+
+
 def test_workspace_results_export_and_bundle_preview(client, member, test_database):
     with test_database.session() as db:
         workspace = WorkspaceRepository(db).create(member.id, 'event', 'plan.xlsx')
@@ -146,6 +184,45 @@ def test_workspace_results_export_and_bundle_preview(client, member, test_databa
     assert [[item['id'] for item in bundle['items']] for bundle in bundles] == [
         ['99', '11'], ['99', '22'],
     ]
+
+
+def test_event_bundle_preview_carries_only_selected_event_drafts(
+        client, member, test_database):
+    with test_database.session() as db:
+        workspace = WorkspaceRepository(db).create(
+            member.id, 'event', 'plan.xlsx')
+        workspace.game = 'CabalM SEA'
+        workspace.group_meta = {
+            'ga': {
+                'sheet': 'Activity A', 'sheet_key': 'sheet-a',
+                'group_key': 'ga', 'event_name': 'Event A',
+                'reward': 'Lucky Draw', 'end_date': '2026-08-31',
+            },
+            'gb': {
+                'sheet': 'Activity B', 'sheet_key': 'sheet-b',
+                'group_key': 'gb', 'event_name': 'Event B',
+                'reward': 'Lucky Draw', 'end_date': '2026-09-30',
+            },
+        }
+        workspace.results = [
+            {'aztek_id': '11', 'item_name': 'A', 'sources': ['Lucky Draw'],
+             'group_keys': ['ga']},
+            {'aztek_id': '22', 'item_name': 'B', 'sources': ['Lucky Draw'],
+             'group_keys': ['gb']},
+        ]
+        workspace_id = workspace.id
+
+    response = client.post(
+        '/api/workspaces/%s/bundles' % workspace_id,
+        json={'selected_indexes': [1]},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body['bundles'][0]['group'] == 'Lucky Draw'
+    assert body['bundles'][0]['group_key'] == 'gb'
+    assert [draft['sheet'] for draft in body['event_drafts']] == ['Activity B']
+    assert body['event_drafts'][0]['rewards'][0]['group_key'] == 'gb'
 
 
 def test_search_websocket_persists_results_not_found_and_regroups(

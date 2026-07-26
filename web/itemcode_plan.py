@@ -14,7 +14,7 @@ The rules are the desktop tool's (``itemcode_tool.prefill_from_event`` and
 plans; only the shape of the answer is different, because the v2 form is.
 """
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import config as cfg
 
@@ -76,12 +76,15 @@ def _window(meta, game, now, notes):
     raw = meta.get('pride', {}).get('expire') if meta.get('is_pride') \
         else meta.get('expire')
     end = parse_expire(raw, now)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if end is None:
         if _text(raw):
-            notes.append('อ่านวันหมดอายุไม่ได้: %r — ใส่วันนี้+30 ไว้ก่อน ตรวจ/แก้เอง'
+            notes.append('อ่านวันหมดอายุไม่ได้: %r — กรุณากรอกวันสิ้นสุดเอง'
                          % _text(raw))
-        end = now + timedelta(days=30)
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            notes.append(
+                'ไม่พบวันหมดอายุในเอกสาร — กรุณากรอกวันสิ้นสุดเอง')
+        return _stamp(start), ''
     end = cfg.region_end_of_day(game, end)
     if end <= start:
         # Old plan files are re-used for the next run of the same activity, so

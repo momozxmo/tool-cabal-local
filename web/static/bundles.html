@@ -128,10 +128,12 @@ const TIERS=['Common','Rare','Epic','Mystic','Legend'];
 // The queue lives in this browser: it is a working scratchpad, and a page
 // reload or a trip to Item Finder must not throw away half-built bundles.
 const QUEUE_KEY='afc.bundleQueue';
+const EVENT_DRAFT_KEY='afc.bundleEventDrafts';
 // Shared with Item Finder so the chosen server, the mode and the document's
 // misses follow the operator between the two pages.
 const GAME_KEY='afc.game', MODE_KEY='afc.mode', MISS_KEY='afc.notFound';
-const state={queue:[],active:'',rewardOptions:{},rewardOptionsGame:''};
+const state={queue:[],active:'',rewardOptions:{},rewardOptionsGame:'',
+  eventDrafts:[]};
 
 async function apiFetch(url, options){
   const response = await fetch(url, Object.assign({credentials:'same-origin'}, options||{}));
@@ -150,8 +152,14 @@ $('btnLogout').onclick=async()=>{ $('btnLogout').disabled=true;
 // ---- คิว ----
 function loadQueue(){try{const raw=localStorage.getItem(QUEUE_KEY);
     const parsed=raw?JSON.parse(raw):[];state.queue=Array.isArray(parsed)?parsed:[];}
-  catch(e){state.queue=[];}}
-function saveQueue(){try{localStorage.setItem(QUEUE_KEY,JSON.stringify(state.queue));}catch(e){}}
+  catch(e){state.queue=[];}
+  try{const raw=localStorage.getItem(EVENT_DRAFT_KEY);
+    const parsed=raw?JSON.parse(raw):[];
+    state.eventDrafts=Array.isArray(parsed)?parsed:[];}catch(e){state.eventDrafts=[];}}
+function saveQueue(){try{
+  localStorage.setItem(QUEUE_KEY,JSON.stringify(state.queue));
+  localStorage.setItem(EVENT_DRAFT_KEY,JSON.stringify(state.eventDrafts));
+}catch(e){}}
 function current(){return state.queue.find(b=>b.key===state.active);}
 function liveItems(b){return b?b.items:[];}
 function nextKey(){return 'b'+(Date.now().toString(36))+Math.floor(Math.random()*1e6).toString(36);}
@@ -207,6 +215,9 @@ function drainHandoff(){
     if(raw){payload=JSON.parse(raw);sessionStorage.removeItem('afc.bundleHandoff');}}
   catch(e){return;}
   if(!payload||!Array.isArray(payload.bundles))return;
+  if(Array.isArray(payload.event_drafts)){
+    state.eventDrafts=payload.event_drafts;
+  }
   let added=0;
   payload.bundles.forEach(b=>{
     const items=(b.items||[]).map(it=>({id:String(it.id),name:it.name||'',
@@ -219,6 +230,7 @@ function drainHandoff(){
     // RANDOM with the odds already filled in, not left for the operator to spot.
     const random=!!b.is_random||items.some(it=>it.rate);
     state.queue.push({key:nextKey(),name:uniqueName(b.name||'Bundle'),
+      group:b.group||'',group_key:b.group_key||'',
       type:random?'RANDOM':'FIXED',deliver:true,items,rewards:[]});
     if(random)log(`"${b.name}" มีเรทสุ่มในเอกสาร — ตั้งเป็น RANDOM และกรอกเรทให้แล้ว`,'SUCCESS');
     added++;});
@@ -522,12 +534,15 @@ $('btnCreateAll').onclick=()=>state.queue.length?createThese(state.queue.slice()
 // operator off with a blank field.
 function offerHandoff(results){
   state.made=(results||[]).filter(r=>r.saved&&r.bundle_id)
-    .map(r=>({group:r.group||'',name:r.name||'',bundle_id:String(r.bundle_id)}));
+    .map(r=>{const source=state.queue.find(bundle=>bundle.name===r.name)||{};
+      return {group:source.group||r.group||'',group_key:source.group_key||'',
+        name:r.name||'',bundle_id:String(r.bundle_id)};});
   $('handoff').hidden=!state.made.length;}
 function sendMade(where){
   if(!state.made||!state.made.length)return;
   try{sessionStorage.setItem('afc.codeHandoff',
-    JSON.stringify({game:$('game').value,rows:state.made}));}catch(e){}
+    JSON.stringify({game:$('game').value,event_drafts:state.eventDrafts,
+      rows:state.made}));}catch(e){}
   window.location.href=where;}
 $('btnToItemCode').onclick=()=>sendMade('/itemcodes');
 $('btnToEvent').onclick=()=>sendMade('/events');
