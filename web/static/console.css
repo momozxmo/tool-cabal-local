@@ -18,6 +18,7 @@
       --text:var(--ink);--muted:#868da3;--blue:var(--arc);--green:#3fc98a;--yellow:#e0b03a;
       --red:#ef5b67;--shadow:0 18px 44px -20px #000a}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Tahoma,sans-serif}
+    [hidden]{display:none!important}
     button,input,select{font:inherit} button,.button{border:1px solid transparent;border-radius:8px;padding:8px 13px;
       background:var(--panel2);color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
     button:hover,.button:hover{border-color:#536579} button:disabled{opacity:.45;cursor:not-allowed}

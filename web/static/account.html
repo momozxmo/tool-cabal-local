@@ -16,7 +16,7 @@
       /* legacy aliases so existing rules + inline var(--muted) keep working */
       --bg:var(--void);--panel:var(--obsidian);--line:var(--edge);--text:var(--ink);--muted:#868da3;
       --blue:var(--arc);--green:#3fc98a;--red:#ef5b67;--shadow:0 18px 44px -20px #000a}
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}.shell{width:min(100%,820px);margin:auto;padding:24px 20px}.topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}.topbar h1{font-size:25px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted)}.button,button{border:1px solid var(--line);border-radius:7px;background:#202b38;color:var(--text);padding:9px 12px;font:inherit;font-weight:600;cursor:pointer}.primary{background:var(--blue);border-color:#3c94df;color:#fff}.danger{background:#8d2d37;border-color:#b64b58;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}.card h2{font-size:17px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.card-body{padding:16px}.profile{display:grid;gap:10px}.profile dt{color:var(--muted)}.profile dd{margin:2px 0 0;font-weight:700}.profile div{padding-bottom:10px;border-bottom:1px solid #283747}.profile div:last-child{border:0;padding:0}.fields{display:grid;gap:12px}label{display:grid;gap:6px;font-weight:600}input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}input:focus{outline:2px solid #5fa8e8;outline-offset:1px}.message{min-height:1.5em;color:var(--red);margin:13px 0 0}.notice{margin-top:14px;border-color:#2b715a}.notice p{margin:0;color:var(--muted)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}@media(max-width:620px){.shell{padding:16px 12px}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions button{flex:1 1 100%}}
+    *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}.shell{width:min(100%,820px);margin:auto;padding:24px 20px}.topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}.topbar h1{font-size:25px;margin:0}.topbar p{margin:3px 0 0;color:var(--muted)}.button,button{border:1px solid var(--line);border-radius:7px;background:#202b38;color:var(--text);padding:9px 12px;font:inherit;font-weight:600;cursor:pointer}.primary{background:var(--blue);border-color:#3c94df;color:#fff}.danger{background:#8d2d37;border-color:#b64b58;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}.card h2{font-size:17px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.card-body{padding:16px}.profile{display:grid;gap:10px}.profile dt{color:var(--muted)}.profile dd{margin:2px 0 0;font-weight:700}.profile div{padding-bottom:10px;border-bottom:1px solid #283747}.profile div:last-child{border:0;padding:0}.fields{display:grid;gap:12px}label{display:grid;gap:6px;font-weight:600}input{width:100%;background:#0e151e;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:10px;font:inherit}input:focus{outline:2px solid #5fa8e8;outline-offset:1px}.message{min-height:1.5em;color:var(--red);margin:13px 0 0}.notice{margin-top:14px;border-color:#2b715a}.notice p{margin:0;color:var(--muted)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}@media(max-width:620px){.shell{padding:16px 12px}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions button{flex:1 1 100%}}
 
     /* ===================== Arcane Operator Console — account ===================== */
     body{font-family:var(--sans);background:
@@ -60,11 +60,11 @@
       <a class="button" href="/">← กลับไป Item Finder</a>
     </header>
     <div class="grid">
-      <section class="card" aria-labelledby="profileTitle">
+      <section class="card" aria-labelledby="profileTitle" data-hosted-auth>
         <h2 id="profileTitle">ข้อมูลบัญชี</h2>
         <div class="card-body"><dl class="profile"><div><dt>ชื่อผู้ใช้</dt><dd id="accountUsername">กำลังโหลด…</dd></div><div><dt>บทบาท</dt><dd id="accountRole">กำลังโหลด…</dd></div></dl><div class="actions"><button id="logoutButton" class="danger" type="button">ออกจากระบบ</button></div></div>
       </section>
-      <section class="card" aria-labelledby="passwordTitle">
+      <section class="card" aria-labelledby="passwordTitle" data-hosted-auth>
         <h2 id="passwordTitle">เปลี่ยนรหัสผ่าน</h2>
         <div class="card-body"><form id="changePasswordForm"><div class="fields"><label for="current_password">รหัสผ่านปัจจุบัน<input id="current_password" name="current_password" type="password" autocomplete="current-password" required></label><label for="new_password">รหัสผ่านใหม่<input id="new_password" name="new_password" type="password" minlength="10" autocomplete="new-password" required></label><button id="changePasswordButton" class="primary" type="submit">บันทึกรหัสผ่านใหม่</button></div><p id="accountMessage" class="message" role="alert" aria-live="polite"></p></form></div>
       </section>
@@ -116,6 +116,12 @@
       }
     }
 
+    function applyRuntimeMode(me) {
+      const localMode = !!(me && me.local_mode);
+      document.querySelectorAll('[data-hosted-auth]').forEach(
+        node => { node.hidden = localMode; });
+    }
+
     async function loadAccount() {
       const response = await fetch('/api/auth/me');
       if (!response.ok) {
@@ -123,6 +129,7 @@
         return;
       }
       const data = await response.json();
+      applyRuntimeMode(data);
       accountUsername.textContent = data.username;
       accountRole.textContent = data.role;
     }

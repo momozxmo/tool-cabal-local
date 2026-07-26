@@ -11,6 +11,8 @@ JS = ROOT / 'web' / 'static' / 'console.js'
 ITEMCODES = ROOT / 'web' / 'static' / 'itemcodes.html'
 EVENTS = ROOT / 'web' / 'static' / 'events.html'
 INDEX = ROOT / 'web' / 'static' / 'index.html'
+BUNDLES = ROOT / 'web' / 'static' / 'bundles.html'
+ACCOUNT = ROOT / 'web' / 'static' / 'account.html'
 
 
 def _tool_page(browser, path):
@@ -38,6 +40,57 @@ def _choose_game(page, game):
         }""",
         game,
     )
+
+
+def _standalone_page(browser, path):
+    page = browser.new_page()
+    page.set_content(
+        path.read_text(encoding='utf-8'),
+        wait_until='domcontentloaded',
+    )
+    return page
+
+
+def test_local_mode_hides_hosted_auth_in_every_tool_header():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        pages = [
+            _standalone_page(browser, INDEX),
+            _standalone_page(browser, BUNDLES),
+            _tool_page(browser, ITEMCODES),
+            _tool_page(browser, EVENTS),
+        ]
+
+        for page in pages:
+            page.evaluate("""applyRuntimeMode({
+              username: 'local.owner', role: 'admin', local_mode: true
+            })""")
+            assert not page.locator('#btnLogout').is_visible()
+            assert not page.locator('#currentUser').is_visible()
+            account_link = page.locator('[data-account-link]')
+            assert account_link.is_visible()
+            assert account_link.inner_text() == 'เชื่อม Aztek'
+
+        browser.close()
+
+
+def test_local_mode_account_page_keeps_only_aztek_controls():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = _standalone_page(browser, ACCOUNT)
+
+        page.evaluate("""applyRuntimeMode({
+          username: 'local.owner', role: 'admin', local_mode: true
+        })""")
+
+        hosted_sections = page.locator('[data-hosted-auth]')
+        assert hosted_sections.count() == 2
+        for index in range(hosted_sections.count()):
+            assert not hosted_sections.nth(index).is_visible()
+        assert page.locator('#bookmarklet').is_visible()
+        assert page.locator('#createPairingButton').is_visible()
+        assert page.locator('#disconnectAztekButton').is_visible()
+        browser.close()
 
 
 def test_done_button_really_hides_the_calendar_popover():

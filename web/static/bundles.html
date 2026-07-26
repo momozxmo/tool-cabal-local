@@ -12,9 +12,9 @@
     <div class="brand"><span class="gem"></span><div><h1>All for Cabal</h1><p>Create Bundle · Operator Console</p></div></div>
     <div class="userbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
       <span id="aztekStatus" class="badge" style="background:#3a2f14;color:var(--yellow)">Aztek: กำลังตรวจสอบ…</span>
-      <span id="currentUser" class="hint"></span>
-      <a class="button" href="/account">บัญชี / เชื่อม Aztek</a>
-      <button id="btnLogout" type="button" class="danger">ออกจากระบบ</button>
+      <span id="currentUser" class="hint" data-hosted-auth></span>
+      <a class="button" href="/account" data-account-link>บัญชี / เชื่อม Aztek</a>
+      <button id="btnLogout" type="button" class="danger" data-hosted-auth>ออกจากระบบ</button>
     </div>
   </header>
 
@@ -148,6 +148,13 @@ function log(message, level='INFO'){
 $('btnClearLog').onclick=()=>$('log').replaceChildren();
 $('btnLogout').onclick=async()=>{ $('btnLogout').disabled=true;
   try{ await fetch('/api/auth/logout',{method:'POST'}); } finally{ window.location.replace('/login'); } };
+function applyRuntimeMode(me){
+  const localMode=!!(me&&me.local_mode);
+  document.querySelectorAll('[data-hosted-auth]').forEach(node=>{node.hidden=localMode;});
+  document.querySelectorAll('[data-account-link]').forEach(node=>{
+    node.textContent=localMode?'เชื่อม Aztek':'บัญชี / เชื่อม Aztek';
+  });
+}
 
 // ---- คิว ----
 function loadQueue(){try{const raw=localStorage.getItem(QUEUE_KEY);
@@ -559,6 +566,7 @@ $('game').addEventListener('change',()=>{try{localStorage.setItem(GAME_KEY,$('ga
 async function init(){
   loadQueue();drainHandoff();applyMode();renderMisses();
   try{const me=await apiFetch('/api/auth/me').then(r=>r.json());
+    applyRuntimeMode(me);
     $('currentUser').textContent=me.username?`ผู้ใช้: ${me.username}`:'';}catch(e){}
   try{const games=await apiFetch('/api/games').then(r=>r.json());
     games.games.forEach(g=>{const o=document.createElement('option');o.value=o.textContent=g;$('game').appendChild(o);});

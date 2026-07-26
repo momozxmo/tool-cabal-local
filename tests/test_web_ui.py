@@ -9,6 +9,12 @@ BUNDLES = open(os.path.join(ROOT, 'web', 'static', 'bundles.html'),
                encoding='utf-8').read()
 EVENTS = open(os.path.join(ROOT, 'web', 'static', 'events.html'),
               encoding='utf-8').read()
+ITEMCODES = open(os.path.join(ROOT, 'web', 'static', 'itemcodes.html'),
+                 encoding='utf-8').read()
+ACCOUNT = open(os.path.join(ROOT, 'web', 'static', 'account.html'),
+               encoding='utf-8').read()
+CONSOLE_JS = open(os.path.join(ROOT, 'web', 'static', 'console.js'),
+                  encoding='utf-8').read()
 
 
 def test_create_bundle_stands_on_its_own_page():
@@ -119,6 +125,17 @@ def test_item_finder_header_has_identity_connection_and_logout():
         assert fragment in HTML, fragment
     # An expired web session must bounce to the login page, not fail silently.
     assert "window.location.replace('/login')" in HTML
+
+
+def test_local_mode_contract_keeps_aztek_link_and_hides_hosted_auth():
+    for page in (HTML, BUNDLES, ITEMCODES, EVENTS):
+        assert 'data-hosted-auth' in page
+        assert 'data-account-link' in page
+    assert 'applyRuntimeMode' in HTML
+    assert 'applyRuntimeMode' in BUNDLES
+    assert 'applyRuntimeMode' in CONSOLE_JS
+    assert ACCOUNT.count('data-hosted-auth') == 3
+    assert 'applyRuntimeMode(data)' in ACCOUNT
 
 
 def test_login_and_account_pages_use_the_approved_auth_api_contract_safely():

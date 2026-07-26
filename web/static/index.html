@@ -249,9 +249,9 @@
     <div class="userbar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
       <span id="serverBadge" class="badge">พร้อมใช้งาน</span>
       <span id="aztekStatus" class="badge" style="background:#3a2f14;color:var(--yellow)">Aztek: กำลังตรวจสอบ…</span>
-      <span id="currentUser" class="hint"></span>
-      <a id="btnAccount" class="button" href="/account">บัญชี / เชื่อม Aztek</a>
-      <button id="btnLogout" type="button" class="danger">ออกจากระบบ</button>
+      <span id="currentUser" class="hint" data-hosted-auth></span>
+      <a id="btnAccount" class="button" href="/account" data-account-link>บัญชี / เชื่อม Aztek</a>
+      <button id="btnLogout" type="button" class="danger" data-hosted-auth>ออกจากระบบ</button>
     </div>
   </header>
 
@@ -390,8 +390,16 @@ function setBusy(busy){ $('btnSearch').disabled=busy||!state.workspaceId||!state
   $('btnRetryMissing').disabled=busy||!state.notFound||!state.notFound.length
     ||!state.aztekConnected;
   document.querySelectorAll('input[name=runMode]').forEach(input=>input.disabled=busy); }
+function applyRuntimeMode(me){
+  const localMode=!!(me&&me.local_mode);
+  document.querySelectorAll('[data-hosted-auth]').forEach(node=>{node.hidden=localMode;});
+  document.querySelectorAll('[data-account-link]').forEach(node=>{
+    node.textContent=localMode?'เชื่อม Aztek':'บัญชี / เชื่อม Aztek';
+  });
+}
 async function loadIdentity(){
   const user=await apiFetch('/api/auth/me').then(r=>r.json());
+  applyRuntimeMode(user);
   state.user=user; $('currentUser').textContent=`${user.username} (${user.role})`;
 }
 function paintAztek(status){

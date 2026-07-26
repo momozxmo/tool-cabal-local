@@ -30,6 +30,18 @@ function paintAztek(status) {
   else { badge.textContent = 'Aztek: ยังไม่ได้เชื่อม'; badge.style.background = '#3a2f14'; badge.style.color = 'var(--yellow)'; }
 }
 
+function applyRuntimeMode(me) {
+  const localMode = !!(me && me.local_mode);
+  document.querySelectorAll('[data-hosted-auth]').forEach(
+    node => { node.hidden = localMode; });
+  document.querySelectorAll('[data-account-link]').forEach(
+    node => {
+      node.textContent = localMode
+        ? 'เชื่อม Aztek'
+        : 'บัญชี / เชื่อม Aztek';
+    });
+}
+
 // Aztek only takes lowercase, digits and hyphens, so a Thai name cannot become
 // a slug on its own — the operator is asked for one instead of being handed a
 // silently empty field.
@@ -275,6 +287,7 @@ async function loadShell(pendingGame) {
   });
   try {
     const me = await apiFetch('/api/auth/me').then(r => r.json());
+    applyRuntimeMode(me);
     $('currentUser').textContent = me.username ? `ผู้ใช้: ${me.username}` : '';
   } catch (e) {}
   let games = [];
