@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 
 ROOT = Path(SPEC).resolve().parent
@@ -16,14 +16,33 @@ if not BROWSER_CACHE.is_dir():
 
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = str(BROWSER_CACHE)
 
-datas = [
-    (str(ROOT / 'web' / 'static'), 'web/static'),
-    (str(ROOT / 'alembic'), 'alembic'),
+def add_tree(source, destination):
+    collected = []
+    for path in source.rglob('*'):
+        relative = path.relative_to(source)
+        if (
+            not path.is_file()
+            or '__pycache__' in relative.parts
+            or path.suffix.casefold() in {'.pyc', '.pyo'}
+        ):
+            continue
+        collected.append((
+            str(path),
+            str(Path(destination) / relative.parent),
+        ))
+    return collected
+
+
+datas = (
+    add_tree(ROOT / 'web' / 'static', 'web/static')
+    + add_tree(ROOT / 'alembic', 'alembic')
+    + collect_data_files('playwright')
+    + [
     (str(ROOT / 'alembic.ini'), '.'),
     (str(ICON), '.'),
     (str(BROWSER_CACHE), 'ms-playwright'),
-]
-binaries = []
+    ]
+)
 hiddenimports = [
     'tkinter',
     'tkinter.ttk',
@@ -32,42 +51,49 @@ hiddenimports = [
     'finder_core',
     'aztek_core',
     'ui_common',
-]
-
-for package in (
     'fastapi',
     'starlette',
-    'uvicorn',
-    'sqlalchemy',
-    'alembic',
-    'cryptography',
+    'uvicorn.logging',
+    'uvicorn.loops.auto',
+    'uvicorn.protocols.http.auto',
+    'uvicorn.protocols.websockets.auto',
+    'uvicorn.lifespan.on',
+    'sqlalchemy.dialects.sqlite.pysqlite',
+    'alembic.runtime.migration',
+    'cryptography.hazmat.primitives.ciphers.aead',
     'argon2',
-    'openpyxl',
-    'playwright',
+    'openpyxl.worksheet._reader',
+    'playwright.async_api',
     'pydantic',
-    'pydantic_core',
     'multipart',
-    'anyio',
+    'anyio._backends._asyncio',
     'greenlet',
-):
-    package_datas, package_binaries, package_hidden = collect_all(package)
-    datas += package_datas
-    binaries += package_binaries
-    hiddenimports += package_hidden
+]
 
 hiddenimports += collect_submodules('web')
-hiddenimports += collect_submodules('local_app')
 
 a = Analysis(
     ['local_app/launcher.py'],
     pathex=[str(ROOT)],
-    binaries=binaries,
+    binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=['local_app/pyinstaller_runtime_hook.py'],
-    excludes=[],
+    excludes=[
+        'pytest',
+        'IPython',
+        'jedi',
+        'matplotlib',
+        'numpy',
+        'pandas',
+        'scipy',
+        'nbformat',
+        'notebook',
+        'psycopg',
+        'psycopg_binary',
+    ],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

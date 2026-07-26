@@ -75,6 +75,14 @@ def test_pyinstaller_spec_is_one_directory_and_bundles_offline_assets():
         'build-cache',
         'ms-playwright',
         'pyinstaller_runtime_hook.py',
+        "'fastapi'",
+        "'uvicorn.logging'",
+        "'sqlalchemy.dialects.sqlite.pysqlite'",
+        "'alembic.runtime.migration'",
+        "'cryptography.hazmat.primitives.ciphers.aead'",
+        "'argon2'",
+        "'openpyxl.worksheet._reader'",
+        "'playwright.async_api'",
     ):
         assert fragment in spec
 
@@ -112,5 +120,6 @@ def test_build_script_installs_browser_runs_tests_and_verifies_release():
         'python -m PyInstaller',
         'local_app.release_verify',
         'ISCC.exe',
+        'LOCALAPPDATA',
     ):
         assert fragment in script
