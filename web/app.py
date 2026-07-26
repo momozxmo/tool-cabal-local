@@ -664,8 +664,11 @@ def disconnect_aztek_session(request: Request, user: User = Depends(require_user
 
 
 @router.get('/api/health')
-def health():
-    return {'ok': True}
+def health(request: Request):
+    result = {'ok': True}
+    if request.app.state.settings.local_desktop_mode:
+        result['product'] = 'all-for-cabal-local'
+    return result
 
 
 @router.get('/api/games')

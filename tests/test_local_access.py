@@ -161,3 +161,16 @@ def test_non_local_app_preserves_normal_login_and_hides_local_routes(
     assert client.get('/local-start').status_code == 404
     assert client.get('/').headers['location'] == '/login'
     assert client.get('/login').status_code == 200
+
+
+def test_health_product_marker_is_only_exposed_in_local_mode(
+    test_settings, test_database
+):
+    local = _local_client(_local_app(test_settings, test_database))
+    hosted = TestClient(web_app.create_app(test_settings, test_database))
+
+    assert local.get('/api/health').json() == {
+        'ok': True,
+        'product': 'all-for-cabal-local',
+    }
+    assert hosted.get('/api/health').json() == {'ok': True}
