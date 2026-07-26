@@ -2,8 +2,13 @@
 .git
 .gitignore
 dist/
+build/
+artifacts/
+build-cache/
 .worktrees/
 .cabal_chrome_profile/
+.local-runtime/
+runtime-local/
 *.chrome_profile/
 .env
 *.env

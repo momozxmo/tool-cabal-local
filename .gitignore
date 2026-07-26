@@ -1,6 +1,8 @@
 # Build output (contains live user data — creds, Chrome profiles — never commit)
 dist/
 build/
+artifacts/
+build-cache/
 
 # Python
 __pycache__/
@@ -21,6 +23,8 @@ __pycache__/
 # Stray artifact folder (tool path-escaping bug, not project content)
 UserskoomoDocumentsCrazyall for cabal/
 .cabal_chrome_profile/
+.local-runtime/
+runtime-local/
 .env
 *.db
 *.sqlite
