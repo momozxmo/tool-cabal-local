@@ -9,12 +9,6 @@
 - [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.0/All.for.Cabal.Web.Setup-0.1.0.exe.sha256)
 - [ดูหน้า Release](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.0)
 
-SHA-256:
-
-```text
-45A047C6792057745FCB81D2538D8C92C01D4C3611F499343BF68186F6611933
-```
-
 ## คุณสมบัติของเวอร์ชัน Local
 
 - เปิด Item Finder ในเว็บ local ให้อัตโนมัติ
