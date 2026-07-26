@@ -81,6 +81,7 @@ class LauncherController:
         self.root = root
         self.server = server
         self._closing = False
+        self._shutdown_complete = False
         self._messages: queue.Queue[tuple] = queue.Queue()
         self._ask_stop = ask_stop or (
             lambda: messagebox.askyesno(
@@ -190,7 +191,11 @@ class LauncherController:
         self._closing = True
         self._set_controls_enabled(False)
         self._set_status('กำลังปิดโปรแกรม…')
-        self._run_worker(self.server.stop, self.root.destroy)
+        self._run_worker(self.server.stop, self._finish_close)
+
+    def _finish_close(self) -> None:
+        self._shutdown_complete = True
+        self.root.destroy()
 
     def _run_worker(
         self,
@@ -233,7 +238,7 @@ class LauncherController:
                     )
         except queue.Empty:
             pass
-        if not self._closing:
+        if not self._shutdown_complete:
             self.root.after(100, self._drain_messages)
 
     def _set_controls_enabled(self, enabled: bool) -> None:

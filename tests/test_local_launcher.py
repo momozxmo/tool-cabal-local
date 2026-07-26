@@ -3,6 +3,8 @@ from __future__ import annotations
 import tempfile
 import threading
 import os
+import queue
+import time
 from pathlib import Path
 
 import pytest
@@ -339,3 +341,53 @@ def test_controller_asks_only_once_before_stopping():
     assert asks == ['asked']
     assert controller.server.stops == 1
     assert controller.root.destroyed is True
+
+
+def test_controller_keeps_polling_until_async_stop_destroys_window():
+    class FakeRoot:
+        def __init__(self):
+            self.callbacks = []
+            self.destroyed = False
+
+        def after(self, _delay, callback):
+            self.callbacks.append(callback)
+
+        def destroy(self):
+            self.destroyed = True
+
+    class BlockingServer:
+        def __init__(self):
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def stop(self):
+            self.started.set()
+            self.release.wait(2)
+
+    root = FakeRoot()
+    server = BlockingServer()
+    controller = launcher.LauncherController.__new__(
+        launcher.LauncherController)
+    controller.root = root
+    controller.server = server
+    controller._closing = False
+    controller._shutdown_complete = False
+    controller._ask_stop = lambda: True
+    controller._messages = queue.Queue()
+    controller._set_controls_enabled = lambda _enabled: None
+    controller._set_status = lambda _text: None
+
+    controller.request_close()
+    assert server.started.wait(1)
+
+    # Reproduce the real race: the scheduled poll runs while stop() is still
+    # working, so there is no success message to consume yet.
+    controller._drain_messages()
+    server.release.set()
+    deadline = time.monotonic() + 1
+    while controller._messages.empty() and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert root.callbacks, 'closing must keep polling the worker result'
+    root.callbacks.pop(0)()
+    assert root.destroyed is True
