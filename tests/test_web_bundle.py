@@ -414,8 +414,24 @@ def test_save_refuses_to_claim_success_on_an_error_response():
     assert bundle_id is None
 
 
+def test_save_uses_the_current_v2_create_bundle_button():
+    old = "button:has-text('ยืนยันการสร้างบันเดิล')"
+    current = "button:has-text('สร้าง Bundle')"
+    page = FakePage(
+        response=FakeResponse(200, {'data': {'bundleId': 90210}}),
+        counts={old: 0, current: 1},
+    )
+    saved, bundle_id = asyncio.run(_builder()._save(page))
+    assert saved is True
+    assert bundle_id == '90210'
+    assert page.clicked == [current]
+
+
 def test_save_stops_when_the_confirm_button_is_missing():
-    page = FakePage(counts={"button:has-text('ยืนยันการสร้างบันเดิล')": 0})
+    page = FakePage(counts={
+        "button:has-text('สร้าง Bundle')": 0,
+        "button:has-text('ยืนยันการสร้างบันเดิล')": 0,
+    })
     saved, bundle_id = asyncio.run(_builder()._save(page))
     assert saved is False
     assert bundle_id is None

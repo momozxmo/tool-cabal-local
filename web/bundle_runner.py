@@ -365,10 +365,15 @@ class BundleBuilder:
         The id is only read from a 2xx response body or the redirect URL — an
         error body can carry unrelated numbers.
         """
-        label = new_tool.SEL['save_btn']
-        button = page.locator("button:has-text('%s')" % label).first
-        if await button.count() == 0:
-            self.log('หาปุ่ม "%s" ไม่เจอ — ไม่ได้สร้าง' % label, 'ERROR')
+        labels = ('สร้าง Bundle', new_tool.SEL['save_btn'])
+        button = None
+        for label in labels:
+            candidate = page.locator("button:has-text('%s')" % label).first
+            if await candidate.count():
+                button = candidate
+                break
+        if button is None:
+            self.log('หาปุ่มสร้าง Bundle ไม่เจอ — ไม่ได้สร้าง', 'ERROR')
             return False, None
         response = None
         try:
