@@ -243,6 +243,26 @@ def _block(code_no, banner, per_set, kinds):
          for kind in kinds] + [[]]
 
 
+def _headerless_block():
+    """A repeated live-plan prize block which omits its Item Kind header."""
+    return [
+        ['', '', '', '', '', '', '', 'CONDITIONS (Only for "Code No. 2")'],
+        ['', '', '', '', '', '', '', 'CODE EXPIRE DATE', '',
+         '2026-08-31 00:00:00'],
+        ['', '', '', '', '', '', '', 'Additional conditions A', '',
+         'Cannot be repeated'],
+        [],
+        ['', '', '', '', '', '', '', 'Prize'],
+        ['', '', '', '', '', '', '', 'GIVEAWAY', 'Unique Code', '', '',
+         '', '', 'Number [code/set]', 'Number [set]', '', 'Total'],
+        ['', '', '', '', '', '', '', '', '', '', '', '', '', 20, 16, '', 320],
+        [],
+        ['Prize'],
+        ['', '', '', '', '', '', '', '333', '1', '0', '10', 'No',
+         'Giveaway Thing'],
+    ]
+
+
 def test_a_plan_sheet_becomes_one_group_per_prize_table():
     sheets = _sheet([['Storm Chaser']]
                     + _block(1, 'WINNER REWARDS', 35, ['111', '222'])
@@ -261,6 +281,24 @@ def test_stacked_tables_stay_apart_even_with_nothing_to_tell_them_apart():
                     + _block(0, '', 60, ['222']))
     groups = [row['sources'][0] for _name, rows in sheets for row in rows]
     assert groups == ['August E-Card', 'August E-Card (2)']
+
+
+def test_a_later_prize_block_can_reuse_the_first_tables_missing_header():
+    """Some live plan tabs omit the repeated Item Kind header on their second
+    prize block.  Its rows still use the same columns and must become another
+    Item Code instead of disappearing from the handoff."""
+    sheets = _sheet([['Apple, Orange, Ensaymada?']]
+                    + _block(1, 'WINNER REWARDS', 20, ['111'])
+                    + _headerless_block())
+
+    rows = sheets[0][1]
+    groups = [row['sources'][0] for row in rows]
+    assert groups == [
+        'Apple, Orange, Ensaymada? WINNER REWARDS',
+        'Apple, Orange, Ensaymada? GIVEAWAY',
+    ]
+    assert rows[1]['group_meta']['codes_per_set'] == '20'
+    assert rows[1]['group_meta']['set_count'] == '16'
 
 
 def test_the_singular_spelling_of_the_codes_column_is_read_too():
@@ -283,6 +321,39 @@ def _workbook_bytes(rows, title='plan'):
     buffer = io.BytesIO()
     book.save(buffer)
     return buffer.getvalue()
+
+
+def test_finder_handoff_keeps_a_later_headerless_item_code(client):
+    payload = _workbook_bytes(
+        [['Apple, Orange, Ensaymada?']]
+        + _block(1, 'WINNER REWARDS', 20, ['111'])
+        + _headerless_block(),
+        title='PH July- STM - Apple, Orange, E',
+    )
+    started = client.post(
+        '/api/import-plan', data={'mode': 'itemcode'},
+        files={'file': ('plan.xlsx', payload,
+                        'application/vnd.openxmlformats-officedocument'
+                        '.spreadsheetml.sheet')},
+    ).json()
+    assert started['sheets'] == [{
+        'name': 'PH July- STM - Apple, Orange, E',
+        'count': 2,
+    }]
+    applied = client.post('/api/import-plan/apply', json={
+        'pending_id': started['pending_id'],
+        'selected_sheets': ['PH July- STM - Apple, Orange, E'],
+    })
+    assert applied.status_code == 200, applied.text
+
+    drafts = client.get(
+        '/api/workspaces/%s/itemcodes' % started['workspace_id']
+    ).json()['itemcodes']
+    assert [draft['name_th'] for draft in drafts] == [
+        'Apple, Orange, Ensaymada? - WINNER REWARDS',
+        'Apple, Orange, Ensaymada? - GIVEAWAY',
+    ]
+    assert len(drafts[1]['rewards']) == 16
 
 
 def test_importing_a_plan_on_this_page_needs_a_session(anonymous_client):

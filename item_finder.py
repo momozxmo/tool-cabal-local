@@ -387,12 +387,51 @@ def _parse_event_rows(rows, skipped=None):
     แถวที่มีชื่อไอเทมแต่ ItemKind อ่านไม่ได้ (#VALUE! จาก date-format) -> เก็บชื่อลง skipped"""
     items = []
     col = None
+    last_col = None
+    headerless_block = False
     group = ''
     cur_meta = {}
     tbl = 0
     seen = {}
     buf = []
     sheet_activity = ''                            # ชื่อกิจกรรมระดับชีต (เช่น VICI/VENI) เก็บครั้งเดียว
+
+    def begin_table(column_map):
+        """Start one prize table, including malformed repeats with no header."""
+        nonlocal col, last_col, headerless_block, group, cur_meta, tbl
+        col = dict(column_map)
+        last_col = dict(column_map)
+        headerless_block = False
+        tbl += 1
+        banner = ''                                # แบนเนอร์ section ในคอลัมน์ Item Kind (เช่น 'GM Slayer')
+        kc = col.get('kind')
+        if kc is not None:
+            # ไล่จากใกล้ header ขึ้นไป ข้ามข้อความ generic (Prize/Conditions/...)
+            # จนเจอชื่อ section จริง (แบนเนอร์บนสุดของ section เช่น GM Slayer)
+            for prev in reversed(buf):
+                if kc < len(prev):
+                    value = prev[kc]
+                    if value is not None and str(value).strip() \
+                            and not _event_isnum(value) \
+                            and not _event_is_generic(value):
+                        banner = str(value).strip().replace('\n', ' ')
+                        break
+        # ดึงเงื่อนไข (วันหมดอายุ/codes per set/เติมซ้ำไม่ได้/unique code/เลข Code)
+        cur_meta = _event_extract_meta(buf)
+        cur_meta['activity'] = sheet_activity
+        # ชื่อรางวัล = แบนเนอร์ section ถ้ามี ไม่งั้น fallback เป็นเลข Code
+        reward = banner or cur_meta.get('code_no', '')
+        cur_meta['reward'] = reward
+        # ชื่อกลุ่ม (แสดง/จัดกลุ่มผล) = 'ชื่อกิจกรรม ชื่อรางวัล'
+        display = (sheet_activity + ' ' + reward).strip() if reward else sheet_activity
+        group = display or banner or ('ตาราง %d' % tbl)
+        # ตารางที่วางซ้อนกันลงมาในชีตเดียว = คนละโค้ด แม้ไม่มีชื่อ section แยก
+        # ชื่อกลุ่มซ้ำจะทำให้สองโค้ดถูกยุบเป็นอันเดียว จึงเติมลำดับให้ไม่ซ้ำ
+        seen[group] = seen.get(group, 0) + 1
+        if seen[group] > 1:
+            group = '%s (%d)' % (group, seen[group])
+        cur_meta['event_name'] = group
+
     for row in rows:
         cn = [_event_norm(c) for c in row]
         # ชื่อกิจกรรม = ข้อความคอลัมน์ 0 ตัวแรกที่ไม่ใช่ generic (แบนเนอร์บนสุดของชีต) เก็บครั้งเดียว
@@ -401,45 +440,39 @@ def _parse_event_rows(rows, skipped=None):
             if v0 and not _event_isnum(v0) and not _event_is_generic(v0):
                 sheet_activity = v0.replace('\n', ' ')
         if 'itemkind' in cn:                       # เจอ header -> เริ่มตารางใหม่
-            col = {}
+            found_col = {}
             for i, c in enumerate(cn):
                 if c == 'itemname':                # ชื่อจริง — ทับ Display Name เสมอ
-                    col['name'] = i
+                    found_col['name'] = i
                 elif c in _EVENT_HDR and _EVENT_HDR[c] != 'name':
-                    col[_EVENT_HDR[c]] = i
-                elif c == 'displayname' and 'name' not in col:
-                    col['name'] = i                # fallback ถ้าไม่มี Item Name
-            tbl += 1
-            banner = ''                            # แบนเนอร์ section ในคอลัมน์ Item Kind (เช่น 'GM Slayer')
-            kc = col.get('kind')
-            if kc is not None:
-                # ไล่จากใกล้ header ขึ้นไป ข้ามข้อความ generic (Prize/Conditions/...)
-                # จนเจอชื่อ section จริง (แบนเนอร์บนสุดของ section เช่น GM Slayer)
-                for prev in reversed(buf):
-                    if kc < len(prev):
-                        v = prev[kc]
-                        if v is not None and str(v).strip() and not _event_isnum(v) \
-                                and not _event_is_generic(v):
-                            banner = str(v).strip().replace('\n', ' ')
-                            break
-            # ดึงเงื่อนไข (วันหมดอายุ/codes per set/เติมซ้ำไม่ได้/unique code/เลข Code)
-            cur_meta = _event_extract_meta(buf)
-            cur_meta['activity'] = sheet_activity
-            # ชื่อรางวัล = แบนเนอร์ section ถ้ามี ไม่งั้น fallback เป็นเลข Code จาก CONDITIONS/Prize
-            reward = banner or cur_meta.get('code_no', '')
-            cur_meta['reward'] = reward
-            # ชื่อกลุ่ม (แสดง/จัดกลุ่มผล) = 'ชื่อกิจกรรม ชื่อรางวัล'
-            disp = (sheet_activity + ' ' + reward).strip() if reward else sheet_activity
-            group = disp or banner or ('ตาราง %d' % tbl)
-            # ตารางที่วางซ้อนกันลงมาในชีตเดียว = คนละโค้ด แม้ไม่มีชื่อ section แยก
-            # (บางชีตไม่มีทั้งแบนเนอร์และเลข Code) — ชื่อกลุ่มซ้ำจะทำให้สองโค้ดถูกยุบเป็นอันเดียว
-            seen[group] = seen.get(group, 0) + 1
-            if seen[group] > 1:
-                group = '%s (%d)' % (group, seen[group])
-            cur_meta['event_name'] = group
+                    found_col[_EVENT_HDR[c]] = i
+                elif c == 'displayname' and 'name' not in found_col:
+                    found_col['name'] = i          # fallback ถ้าไม่มี Item Name
+            begin_table(found_col)
             buf.append(row)
             buf[:] = buf[-16:]
             continue
+
+        # Some live tabs repeat CONDITIONS/Prize and the item rows, but omit
+        # the second Item Kind header.  Once a new prize marker has appeared,
+        # a row fitting the previous table's columns starts that table with the
+        # same layout.  Without the marker, a stray numeric row after a blank
+        # line is not guessed into a new Item Code.
+        if not col:
+            if any(value.startswith('conditions') or value.startswith('prize')
+                   for value in cn if value):
+                headerless_block = True
+            if headerless_block and last_col and 'kind' in last_col:
+                kind_index = last_col['kind']
+                name_index = last_col.get('name')
+                kind_value = row[kind_index] if kind_index < len(row) else None
+                name_value = (row[name_index]
+                              if name_index is not None and name_index < len(row)
+                              else None)
+                if (_event_num(kind_value).isdigit()
+                        and name_value is not None and str(name_value).strip()):
+                    begin_table(last_col)
+
         buf.append(row)
         buf[:] = buf[-16:]
         if not col or 'kind' not in col:
@@ -472,6 +505,7 @@ def _parse_event_rows(rows, skipped=None):
                 skipped.append(str(nm).strip())
         else:
             col = None                             # แถวว่าง/หมดตาราง -> รอ header ถัดไป
+            headerless_block = False
     return items
 
 
