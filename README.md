@@ -5,14 +5,14 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.2](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.2/All.for.Cabal.Web.Setup-0.1.2.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.2/All.for.Cabal.Web.Setup-0.1.2.exe.sha256)
-- [ดูหน้า Release](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.2)
+- [ดาวน์โหลด Setup v0.1.3](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.3/All.for.Cabal.Web.Setup-0.1.3.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.3/All.for.Cabal.Web.Setup-0.1.3.exe.sha256)
+- [ดูหน้า Release](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.3)
 
 SHA-256:
 
 ```text
-BD82E06999079F502601D51A13CFA2864954F5422693DD26ABDEE638A24FD9F3
+80B94390E3A708AF822E027E81921FF2F85E36482568A413333598CF017CE785
 ```
 
 ## คุณสมบัติของเวอร์ชัน Local
@@ -23,10 +23,11 @@ BD82E06999079F502601D51A13CFA2864954F5422693DD26ABDEE638A24FD9F3
 - เก็บฐานข้อมูลและ config ไว้ที่ `%LOCALAPPDATA%\AllForCabalWeb`
 - ติดตั้งทับหรือถอนโปรแกรมแล้วข้อมูล Local ยังอยู่
 - รวม Chromium ที่ระบบอัตโนมัติต้องใช้ไว้ใน Setup แล้ว
+- v0.1.3 รองรับปุ่ม `สร้าง Bundle` ของ Aztek v2 และยังรองรับชื่อปุ่มเดิม
 - v0.1.2 อ่านบล็อกรางวัลถัดไปที่ไม่มีหัวตาราง Item Kind ซ้ำ และส่งต่อ Item Code ได้ครบ
 - v0.1.1 แก้อาการ Controller ค้างที่ข้อความกำลังปิดโปรแกรม
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.2 ยังไม่มี digital signature Windows อาจแสดง
+> ตัวติดตั้ง v0.1.3 ยังไม่มี digital signature Windows อาจแสดง
 > `Unknown publisher` หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

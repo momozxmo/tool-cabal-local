@@ -4,27 +4,27 @@
 
 ดาวน์โหลดสองไฟล์จาก Release เดียวกัน:
 
-- `All.for.Cabal.Web.Setup-0.1.2.exe`
-- `All.for.Cabal.Web.Setup-0.1.2.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.3.exe`
+- `All.for.Cabal.Web.Setup-0.1.3.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.2.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.2.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.3.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.3.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-BD82E06999079F502601D51A13CFA2864954F5422693DD26ABDEE638A24FD9F3
+80B94390E3A708AF822E027E81921FF2F85E36482568A413333598CF017CE785
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.2.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.3.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -59,9 +59,10 @@ Controller มีสามปุ่ม:
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup
 จะยังอยู่ หากต้องการลบข้อมูลถาวรให้สำรองข้อมูลก่อน แล้วลบโฟลเดอร์ข้างต้นเอง
 
-## 5. สถานะการตรวจ v0.1.2
+## 5. สถานะการตรวจ v0.1.3
 
-- Automated tests: `359 passed`
+- Automated tests: `360 passed`
+- ตรวจ DOM จริงแล้วพบปุ่ม `สร้าง Bundle` ของ Aztek v2 และ regression test รองรับทั้งชื่อใหม่กับชื่อเดิม
 - ตรวจไฟล์จริงแล้ว Item Code ส่งต่อมา 2 รายการ และ GIVEAWAY แสดงครบ 16 ชุดรางวัล
 - ตรวจติดตั้ง เปิด server เข้าใช้งานแบบไม่มีล็อกอิน และเปิด launcher ซ้ำแล้ว
 - ตรวจติดตั้งทับและถอนโปรแกรมโดยข้อมูลเดิมยังอยู่แล้ว
