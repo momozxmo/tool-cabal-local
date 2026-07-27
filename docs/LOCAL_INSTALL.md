@@ -4,27 +4,27 @@
 
 ดาวน์โหลดสองไฟล์จาก Release เดียวกัน:
 
-- `All.for.Cabal.Web.Setup-0.1.1.exe`
-- `All.for.Cabal.Web.Setup-0.1.1.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.2.exe`
+- `All.for.Cabal.Web.Setup-0.1.2.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.1.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.1.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.2.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.2.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-684AA4BDCAFD6745A886224BBC0E6237C417F8DE4E94D9361687165C6A95FE5B
+BD82E06999079F502601D51A13CFA2864954F5422693DD26ABDEE638A24FD9F3
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.1.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.2.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -59,9 +59,10 @@ Controller มีสามปุ่ม:
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup
 จะยังอยู่ หากต้องการลบข้อมูลถาวรให้สำรองข้อมูลก่อน แล้วลบโฟลเดอร์ข้างต้นเอง
 
-## 5. สถานะการตรวจ v0.1.1
+## 5. สถานะการตรวจ v0.1.2
 
-- Automated tests: `357 passed`
+- Automated tests: `359 passed`
+- ตรวจไฟล์จริงแล้ว Item Code ส่งต่อมา 2 รายการ และ GIVEAWAY แสดงครบ 16 ชุดรางวัล
 - ตรวจติดตั้ง เปิด server เข้าใช้งานแบบไม่มีล็อกอิน และเปิด launcher ซ้ำแล้ว
 - ตรวจติดตั้งทับและถอนโปรแกรมโดยข้อมูลเดิมยังอยู่แล้ว
 - server ฟังเฉพาะ `127.0.0.1:8000`
