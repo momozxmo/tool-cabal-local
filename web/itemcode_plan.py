@@ -149,8 +149,9 @@ def _from_event(meta, game, name, now, notes):
     rewards = []
     for index in range(blocks):
         each = str(per_base + (buffer if index < 2 else 0)) if per_base else ''
+        reward_uses = each if meta.get('can_repeat') and each else '1'
         rewards.append(_reward(
-            '%s %d' % (name, index + 1) if blocks > 1 else name, uses,
+            '%s %d' % (name, index + 1) if blocks > 1 else name, reward_uses,
             limited=bool(each) and server,
             quantity=each if server else '', remaining=each if server else '',
             code_type='2' if server else '1',

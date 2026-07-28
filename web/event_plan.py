@@ -101,6 +101,9 @@ def build_event_draft(sheet_name: str, event: dict, game: str,
                 'ชุดรางวัลที่ %d ไม่มีชื่อ กรุณากรอกเอง' % ordinal)
         rewards.append(_reward(
             group, make_group_key(sheet_name, group, ordinal)))
+    if len(rewards) == 1 and name:
+        rewards[0]['name_th'] = name
+        rewards[0]['name_en'] = name
     return {
         'sheet_key': make_sheet_key(sheet_name),
         'sheet': _text(sheet_name),

@@ -309,6 +309,70 @@ def test_event_page_imports_one_event_per_sheet_with_all_reward_sets():
         browser.close()
 
 
+def test_event_claim_window_keeps_a_space_when_it_is_mirrored():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = _tool_page(browser, EVENTS)
+        page.evaluate("""
+          addDrafts([{
+            name_th: 'Summer Event',
+            start_event: '2026-07-28T00:00:00',
+            end_event: '2026-08-31T22:59:59',
+            start_claim: '',
+            end_claim: '',
+            same_window: false,
+            rewards: [{name_th: 'Summer Event', name_en: 'Summer Event'}]
+          }], 'test')
+        """)
+
+        page.locator('#sameWindow').check()
+
+        assert page.locator('#startClaim').input_value() == \
+            '2026-07-28 00:00:00'
+        assert page.locator('#endClaim').input_value() == \
+            '2026-08-31 22:59:59'
+        browser.close()
+
+
+def test_event_editor_uses_aztek_section_columns_and_collapses_on_small_screens():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = _tool_page(browser, EVENTS)
+        page.evaluate("select(queue.add(blankEvent()).key)")
+
+        page.set_viewport_size({'width': 1400, 'height': 1000})
+        desktop = page.evaluate("""
+          () => {
+            const general = document.querySelector(
+              '[data-event-section="general"]');
+            const activity = document.querySelector(
+              '[data-event-section="activity-window"]');
+            return {
+              generalLeft: general.getBoundingClientRect().left,
+              generalRight: general.getBoundingClientRect().right,
+              activityLeft: activity.getBoundingClientRect().left
+            };
+          }
+        """)
+        assert desktop['activityLeft'] > desktop['generalRight']
+
+        page.set_viewport_size({'width': 800, 'height': 1200})
+        mobile = page.evaluate("""
+          () => {
+            const general = document.querySelector(
+              '[data-event-section="general"]');
+            const activity = document.querySelector(
+              '[data-event-section="activity-window"]');
+            return {
+              generalLeft: general.getBoundingClientRect().left,
+              activityLeft: activity.getBoundingClientRect().left
+            };
+          }
+        """)
+        assert abs(mobile['generalLeft'] - mobile['activityLeft']) < 1
+        browser.close()
+
+
 def test_event_bundle_ids_match_exact_group_keys_across_same_reward_names():
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)

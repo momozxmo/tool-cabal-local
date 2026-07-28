@@ -40,6 +40,31 @@ def test_one_sheet_is_one_event_with_all_reward_sets():
     ]
 
 
+def test_a_single_reward_set_uses_the_event_name():
+    draft = event_plan.build_event_drafts([
+        ('Activity A', _event(
+            name='Summer Event',
+            rewards=[{
+                'name': 'WINNER REWARDS',
+                'items': [{'kind': '1'}],
+            }],
+        )),
+    ], TH, now=NOW)[0]
+
+    reward = draft['rewards'][0]
+    assert (reward['name_th'], reward['name_en']) == (
+        'Summer Event', 'Summer Event')
+    assert reward['group'] == 'WINNER REWARDS'
+
+
+def test_multiple_reward_sets_keep_their_document_names():
+    draft = event_plan.build_event_drafts(
+        [('Activity A', _event())], TH, now=NOW)[0]
+
+    assert [reward['name_th'] for reward in draft['rewards']] == [
+        'Lucky Draw', 'Participation']
+
+
 def test_dates_start_today_and_end_at_the_servers_end_of_day():
     th = event_plan.build_event_drafts(
         [('A', _event())], TH, now=NOW)[0]

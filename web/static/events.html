@@ -22,10 +22,16 @@
     .formgrid input[type=checkbox]{width:auto}
     .slugline{display:flex;gap:6px}
     .slugline input{flex:1}
-    /* The two windows are different things — when the activity runs, and how
-       long the prize can still be claimed — so they get their own headings. */
-    .win-head{grid-column:1/-1;color:var(--arc-bright);font-weight:700;font-size:12.5px;
-      border-top:1px solid var(--edge-soft);padding-top:11px}
+    .event-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(320px,1fr);
+      gap:24px;align-items:start}
+    .event-column{display:grid;gap:16px;min-width:0}
+    .event-panel{border:1px solid var(--edge);border-radius:10px;
+      background:var(--onyx);padding:16px;min-width:0}
+    .event-panel h3{margin:0 0 14px;font-size:15px}
+    .event-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .event-panel-head h3{margin:0}
+    .event-general .formgrid,.event-claim .formgrid,
+    .event-side .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .rset{border:1px solid var(--edge);border-left:3px solid var(--arc);border-radius:10px;
       background:var(--onyx);padding:12px;display:grid;gap:11px}
     .rset-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -35,7 +41,15 @@
     .idtable{width:100%;margin-top:10px}
     .idtable td,.idtable th{white-space:normal}
     tr.r-ok td{background:#12301f}tr.r-fail td{background:#301518}tr.r-noid td{background:#302a12}
-    @media(max-width:1100px){.formgrid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:1100px){
+      .event-layout{grid-template-columns:1fr}
+      .formgrid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:680px){
+      .formgrid,.event-general .formgrid,.event-claim .formgrid,
+      .event-side .formgrid{grid-template-columns:1fr}
+      .formgrid label.wide{grid-column:auto}
+    }
   </style>
 </head>
 <body>
@@ -77,32 +91,58 @@
       <div class="card-head"><h2>แก้ Event</h2><span id="editorWhich" class="hint"></span></div>
       <div class="card-body section">
         <div id="planWarnings" class="summary warning" hidden></div>
-        <div class="formgrid">
-          <label class="wide">ชื่อ Event (ไทย) *<input id="nameTh" type="text"></label>
-          <label class="wide">ชื่อ Event (อังกฤษ) *<input id="nameEn" type="text"></label>
-          <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
-            <span class="slugline"><input id="slug" type="text" spellcheck="false">
-              <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
-          <label>ผู้มีสิทธิ์รับรางวัล<select id="kind" disabled aria-readonly="true"><option value="WINNER">WINNER</option></select></label>
-          <label>จำกัดต่อผู้เล่น<input id="usesPerUser" type="number" min="1" value="1"></label>
-          <label>จำนวนรางวัลทั้งหมด<input id="quantity" type="number" min="0" value="0"></label>
-          <label>คงเหลือ<input id="remaining" type="number" min="0" value="0"></label>
-          <div class="win-head">ช่วงเวลากิจกรรม</div>
-          <label class="wide">วันเริ่มกิจกรรม *<input id="startEvent" class="dtpick" type="text"></label>
-          <label class="wide">วันสิ้นสุดกิจกรรม *<input id="endEvent" class="dtpick" type="text"></label>
-          <div class="win-head">ช่วงเวลารับรางวัล</div>
-          <label class="wide">วันเริ่มรับรางวัล *<input id="startClaim" class="dtpick" type="text"></label>
-          <label class="wide">วันสิ้นสุดการรับรางวัล *<input id="endClaim" class="dtpick" type="text"></label>
-          <label class="full inline"><input id="sameWindow" type="checkbox">ช่วงรับรางวัล = ช่วงกิจกรรม (คัดลอกให้อัตโนมัติ)</label>
+        <div class="event-layout">
+          <div class="event-column">
+            <section class="event-panel event-general" data-event-section="general">
+              <h3>ข้อมูลทั่วไป</h3>
+              <div class="formgrid">
+                <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
+                  <span class="slugline"><input id="slug" type="text" spellcheck="false">
+                    <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
+                <label class="wide">ชื่อ Event (ไทย) *<input id="nameTh" type="text"></label>
+                <label class="wide">ชื่อ Event (อังกฤษ) *<input id="nameEn" type="text"></label>
+              </div>
+            </section>
+
+            <section class="event-panel" data-event-section="rewards">
+              <div class="event-panel-head">
+                <h3>ของรางวัล <span id="rsetCount" class="count">0</span></h3>
+                <button id="btnAddSet" type="button">+ เพิ่มชุดรางวัล</button>
+              </div>
+              <p class="hint">หนึ่งชุดรางวัล = หนึ่ง bundle — เลข bundle อยู่ในเอกสารแผนอยู่แล้ว ไม่ต้องค้นหาไอเทมใหม่</p>
+              <div id="rsets" class="rsets"></div>
+            </section>
+
+            <section class="event-panel event-claim" data-event-section="claim-rules">
+              <h3>การรับรางวัล</h3>
+              <div class="formgrid">
+                <label class="full">ผู้มีสิทธิ์รับรางวัล<select id="kind" disabled aria-readonly="true"><option value="WINNER">WINNER</option></select></label>
+                <label class="full">จำกัดต่อผู้เล่น<input id="usesPerUser" type="number" min="1" value="1"></label>
+                <label>จำนวนรางวัลทั้งหมด<input id="quantity" type="number" min="0" value="0"></label>
+                <label>คงเหลือ<input id="remaining" type="number" min="0" value="0"></label>
+              </div>
+            </section>
+          </div>
+
+          <aside class="event-column event-side">
+            <section class="event-panel" data-event-section="activity-window">
+              <h3>ช่วงเวลากิจกรรม</h3>
+              <div class="formgrid">
+                <label>วันเริ่มกิจกรรม *<input id="startEvent" class="dtpick" type="text"></label>
+                <label>วันสิ้นสุดกิจกรรม *<input id="endEvent" class="dtpick" type="text"></label>
+              </div>
+            </section>
+
+            <section class="event-panel" data-event-section="claim-window">
+              <h3>ช่วงเวลารับรางวัล</h3>
+              <div class="formgrid">
+                <label>วันเริ่มรับรางวัล *<input id="startClaim" class="dtpick" type="text"></label>
+                <label>วันสิ้นสุดการรับรางวัล *<input id="endClaim" class="dtpick" type="text"></label>
+                <label class="full inline"><input id="sameWindow" type="checkbox">ช่วงรับรางวัล = ช่วงกิจกรรม (คัดลอกให้อัตโนมัติ)</label>
+              </div>
+            </section>
+          </aside>
         </div>
-      </div>
-      <div class="card-body section">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <b>ชุดรางวัล <span id="rsetCount" class="count">0</span></b>
-          <button id="btnAddSet" type="button">+ เพิ่มชุดรางวัล</button>
-        </div>
-        <p class="hint">หนึ่งชุดรางวัล = หนึ่ง bundle — เลข bundle อยู่ในเอกสารแผนอยู่แล้ว ไม่ต้องค้นหาไอเทมใหม่</p>
-        <div id="rsets" class="rsets"></div>
       </div>
     </section>
 
@@ -192,8 +232,8 @@ const FIELDS = {nameTh: 'name_th', nameEn: 'name_en', slug: 'slug', kind: 'kind'
 function mirrorWindow(entry) {
   if (!entry.same_window) return;
   entry.start_claim = entry.start_event; entry.end_claim = entry.end_event;
-  $('startClaim').value = entry.start_claim || '';
-  $('endClaim').value = entry.end_claim || '';
+  $('startClaim').value = displayStamp(entry.start_claim);
+  $('endClaim').value = displayStamp(entry.end_claim);
 }
 
 function select(key) {

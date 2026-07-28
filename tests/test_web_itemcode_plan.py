@@ -113,6 +113,16 @@ def test_a_repeatable_code_lets_a_player_use_every_one_of_them():
     assert _one(_event(cannot_repeat=False, can_repeat=True))['uses_per_user'] == '40'
 
 
+def test_each_repeatable_reward_uses_its_own_code_count_and_the_item_uses_the_sum():
+    draft = _one(_event(set_count='16', codes_per_set='20', total='320',
+                        once_per_set=True, can_repeat=True))
+    code_counts = [r['num_codes'] for r in draft['rewards']]
+    reward_uses = [r['uses_per_user'] for r in draft['rewards']]
+    assert code_counts == ['25', '25'] + ['20'] * 14
+    assert reward_uses == code_counts
+    assert draft['uses_per_user'] == '330'
+
+
 def test_an_absurd_number_of_sets_is_capped_and_reported():
     draft = _one(_event(set_count='5000', codes_per_set='1', total='5000',
                         once_per_set=True, can_repeat=False))
