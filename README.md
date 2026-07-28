@@ -5,15 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.3](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.3/All.for.Cabal.Web.Setup-0.1.3.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.3/All.for.Cabal.Web.Setup-0.1.3.exe.sha256)
-- [ดูหน้า Release](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.3)
+- [ดาวน์โหลด Setup v0.1.4](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.4/All.for.Cabal.Web.Setup-0.1.4.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.4/All.for.Cabal.Web.Setup-0.1.4.exe.sha256)
+- [ดูหน้า Release v0.1.4](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.4)
 
 SHA-256:
 
 ```text
-80B94390E3A708AF822E027E81921FF2F85E36482568A413333598CF017CE785
+973134C049BE14B933B91F4431412C5FB48E2DDE5DDC5B749F1B6FF1B9672DAB
 ```
+
+## สิ่งที่ปรับใน v0.1.4
+
+- หน้า Event จัดตำแหน่งฟอร์มให้ใกล้เคียงหน้า Aztek จริง โดยไม่เพิ่มช่องที่ไม่ได้ใช้งาน
+- Event ที่มีชุดรางวัลเดียวจะนำชื่อ Event ไปกรอกเป็นชื่อชุดรางวัลให้อัตโนมัติ
+- เวลารับรางวัลของ Event แสดงวันที่กับเวลาโดยใช้ช่องว่างแทนตัว `T`
+- Item Code กำหนดจำนวนการใช้งานต่อ 1 User ของแต่ละชุดรางวัลให้เท่ากับจำนวน Code ของชุดนั้น
+- หาก Item Code มีหลายชุดรางวัล ผลรวมจำนวนของทุกชุดจะเท่ากับจำนวน Item Code ทั้งหมด
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -23,11 +31,11 @@ SHA-256:
 - เก็บฐานข้อมูลและ config ไว้ที่ `%LOCALAPPDATA%\AllForCabalWeb`
 - ติดตั้งทับหรือถอนโปรแกรมแล้วข้อมูล Local ยังอยู่
 - รวม Chromium ที่ระบบอัตโนมัติต้องใช้ไว้ใน Setup แล้ว
-- v0.1.3 รองรับปุ่ม `สร้าง Bundle` ของ Aztek v2 และยังรองรับชื่อปุ่มเดิม
-- v0.1.2 อ่านบล็อกรางวัลถัดไปที่ไม่มีหัวตาราง Item Kind ซ้ำ และส่งต่อ Item Code ได้ครบ
-- v0.1.1 แก้อาการ Controller ค้างที่ข้อความกำลังปิดโปรแกรม
+- รองรับปุ่ม `สร้าง Bundle` ของ Aztek v2 และชื่อปุ่มแบบเดิม
+- อ่านบล็อกรางวัลต่อเนื่องที่ไม่มีหัวตาราง Item Kind ซ้ำ และส่ง Item Code หลายรายการได้ครบ
+- Controller ปิด server และตัวโปรแกรมได้โดยไม่ค้างอยู่ที่ข้อความกำลังปิดโปรแกรม
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.3 ยังไม่มี digital signature Windows อาจแสดง
-> `Unknown publisher` หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
+> ตัวติดตั้ง v0.1.4 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
