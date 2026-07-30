@@ -37,6 +37,12 @@
     .rset-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
     .rset-head b{color:var(--arc-bright)}
     .rsets{display:grid;gap:12px}
+    .reward-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 14px}
+    .reward-tab{border:1px solid var(--edge);border-radius:999px;
+      background:transparent;color:var(--ink);padding:8px 14px}
+    .reward-tab[aria-selected="true"]{border-color:var(--arc);
+      background:var(--arc);color:#fff}
+    .reward-tab:focus-visible{outline:2px solid var(--arc-bright);outline-offset:2px}
     /* Only one of the two code panels is ever relevant. */
     .rset[data-code="1"] .server-only{display:none}
     .rset[data-code="2"] .fix-only{display:none}
@@ -175,6 +181,7 @@
 <script>
 const queue = new Queue('afc.itemcodeQueue');
 let pendingGame = '';
+let activeRewardIndex = 0;
 
 function blankReward(bundleId, name) {
   return {name_th: name || '', name_en: name || '', uses_per_user: '1',
@@ -217,6 +224,7 @@ const FIELDS = {nameTh: 'name_th', nameEn: 'name_en', slug: 'slug',
 
 function select(key) {
   queue.active = key;
+  activeRewardIndex = 0;
   const entry = queue.current();
   if (entry) {
     Object.entries(FIELDS).forEach(([id, field]) => {
@@ -261,8 +269,37 @@ $('btnQueueClear').onclick = () => {
 function renderSets() {
   const box = $('rsets'); box.replaceChildren();
   const entry = queue.current(); if (!entry) return;
+  activeRewardIndex = Math.max(
+    0, Math.min(activeRewardIndex, entry.rewards.length - 1));
   $('rsetCount').textContent = String(entry.rewards.length);
-  entry.rewards.forEach((reward, index) => box.appendChild(setCard(entry, reward, index)));
+
+  const tabs = document.createElement('div');
+  tabs.className = 'reward-tabs';
+  tabs.setAttribute('role', 'tablist');
+  tabs.setAttribute('aria-label', 'ชุดรางวัล');
+  entry.rewards.forEach((reward, index) => {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'reward-tab';
+    tab.id = `itemcode-reward-tab-${index + 1}`;
+    tab.textContent = `${index + 1} ชุดที่ ${index + 1}`;
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', String(index === activeRewardIndex));
+    tab.setAttribute('aria-controls', `itemcode-reward-panel-${index + 1}`);
+    tab.onclick = () => {
+      activeRewardIndex = index;
+      renderSets();
+    };
+    tabs.appendChild(tab);
+  });
+
+  const panel = setCard(
+    entry, entry.rewards[activeRewardIndex], activeRewardIndex);
+  panel.id = `itemcode-reward-panel-${activeRewardIndex + 1}`;
+  panel.setAttribute('role', 'tabpanel');
+  panel.setAttribute(
+    'aria-labelledby', `itemcode-reward-tab-${activeRewardIndex + 1}`);
+  box.append(tabs, panel);
 }
 
 function field(label, node, cls) {
@@ -291,7 +328,9 @@ function setCard(entry, reward, index) {
   remove.type = 'button'; remove.className = 'danger'; remove.textContent = '✕ ลบชุดนี้';
   remove.onclick = () => {
     if (entry.rewards.length === 1) { log('ต้องมีอย่างน้อย 1 ชุดรางวัล', 'WARNING'); return; }
-    entry.rewards.splice(index, 1); queue.save(); renderSets(); renderQueue();
+    entry.rewards.splice(index, 1);
+    activeRewardIndex = Math.min(index, entry.rewards.length - 1);
+    queue.save(); renderSets(); renderQueue();
   };
   head.append(title, remove);
 
@@ -339,7 +378,9 @@ function setCard(entry, reward, index) {
 
 $('btnAddSet').onclick = () => {
   const entry = queue.current(); if (!entry) return;
-  entry.rewards.push(blankReward('')); queue.save(); renderSets(); renderQueue();
+  entry.rewards.push(blankReward(''));
+  activeRewardIndex = entry.rewards.length - 1;
+  queue.save(); renderSets(); renderQueue();
 };
 
 // ---- รับร่างจากไฟล์แผน (หน้าหาไอดีไอเทม) ----

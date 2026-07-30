@@ -424,6 +424,73 @@ def test_itemcode_editor_uses_aztek_columns_and_collapses_on_small_screens():
         browser.close()
 
 
+def test_itemcode_reward_tabs_show_one_set_and_keep_all_sets_in_payload():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = _tool_page(browser, ITEMCODES)
+        page.evaluate("""
+          addDrafts([{
+            name_th: 'Two Sets',
+            rewards: [
+              {name_th: 'First Reward', name_en: 'First Reward'},
+              {name_th: 'Second Reward', name_en: 'Second Reward'}
+            ]
+          }], 'test')
+        """)
+
+        tabs = page.locator('.reward-tab')
+        assert tabs.all_text_contents() == ['1 ชุดที่ 1', '2 ชุดที่ 2']
+        assert tabs.nth(0).get_attribute('aria-selected') == 'true'
+        assert tabs.nth(1).get_attribute('aria-selected') == 'false'
+        assert page.locator('#rsets .rset').count() == 1
+        assert page.locator('#rsets input').first.input_value() == 'First Reward'
+
+        tabs.nth(1).click()
+        assert tabs.nth(0).get_attribute('aria-selected') == 'false'
+        assert tabs.nth(1).get_attribute('aria-selected') == 'true'
+        assert page.locator('#rsets .rset').count() == 1
+        assert page.locator('#rsets input').first.input_value() == 'Second Reward'
+        assert page.evaluate(
+            "jobFrom(queue.current()).rewards.map(r => r.name_th)"
+        ) == ['First Reward', 'Second Reward']
+        browser.close()
+
+
+def test_itemcode_reward_tabs_select_added_set_remove_safely_and_reset_per_queue():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = _tool_page(browser, ITEMCODES)
+        page.evaluate("""
+          addDrafts([
+            {name_th: 'First Code', rewards: [
+              {name_th: 'First A'}, {name_th: 'First B'}
+            ]},
+            {name_th: 'Second Code', rewards: [
+              {name_th: 'Second A'}, {name_th: 'Second B'}
+            ]}
+          ], 'test')
+        """)
+
+        page.locator('.reward-tab').nth(1).click()
+        page.locator('#btnAddSet').click()
+        tabs = page.locator('.reward-tab')
+        assert tabs.all_text_contents() == [
+            '1 ชุดที่ 1', '2 ชุดที่ 2', '3 ชุดที่ 3']
+        assert tabs.nth(2).get_attribute('aria-selected') == 'true'
+
+        page.locator('#rsets .rset .danger').click()
+        tabs = page.locator('.reward-tab')
+        assert tabs.count() == 2
+        assert tabs.nth(1).get_attribute('aria-selected') == 'true'
+
+        page.locator('#queuePick').select_option(
+            page.evaluate("queue.items[1].key"))
+        assert page.locator('.reward-tab').nth(0).get_attribute(
+            'aria-selected') == 'true'
+        assert page.locator('#rsets input').first.input_value() == 'Second A'
+        browser.close()
+
+
 def test_event_bundle_ids_match_exact_group_keys_across_same_reward_names():
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
