@@ -5,23 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.4](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.4/All.for.Cabal.Web.Setup-0.1.4.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.4/All.for.Cabal.Web.Setup-0.1.4.exe.sha256)
-- [ดูหน้า Release v0.1.4](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.4)
+- [ดาวน์โหลด Setup v0.1.5](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.5/All.for.Cabal.Web.Setup-0.1.5.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.5/All.for.Cabal.Web.Setup-0.1.5.exe.sha256)
+- [ดูหน้า Release v0.1.5](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.5)
 
 SHA-256:
 
 ```text
-973134C049BE14B933B91F4431412C5FB48E2DDE5DDC5B749F1B6FF1B9672DAB
+370084628DDBA120CA18CFD4DDC3BA86FDC5529D4A321AF5F3A57F332CF52E2F
 ```
 
-## สิ่งที่ปรับใน v0.1.4
+## สิ่งที่ปรับใน v0.1.5
 
-- หน้า Event จัดตำแหน่งฟอร์มให้ใกล้เคียงหน้า Aztek จริง โดยไม่เพิ่มช่องที่ไม่ได้ใช้งาน
-- Event ที่มีชุดรางวัลเดียวจะนำชื่อ Event ไปกรอกเป็นชื่อชุดรางวัลให้อัตโนมัติ
-- เวลารับรางวัลของ Event แสดงวันที่กับเวลาโดยใช้ช่องว่างแทนตัว `T`
-- Item Code กำหนดจำนวนการใช้งานต่อ 1 User ของแต่ละชุดรางวัลให้เท่ากับจำนวน Code ของชุดนั้น
-- หาก Item Code มีหลายชุดรางวัล ผลรวมจำนวนของทุกชุดจะเท่ากับจำนวน Item Code ทั้งหมด
+- หน้า Item Code จัดข้อมูลทั่วไป/ตั้งค่าไว้ฝั่งซ้ายและชุดรางวัลไว้ฝั่งขวาให้ใกล้เคียงหน้า Aztek
+- เมื่อหน้าจอแคบ Item Code จะเรียงข้อมูลทั่วไป → ตั้งค่า → ชุดรางวัลให้อัตโนมัติ
+- Item Code และ Event ที่มีหลายชุดรางวัลใช้แท็บแบบ `1 ชุดที่ 1`, `2 ชุดที่ 2`
+- แสดงฟอร์มทีละชุดรางวัล แต่ยังเก็บและส่งข้อมูลของทุกชุดครบตามลำดับเดิม
+- เมื่อเพิ่มชุดใหม่จะเปิดแท็บนั้นทันที; เมื่อลบหรือเปลี่ยนรายการในคิวจะเลือกแท็บที่ถูกต้องให้อัตโนมัติ
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.4 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.5 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
