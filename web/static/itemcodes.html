@@ -12,8 +12,16 @@
     .topline label:first-child{min-width:190px}
     .topline label:nth-child(2){flex:1;min-width:300px}
     .topline select{width:100%}
-    /* The form is wide and shallow: four columns of short fields read faster
-       than one long column the operator has to scroll. */
+    .itemcode-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:24px;align-items:start}
+    .itemcode-column{display:grid;gap:16px;min-width:0}
+    .itemcode-panel{border:1px solid var(--edge);border-radius:10px;
+      background:var(--onyx);padding:16px;min-width:0}
+    .itemcode-panel h3{margin:0 0 14px;color:var(--ink)}
+    .itemcode-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .itemcode-fields label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
+    .itemcode-fields label.full{grid-column:1/-1}
+    .itemcode-fields input,.itemcode-fields select{width:100%}
     .formgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .formgrid label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:600}
     .formgrid label.wide{grid-column:span 2}
@@ -36,7 +44,14 @@
     .idtable{width:100%;margin-top:10px}
     .idtable td,.idtable th{white-space:normal}
     tr.r-ok td{background:#12301f}tr.r-fail td{background:#301518}tr.r-noid td{background:#302a12}
-    @media(max-width:1100px){.formgrid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:1100px){
+      .itemcode-layout{grid-template-columns:1fr}
+      .formgrid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:650px){
+      .itemcode-fields{grid-template-columns:1fr}
+      .itemcode-fields label.full{grid-column:auto}
+    }
   </style>
 </head>
 <body>
@@ -80,26 +95,42 @@
       <div class="card-body section">
         <!-- ประเภทล็อกเป็น ALL · ไม่มี "จำกัดจำนวน" และคำอธิบายระดับ Item Code
              (ไม่ได้ใช้ ปล่อยค่าเริ่มต้นของเว็บไว้) -->
-        <div class="formgrid">
-          <label class="wide">ชื่อ Item Code (ไทย) *<input id="nameTh" type="text"></label>
-          <label class="wide">ชื่อ Item Code (อังกฤษ) *<input id="nameEn" type="text"></label>
-          <label class="wide">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
-            <span class="slugline"><input id="slug" type="text" spellcheck="false">
-              <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
-          <label>ผู้มีสิทธิ์รับรางวัล<select id="kind" disabled aria-readonly="true"><option value="ALL">ALL</option></select></label>
-          <label>ใช้ต่อ 1 User<input id="usesPerUser" type="number" min="1" value="1"></label>
-          <label class="wide">เวลาเริ่มใช้งาน *<input id="startTime" class="dtpick" type="text"></label>
-          <label class="wide">เวลาสิ้นสุด *<input id="endTime" class="dtpick" type="text"></label>
+        <div class="itemcode-layout">
+          <div class="itemcode-column">
+            <section class="itemcode-panel" data-itemcode-section="general">
+              <h3>ข้อมูลทั่วไป</h3>
+              <div class="itemcode-fields">
+                <label>ชื่อ Item Code (ไทย) *<input id="nameTh" type="text"></label>
+                <label>ชื่อ Item Code (อังกฤษ) *<input id="nameEn" type="text"></label>
+                <label class="full">Slug * <span class="hint">a-z 0-9 และขีดกลาง</span>
+                  <span class="slugline"><input id="slug" type="text" spellcheck="false">
+                    <button id="btnSlug" type="button" title="สร้างจากชื่ออังกฤษ">สร้างให้</button></span></label>
+              </div>
+            </section>
+
+            <section class="itemcode-panel" data-itemcode-section="settings">
+              <h3>ตั้งค่า</h3>
+              <div class="itemcode-fields">
+                <label>ผู้มีสิทธิ์รับรางวัล<select id="kind" disabled aria-readonly="true"><option value="ALL">ALL</option></select></label>
+                <label>ใช้ต่อ 1 User<input id="usesPerUser" type="number" min="1" value="1"></label>
+                <label>เวลาเริ่มใช้งาน *<input id="startTime" class="dtpick" type="text"></label>
+                <label>เวลาสิ้นสุด *<input id="endTime" class="dtpick" type="text"></label>
+              </div>
+            </section>
+          </div>
+
+          <div class="itemcode-column">
+            <section class="itemcode-panel" data-itemcode-section="rewards">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <h3>ชุดรางวัล <span id="rsetCount" class="count">0</span></h3>
+                <button id="btnAddSet" type="button">+ เพิ่มชุดรางวัล</button>
+              </div>
+              <p class="hint">หนึ่งชุดรางวัล = หนึ่ง bundle — เว็บ v2 ให้ผูก bundle ได้ชุดละอันเดียว
+                ถ้าเอกสารสั่งหลาย bundle ในรางวัลเดียว ให้แยกเป็นหลายชุด</p>
+              <div id="rsets" class="rsets"></div>
+            </section>
+          </div>
         </div>
-      </div>
-      <div class="card-body section">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <b>ชุดรางวัล <span id="rsetCount" class="count">0</span></b>
-          <button id="btnAddSet" type="button">+ เพิ่มชุดรางวัล</button>
-        </div>
-        <p class="hint">หนึ่งชุดรางวัล = หนึ่ง bundle — เว็บ v2 ให้ผูก bundle ได้ชุดละอันเดียว
-          ถ้าเอกสารสั่งหลาย bundle ในรางวัลเดียว ให้แยกเป็นหลายชุด</p>
-        <div id="rsets" class="rsets"></div>
       </div>
     </section>
 

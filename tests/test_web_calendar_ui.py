@@ -373,6 +373,57 @@ def test_event_editor_uses_aztek_section_columns_and_collapses_on_small_screens(
         browser.close()
 
 
+def test_itemcode_editor_uses_aztek_columns_and_collapses_on_small_screens():
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = _tool_page(browser, ITEMCODES)
+        page.evaluate("select(queue.add(blankCode()).key)")
+
+        page.set_viewport_size({'width': 1400, 'height': 1000})
+        desktop = page.evaluate("""
+          () => {
+            const general = document.querySelector(
+              '[data-itemcode-section="general"]');
+            const settings = document.querySelector(
+              '[data-itemcode-section="settings"]');
+            const rewards = document.querySelector(
+              '[data-itemcode-section="rewards"]');
+            return {
+              generalLeft: general.getBoundingClientRect().left,
+              generalRight: general.getBoundingClientRect().right,
+              settingsLeft: settings.getBoundingClientRect().left,
+              rewardsLeft: rewards.getBoundingClientRect().left
+            };
+          }
+        """)
+        assert abs(desktop['generalLeft'] - desktop['settingsLeft']) < 1
+        assert desktop['rewardsLeft'] > desktop['generalRight']
+
+        page.set_viewport_size({'width': 800, 'height': 1200})
+        mobile = page.evaluate("""
+          () => {
+            const general = document.querySelector(
+              '[data-itemcode-section="general"]');
+            const settings = document.querySelector(
+              '[data-itemcode-section="settings"]');
+            const rewards = document.querySelector(
+              '[data-itemcode-section="rewards"]');
+            return {
+              generalLeft: general.getBoundingClientRect().left,
+              settingsLeft: settings.getBoundingClientRect().left,
+              rewardsLeft: rewards.getBoundingClientRect().left,
+              generalTop: general.getBoundingClientRect().top,
+              settingsTop: settings.getBoundingClientRect().top,
+              rewardsTop: rewards.getBoundingClientRect().top
+            };
+          }
+        """)
+        assert abs(mobile['generalLeft'] - mobile['settingsLeft']) < 1
+        assert abs(mobile['generalLeft'] - mobile['rewardsLeft']) < 1
+        assert mobile['generalTop'] < mobile['settingsTop'] < mobile['rewardsTop']
+        browser.close()
+
+
 def test_event_bundle_ids_match_exact_group_keys_across_same_reward_names():
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
