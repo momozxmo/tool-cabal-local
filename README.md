@@ -5,23 +5,24 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.6](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.6/All.for.Cabal.Web.Setup-0.1.6.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.6/All.for.Cabal.Web.Setup-0.1.6.exe.sha256)
-- [ดูหน้า Release v0.1.6](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.6)
+- [ดาวน์โหลด Setup v0.1.7](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.7/All.for.Cabal.Web.Setup-0.1.7.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.7/All.for.Cabal.Web.Setup-0.1.7.exe.sha256)
+- [ดูหน้า Release v0.1.7](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.7)
 
 SHA-256:
 
 ```text
-76573ADB6AB6556340BD14BAC04E462BFCA1B155DD8943C93EAF3BCB4EC53D00
+65DE86B6C89F5963EE78BB219B35367780AFEF3ADE02F38AA9703B92BCB13897
 ```
 
-## สิ่งที่ปรับใน v0.1.6
+## สิ่งที่ปรับใน v0.1.7
 
-- เพิ่มหน้า Product ตามตำแหน่งฟอร์มหลักของ Aztek พร้อมคิวหลายรายการและ layout สำหรับหน้าจอแคบ
-- ใช้ข้อมูล Shop จากแผนที่ Import ใน Item Finder ต่อได้ทันที และยังเลือก Sheet ได้เมื่อพบหลายแท็บ
-- Currency และ Category มาจากตัวเลือกที่ Fetch จาก Aztek เท่านั้น จับคู่แบบไม่ hardcode และกด Fetch ใหม่แยกกันได้
-- มีโหมดกรอก Product เพื่อรีวิวโดยไม่ส่ง และโหมดสร้างจริงที่ต้องเลือก ตรวจข้อมูล และยืนยันอีกครั้ง
-- เวลาเริ่มต้นเป็นวันปัจจุบันเวลา `00:00:00`; เวลาอื่นแสดงแบบ 24 ชั่วโมงโดยไม่มีตัว `T`
+- อ่านไฟล์ Reward PVE2 ที่มีแถวชื่อแพ็กเกจใต้หัวตารางได้ และตั้งชื่อกลุ่มจากอันดับกับ `Platinum Wing`
+- รักษาลำดับไอเทมตอนส่งผลค้นหาและรายการที่หาไม่เจอเข้าคิว Bundle
+- ไอเทมชื่อซ้ำในหลาย Bundle ใช้ค่า `Amt` ของแต่ละรายการได้ถูกต้อง
+- ช่องจำนวนใน Bundle พิมพ์เลขหลายหลักได้ตามปกติ
+- ผลและเลข Bundle ที่สร้างล่าสุดยังอยู่เมื่อสลับหน้าแล้วกลับมา
+- ปฏิทินในหน้าฟอร์มไม่ถูกขอบการ์ดตัด
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +38,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.6 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.7 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.6](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.6):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.7](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.7):
 
-- `All.for.Cabal.Web.Setup-0.1.6.exe`
-- `All.for.Cabal.Web.Setup-0.1.6.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.7.exe`
+- `All.for.Cabal.Web.Setup-0.1.7.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.6.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.6.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.7.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.7.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-76573ADB6AB6556340BD14BAC04E462BFCA1B155DD8943C93EAF3BCB4EC53D00
+65DE86B6C89F5963EE78BB219B35367780AFEF3ADE02F38AA9703B92BCB13897
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.6.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.7.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -55,21 +55,22 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเปลี่ยนแปลงใน v0.1.6
+## 5. การเปลี่ยนแปลงใน v0.1.7
 
-- เพิ่มหน้า Product ตามตำแหน่งฟอร์มหลักของ Aztek พร้อมคิวหลายรายการและ layout สำหรับหน้าจอแคบ
-- ใช้ข้อมูล Shop จากแผนที่ Import ใน Item Finder ต่อได้ทันที และยังเลือก Sheet ได้เมื่อพบหลายแท็บ
-- Currency และ Category มาจากตัวเลือกที่ Fetch จาก Aztek เท่านั้น จับคู่แบบไม่ hardcode และกด Fetch ใหม่แยกกันได้
-- มีโหมดกรอก Product เพื่อรีวิวโดยไม่ส่ง และโหมดสร้างจริงที่ต้องเลือก ตรวจข้อมูล และยืนยันอีกครั้ง
-- เวลาเริ่มต้นเป็นวันปัจจุบันเวลา `00:00:00`; เวลาอื่นแสดงแบบ 24 ชั่วโมงโดยไม่มีตัว `T`
+- อ่านไฟล์ Reward PVE2 ที่มีแถวชื่อแพ็กเกจใต้หัวตารางได้ และตั้งชื่อกลุ่มจากอันดับกับ `Platinum Wing`
+- รักษาลำดับไอเทมตอนส่งผลค้นหาและรายการที่หาไม่เจอเข้าคิว Bundle
+- ไอเทมชื่อซ้ำในหลาย Bundle ใช้ค่า `Amt` ของแต่ละรายการได้ถูกต้อง
+- ช่องจำนวนใน Bundle พิมพ์เลขหลายหลักได้ตามปกติ
+- ผลและเลข Bundle ที่สร้างล่าสุดยังอยู่เมื่อสลับหน้าแล้วกลับมา
+- ปฏิทินในหน้าฟอร์มไม่ถูกขอบการ์ดตัด
 
-## 6. สถานะการตรวจ v0.1.6
+## 6. สถานะการตรวจ v0.1.7
 
-- Automated tests: `441 passed`
+- Automated tests: `447 passed`
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `263,531,408` bytes (`251.32 MiB`)
-- ซอร์สของการแก้ไข v0.1.6 อยู่ที่ commit `52db967`
+- ขนาด Setup: `268,104,888` bytes (`255.68 MiB`)
+- ซอร์สของการแก้ไข v0.1.7 อยู่ที่ commit `afa10db`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ยังไม่ได้ทดสอบอัปเกรดข้ามหมายเลขเวอร์ชันด้วยการติดตั้งจริงในรอบนี้
