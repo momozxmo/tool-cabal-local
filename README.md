@@ -5,24 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.7](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.7/All.for.Cabal.Web.Setup-0.1.7.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.7/All.for.Cabal.Web.Setup-0.1.7.exe.sha256)
-- [ดูหน้า Release v0.1.7](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.7)
+- [ดาวน์โหลด Setup v0.1.8](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.8/All.for.Cabal.Web.Setup-0.1.8.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.8/All.for.Cabal.Web.Setup-0.1.8.exe.sha256)
+- [ดูหน้า Release v0.1.8](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.8)
 
 SHA-256:
 
 ```text
-65DE86B6C89F5963EE78BB219B35367780AFEF3ADE02F38AA9703B92BCB13897
+836070339B4731941D98C60C48D3CA943AB2A4DEA7219AE124BD2E06737ED517
 ```
 
-## สิ่งที่ปรับใน v0.1.7
+## สิ่งที่ปรับใน v0.1.8
 
-- อ่านไฟล์ Reward PVE2 ที่มีแถวชื่อแพ็กเกจใต้หัวตารางได้ และตั้งชื่อกลุ่มจากอันดับกับ `Platinum Wing`
-- รักษาลำดับไอเทมตอนส่งผลค้นหาและรายการที่หาไม่เจอเข้าคิว Bundle
-- ไอเทมชื่อซ้ำในหลาย Bundle ใช้ค่า `Amt` ของแต่ละรายการได้ถูกต้อง
-- ช่องจำนวนใน Bundle พิมพ์เลขหลายหลักได้ตามปกติ
-- ผลและเลข Bundle ที่สร้างล่าสุดยังอยู่เมื่อสลับหน้าแล้วกลับมา
-- ปฏิทินในหน้าฟอร์มไม่ถูกขอบการ์ดตัด
+- Fetch Category และ Currency ของหน้า Product จาก custom dropdown รุ่นปัจจุบันของ Aztek โดยไม่หยิบค่าช่องจำกัดการซื้อ
+- เลือก Category และ Currency ตอนกรอก Product ด้วย server ID ที่ Fetch มาจาก Aztek
+- ล้าง cache และ ID เก่าที่ไม่อยู่ในรายการล่าสุด แล้วจับคู่ข้อมูลใหม่อัตโนมัติ
+- Category จากไฟล์ เช่น `Highlight` จับคู่กับรายการ Aztek เช่น `Main Shop - Highlight` ได้
+- ถ้ายังไม่ได้เลือก Category หรือ Currency จะแจ้งภาษาไทยก่อนส่ง โดยไม่แสดง Pydantic validation error
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -38,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.7 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.8 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
