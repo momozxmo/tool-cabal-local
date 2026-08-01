@@ -5,23 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.8](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.8/All.for.Cabal.Web.Setup-0.1.8.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.8/All.for.Cabal.Web.Setup-0.1.8.exe.sha256)
-- [ดูหน้า Release v0.1.8](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.8)
+- [ดาวน์โหลด Setup v0.1.9](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.9/All.for.Cabal.Web.Setup-0.1.9.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.9/All.for.Cabal.Web.Setup-0.1.9.exe.sha256)
+- [ดูหน้า Release v0.1.9](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.9)
 
 SHA-256:
 
 ```text
-836070339B4731941D98C60C48D3CA943AB2A4DEA7219AE124BD2E06737ED517
+9E2FBAAE49ABAE3437C71B8EB24E1BAED605A7E28BEE0C241BC3BB25B63A1E3B
 ```
 
-## สิ่งที่ปรับใน v0.1.8
+## สิ่งที่ปรับใน v0.1.9
 
-- Fetch Category และ Currency ของหน้า Product จาก custom dropdown รุ่นปัจจุบันของ Aztek โดยไม่หยิบค่าช่องจำกัดการซื้อ
-- เลือก Category และ Currency ตอนกรอก Product ด้วย server ID ที่ Fetch มาจาก Aztek
-- ล้าง cache และ ID เก่าที่ไม่อยู่ในรายการล่าสุด แล้วจับคู่ข้อมูลใหม่อัตโนมัติ
-- Category จากไฟล์ เช่น `Highlight` จับคู่กับรายการ Aztek เช่น `Main Shop - Highlight` ได้
-- ถ้ายังไม่ได้เลือก Category หรือ Currency จะแจ้งภาษาไทยก่อนส่ง โดยไม่แสดง Pydantic validation error
+- จำกัดการอ่านข้อมูลไว้ที่บล็อก Product ปัจจุบัน ไม่ดึงข้อมูลจาก Product ก่อนหน้าหรือตารางไอเทมรอบข้าง
+- อ่านชื่อ หมวดหมู่ วันจบ และข้อมูล Reset จากป้ายของ Product เท่านั้น
+- ใช้ `Wallet Point` เป็นราคาและ Currency จากไฟล์ โดยไม่ตีความตัวเลขอื่นเป็นราคา
+- อ่าน Reset Time จากข้อความ เช่น `เริ่มตั้งเวลา 00.01 น.` เป็น `00:01:00`
+- ตั้งวันเริ่มรอบ Reset ย้อนหลังตามจำนวนวันของรอบ Reset
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.8 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.9 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
