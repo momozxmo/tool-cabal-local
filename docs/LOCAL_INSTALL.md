@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.9](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.9):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.10](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.10):
 
-- `All.for.Cabal.Web.Setup-0.1.9.exe`
-- `All.for.Cabal.Web.Setup-0.1.9.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.10.exe`
+- `All.for.Cabal.Web.Setup-0.1.10.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.9.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.9.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.10.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.10.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-9E2FBAAE49ABAE3437C71B8EB24E1BAED605A7E28BEE0C241BC3BB25B63A1E3B
+1944DA93751A8D11EA87E4A113493B955138A3B2D5BB970FDD560F44F79AB672
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.9.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.10.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -55,21 +55,20 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเปลี่ยนแปลงใน v0.1.9
+## 5. การเปลี่ยนแปลงใน v0.1.10
 
-- จำกัดการอ่านข้อมูลไว้ที่บล็อก Product ปัจจุบัน ไม่ดึงข้อมูลจาก Product ก่อนหน้าหรือตารางไอเทมรอบข้าง
-- อ่านชื่อ หมวดหมู่ วันจบ และข้อมูล Reset จากป้ายของ Product เท่านั้น
-- ใช้ `Wallet Point` เป็นราคาและ Currency จากไฟล์ โดยไม่ตีความตัวเลขอื่นเป็นราคา
-- อ่าน Reset Time จากข้อความ เช่น `เริ่มตั้งเวลา 00.01 น.` เป็น `00:01:00`
-- ตั้งวันเริ่มรอบ Reset ย้อนหลังตามจำนวนวันของรอบ Reset
+- ส่งข้อมูลจาก Bundle มาหน้า Item Code ครบทั้งชื่อไทย/อังกฤษ ชุดรางวัล และ Bundle ID ของทุกชุด
+- รายการใหม่ใช้วันปัจจุบันเวลา `00:00:00` ตามเวลาไทย
+- เปิด `จำกัดจำนวน` เฉพาะเมื่อข้อมูล Import มีจำนวนที่เป็นบวก หากไม่มีจำนวนจะคงเป็นแบบไม่จำกัด
+- ส่งค่า `จำนวนครั้งที่สามารถใช้งานได้` และ `จำนวนคงเหลือ` ไปยังฟอร์ม Aztek เมื่อเปิดจำกัดจำนวน
 
-## 6. สถานะการตรวจ v0.1.9
+## 6. สถานะการตรวจ v0.1.10
 
-- Automated tests: `453 passed`
+- Automated tests: `464 passed`
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,114,612` bytes (`255.69 MiB`)
-- ซอร์สของการแก้ไข v0.1.9 อยู่ที่ commit `753e2fb`
+- ขนาด Setup: `268,097,848` bytes (`255.68 MiB`)
+- ซอร์สของการแก้ไข v0.1.10 อยู่ที่ commit `aa8a352`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ยังไม่ได้ทดสอบอัปเกรดข้ามหมายเลขเวอร์ชันด้วยการติดตั้งจริงในรอบนี้
