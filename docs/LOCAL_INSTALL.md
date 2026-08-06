@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.11](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.11):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.12](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.12):
 
-- `All.for.Cabal.Web.Setup-0.1.11.exe`
-- `All.for.Cabal.Web.Setup-0.1.11.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.12.exe`
+- `All.for.Cabal.Web.Setup-0.1.12.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.11.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.11.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.12.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.12.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-644504C3C79EB1A2DC0A928B838D1D219940BBA498E9D92BC9A38810DEEE35F0
+4FD2D4FDB611268835D6960090AA8B2A332F13087D591118AF15D7CC3359B416
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.11.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.12.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,20 +57,17 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเปลี่ยนแปลงใน v0.1.11
+## 5. การเปลี่ยนแปลงใน v0.1.12
 
-- หน้า Product แยกปุ่มกรอกเพื่อตรวจสอบ สร้างรายการที่เลือก และสร้างทุกรายการที่เหลือในคิวอย่างชัดเจน
-- โหมด Event ใน Item Finder ตั้งค่า `แสดงผลบนเว็บ` เป็น `ไม่มี` โดยอัตโนมัติ และยังเปลี่ยนค่าเองได้
-- Local เชื่อม Aztek ผ่าน Chromium ที่โปรแกรมเปิดให้ ผู้ใช้ล็อกอิน IPA/Aztek เอง และโปรแกรมไม่เก็บรหัสผ่าน
-- งานค้นหา Preview สร้างข้อมูล และเชื่อม Session ใช้คิว Browser เดียวกันเพื่อลดปัญหาการทำงานชนกัน
+- แก้ Chromium ปิดทันทีเมื่อ Aztek redirect ไปหน้า IPA โดยโปรแกรมจะรอให้ผู้ใช้ล็อกอิน IPA และกลับเข้า Aztek สำเร็จก่อนบันทึก Session และปิดหน้าต่าง
 
-## 6. สถานะการตรวจ v0.1.11
+## 6. สถานะการตรวจ v0.1.12
 
-- Automated tests: `482 passed`
+- Automated tests: `483 passed`
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,083,590` bytes (`255.66 MiB`)
-- ซอร์สของการแก้ไข v0.1.11 อยู่ที่ commit `7bbabbf`
+- ขนาด Setup: `268,105,263` bytes (`255.69 MiB`)
+- ซอร์สของการแก้ไข v0.1.12 อยู่ที่ commit `0c9663a`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ยังไม่ได้ทดสอบอัปเกรดข้ามหมายเลขเวอร์ชันด้วยการติดตั้งจริงในรอบนี้

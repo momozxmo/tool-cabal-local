@@ -5,22 +5,19 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.11](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.11/All.for.Cabal.Web.Setup-0.1.11.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.11/All.for.Cabal.Web.Setup-0.1.11.exe.sha256)
-- [ดูหน้า Release v0.1.11](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.11)
+- [ดาวน์โหลด Setup v0.1.12](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.12/All.for.Cabal.Web.Setup-0.1.12.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.12/All.for.Cabal.Web.Setup-0.1.12.exe.sha256)
+- [ดูหน้า Release v0.1.12](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.12)
 
 SHA-256:
 
 ```text
-644504C3C79EB1A2DC0A928B838D1D219940BBA498E9D92BC9A38810DEEE35F0
+4FD2D4FDB611268835D6960090AA8B2A332F13087D591118AF15D7CC3359B416
 ```
 
-## สิ่งที่ปรับใน v0.1.11
+## สิ่งที่ปรับใน v0.1.12
 
-- หน้า Product แยกปุ่มกรอกเพื่อตรวจสอบ สร้างรายการที่เลือก และสร้างทุกรายการที่เหลือในคิวอย่างชัดเจน
-- โหมด Event ใน Item Finder ตั้งค่า `แสดงผลบนเว็บ` เป็น `ไม่มี` โดยอัตโนมัติ และยังเปลี่ยนค่าเองได้
-- Local เชื่อม Aztek ผ่าน Chromium ที่โปรแกรมเปิดให้ ผู้ใช้ล็อกอิน IPA/Aztek เอง และโปรแกรมไม่เก็บรหัสผ่าน
-- งานค้นหา Preview สร้างข้อมูล และเชื่อม Session ใช้คิว Browser เดียวกันเพื่อลดปัญหาการทำงานชนกัน
+- แก้ Chromium ปิดทันทีเมื่อ Aztek redirect ไปหน้า IPA โดยโปรแกรมจะรอให้ผู้ใช้ล็อกอิน IPA และกลับเข้า Aztek สำเร็จก่อนบันทึก Session และปิดหน้าต่าง
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +34,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.11 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.12 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
