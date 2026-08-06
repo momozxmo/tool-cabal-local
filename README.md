@@ -5,19 +5,21 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.12](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.12/All.for.Cabal.Web.Setup-0.1.12.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.12/All.for.Cabal.Web.Setup-0.1.12.exe.sha256)
-- [ดูหน้า Release v0.1.12](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.12)
+- [ดาวน์โหลด Setup v0.1.13](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.13/All.for.Cabal.Web.Setup-0.1.13.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.13/All.for.Cabal.Web.Setup-0.1.13.exe.sha256)
+- [ดูหน้า Release v0.1.13](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.13)
 
 SHA-256:
 
 ```text
-4FD2D4FDB611268835D6960090AA8B2A332F13087D591118AF15D7CC3359B416
+8A93592E95DF7EF28B4FD6310E942D3747F9BD3775428ABA043DD05172C041B8
 ```
 
-## สิ่งที่ปรับใน v0.1.12
+## สิ่งที่ปรับใน v0.1.13
 
-- แก้ Chromium ปิดทันทีเมื่อ Aztek redirect ไปหน้า IPA โดยโปรแกรมจะรอให้ผู้ใช้ล็อกอิน IPA และกลับเข้า Aztek สำเร็จก่อนบันทึก Session และปิดหน้าต่าง
+- เปลี่ยนการเชื่อม Aztek Local ให้เริ่มจากหน้า `/init` กลาง ไม่ผูกกับเซิร์ฟเวอร์เกมตัวแรก
+- นำ Session ที่เข้ารหัสไว้มาใช้เริ่มการเชื่อมใหม่ หาก SSO ยังไม่หมดอายุจะข้ามหน้าล็อกอิน IPA ได้
+- หาก Session เดิมใช้ไม่ได้ Chromium หน้าต่างเดิมจะรอให้ล็อกอิน IPA/Aztek และจะไม่ลบ Session เดิมเมื่อเชื่อมไม่สำเร็จ
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -34,5 +36,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.12 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.13 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
