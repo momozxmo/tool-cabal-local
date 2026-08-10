@@ -5,21 +5,21 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.13](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.13/All.for.Cabal.Web.Setup-0.1.13.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.13/All.for.Cabal.Web.Setup-0.1.13.exe.sha256)
-- [ดูหน้า Release v0.1.13](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.13)
+- [ดาวน์โหลด Setup v0.1.14](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.14/All.for.Cabal.Web.Setup-0.1.14.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.14/All.for.Cabal.Web.Setup-0.1.14.exe.sha256)
+- [ดูหน้า Release v0.1.14](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.14)
 
 SHA-256:
 
 ```text
-8A93592E95DF7EF28B4FD6310E942D3747F9BD3775428ABA043DD05172C041B8
+A562E3B3C41DC24C59EC26442ABFC7CE0DF259490561B879D41833216100B04B
 ```
 
-## สิ่งที่ปรับใน v0.1.13
+## สิ่งที่ปรับใน v0.1.14
 
-- เปลี่ยนการเชื่อม Aztek Local ให้เริ่มจากหน้า `/init` กลาง ไม่ผูกกับเซิร์ฟเวอร์เกมตัวแรก
-- นำ Session ที่เข้ารหัสไว้มาใช้เริ่มการเชื่อมใหม่ หาก SSO ยังไม่หมดอายุจะข้ามหน้าล็อกอิน IPA ได้
-- หาก Session เดิมใช้ไม่ได้ Chromium หน้าต่างเดิมจะรอให้ล็อกอิน IPA/Aztek และจะไม่ลบ Session เดิมเมื่อเชื่อมไม่สำเร็จ
+- แก้ Bundle ให้กรอก Tier/จำนวน/อัตราสุ่มของแต่ละไอเทมได้ตรงชุด และไม่บันทึกเมื่อข้อมูลจำเป็นยังไม่ครบ
+- ปรับ Item Finder ให้เก็บคำอธิบาย ลำดับ และผลของแต่ละ Product group ได้ครบ รวมถึงทางส่งต่อเพื่อรวมหลาย Bundle
+- ปรับ Product reset, คิวสร้าง Item Code และการตรวจผลบันทึก ให้รายการที่ล้มเหลวยังคงอยู่สำหรับลองใหม่
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -36,5 +36,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.13 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.14 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

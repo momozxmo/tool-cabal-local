@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.13](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.13):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.14](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.14):
 
-- `All.for.Cabal.Web.Setup-0.1.13.exe`
-- `All.for.Cabal.Web.Setup-0.1.13.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.14.exe`
+- `All.for.Cabal.Web.Setup-0.1.14.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.13.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.13.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.14.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.14.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-8A93592E95DF7EF28B4FD6310E942D3747F9BD3775428ABA043DD05172C041B8
+A562E3B3C41DC24C59EC26442ABFC7CE0DF259490561B879D41833216100B04B
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.13.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.14.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,20 +57,21 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเปลี่ยนแปลงใน v0.1.13
+## 5. การเปลี่ยนแปลงใน v0.1.14
 
-- เปลี่ยนการเชื่อม Aztek Local ให้เริ่มจากหน้า `/init` กลาง ไม่ผูกกับเซิร์ฟเวอร์เกมตัวแรก
-- นำ Session ที่เข้ารหัสไว้มาใช้เริ่มการเชื่อมใหม่ หาก SSO ยังไม่หมดอายุจะข้ามหน้าล็อกอิน IPA ได้
-- หาก Session เดิมใช้ไม่ได้ Chromium หน้าต่างเดิมจะรอให้ล็อกอิน IPA/Aztek และจะไม่ลบ Session เดิมเมื่อเชื่อมไม่สำเร็จ
-- ระบบยังคงเก็บเฉพาะ cookies/localStorage แบบเข้ารหัส และไม่เก็บรหัสผ่าน IPA/Aztek
+- แก้ Bundle ให้เปิดการ์ดไอเทมที่ยุบอยู่ก่อนกรอก Tier และผูกจำนวน/Tier/อัตราสุ่มกับไอเทมที่เพิ่มสำเร็จจริง
+- ป้องกันการบันทึก Bundle, Item Code, Event และ Product เมื่อช่องจำเป็นหรือผลตอบกลับจาก Aztek ไม่ครบ
+- เก็บคำอธิบาย ลำดับ ผลค้นหา และขอบเขตของแต่ละ Product group โดยไม่ทำข้อมูลกลุ่มอื่นหาย
+- รองรับการตรวจและส่งต่อหลาย Bundle เพื่อสร้าง Composite Bundle ก่อนกรอก Product โดยไม่สร้างข้อมูลจริงอัตโนมัติ
+- แก้วัน reset ของ Product และคิวสร้าง Item Code ให้รายการที่ล้มเหลวยังคงอยู่สำหรับลองใหม่
 
-## 6. สถานะการตรวจ v0.1.13
+## 6. สถานะการตรวจ v0.1.14
 
-- Automated tests: `488 passed`
+- Automated tests: `539 passed`
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,098,685` bytes (`255.68 MiB`)
-- Setup สร้างจาก source snapshot `cd6ba1e` โดยการเปลี่ยนพฤติกรรมล่าสุดอยู่ที่ commit `478d24b`
+- ขนาด Setup: `268,113,806` bytes (`255.69 MiB`)
+- Setup สร้างจาก source snapshot `f636acf`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ยังไม่ได้ทดสอบอัปเกรดข้ามหมายเลขเวอร์ชันด้วยการติดตั้งจริงในรอบนี้
