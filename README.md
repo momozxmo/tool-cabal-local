@@ -5,22 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.17](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.17/All.for.Cabal.Web.Setup-0.1.17.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.17/All.for.Cabal.Web.Setup-0.1.17.exe.sha256)
-- [ดูหน้า Release v0.1.17](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.17)
+- [ดาวน์โหลด Setup v0.1.18](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.18/All.for.Cabal.Web.Setup-0.1.18.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.18/All.for.Cabal.Web.Setup-0.1.18.exe.sha256)
+- [ดูหน้า Release v0.1.18](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.18)
 
 SHA-256:
 
 ```text
-AF25B81495A213981F2A43854FBA19A992B41AF5CC92E2676560AAB20661FCFA
+EB2A39A47DC458261AA2E6CEC54FA2B0D8593E4D017A79B2B900BC9C6A5822A9
 ```
 
-## สิ่งที่ปรับใน v0.1.17
+## สิ่งที่ปรับใน v0.1.18
 
-- Sheet picker หน้า Item Finder, Product, Event และ Item Code แสดงและค้นหาชื่อแท็บ Excel จริงเท่านั้น
-- Product รองรับ Bundle 1-20 อันโดยตรง สามารถเพิ่ม แก้ไข ลบ และเลือก Primary Bundle ได้
-- Queue Product รุ่นเก่าและ Bundle handoff เดิมถูกปรับเป็นรายการหลาย Bundle โดยไม่ทำข้อมูลหาย
-- หน้า Event ไฮไลต์คำเตือนที่ต้องตรวจสอบให้เห็นชัดขึ้น
+- ตัวเลือกเกม/เซิร์ฟเวอร์ซิงก์ทันทีระหว่าง Item Finder, Bundle, Item Code, Event และ Product ที่เปิดอยู่
+- การโหลด Product workspace จะส่งเกม/เซิร์ฟเวอร์ที่กู้คืนไปยังหน้าอื่นด้วย
+- Runner ของ Bundle, Item Code, Event และ Product กด `ยืนยัน` ในหน้าต่างยืนยันการสร้างก่อนรอผลบันทึก
+- หน้า Aztek แบบเดิมที่สร้างทันทีโดยไม่มีหน้าต่างยืนยันยังใช้งานได้
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +37,5 @@ AF25B81495A213981F2A43854FBA19A992B41AF5CC92E2676560AAB20661FCFA
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.17 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.18 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
