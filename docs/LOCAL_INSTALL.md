@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.18](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.18):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.19](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.19):
 
-- `All.for.Cabal.Web.Setup-0.1.18.exe`
-- `All.for.Cabal.Web.Setup-0.1.18.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.19.exe`
+- `All.for.Cabal.Web.Setup-0.1.19.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.18.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.18.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.19.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.19.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-EB2A39A47DC458261AA2E6CEC54FA2B0D8593E4D017A79B2B900BC9C6A5822A9
+83B8D9C4C72F2BD76F84BA82D1F9D7D64D771048A7550AC7B35E5A5B08E9C8A5
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.18.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.19.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,20 +57,21 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเปลี่ยนแปลงใน v0.1.18
+## 5. การเปลี่ยนแปลงใน v0.1.19
 
-- ตัวเลือกเกม/เซิร์ฟเวอร์ซิงก์ทันทีระหว่าง Item Finder, Bundle, Item Code, Event และ Product ที่เปิดอยู่
-- การโหลด Product workspace จะส่งเกม/เซิร์ฟเวอร์ที่กู้คืนไปยังหน้าอื่นด้วย
-- Runner ของ Bundle, Item Code, Event และ Product กด `ยืนยัน` ในหน้าต่างยืนยันการสร้างก่อนรอผลบันทึก
-- หน้า Aztek แบบเดิมที่สร้างทันทีโดยไม่มีหน้าต่างยืนยันยังใช้งานได้
+- เพิ่มข้อความแจ้งสถานะที่เข้าใจง่ายใน Item Finder, Bundle, Item Code, Event และ Product ทั้งระหว่างทำงาน สำเร็จ คำเตือน และข้อผิดพลาด
+- ข้อความผิดพลาดระบุรายการหรือช่องที่ต้องแก้ พร้อมแนวทางดำเนินการต่อ โดยคงรายการที่ยังสร้างไม่สำเร็จไว้ในคิว
+- การสร้าง Item Code ทั้งคิวจะข้ามรายการที่ข้อมูลไม่ครบและทำรายการที่พร้อมต่อได้ โดยไม่ทำให้ทั้งคิวหยุดทันที
+- เพิ่มการตรวจสอบข้อมูล คำขอ และสิทธิ์ของงาน Local พร้อมปรับการจัดการฐานข้อมูลและการเชื่อม Aztek ให้รัดกุมขึ้น
+- รวมการซิงก์เกม/เซิร์ฟเวอร์ระหว่างทุกหน้า และรองรับหน้าต่างยืนยันการสร้างของ Aztek
 
-## 6. สถานะการตรวจ v0.1.18
+## 6. สถานะการตรวจ v0.1.19
 
-- Automated tests: `576 passed`
+- Automated tests: `1391 passed`
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,119,044` bytes (`255.70 MiB`)
-- Setup สร้างจาก source snapshot `03decc6`
+- ขนาด Setup: `268,161,193` bytes (`255.74 MiB`)
+- Setup สร้างจาก source snapshot `0c840ff`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ยังไม่ได้ทดสอบอัปเกรดข้ามหมายเลขเวอร์ชันด้วยการติดตั้งจริงในรอบนี้

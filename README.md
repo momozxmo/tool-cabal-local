@@ -5,22 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.18](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.18/All.for.Cabal.Web.Setup-0.1.18.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.18/All.for.Cabal.Web.Setup-0.1.18.exe.sha256)
-- [ดูหน้า Release v0.1.18](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.18)
+- [ดาวน์โหลด Setup v0.1.19](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.19/All.for.Cabal.Web.Setup-0.1.19.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.19/All.for.Cabal.Web.Setup-0.1.19.exe.sha256)
+- [ดูหน้า Release v0.1.19](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.19)
 
 SHA-256:
 
 ```text
-EB2A39A47DC458261AA2E6CEC54FA2B0D8593E4D017A79B2B900BC9C6A5822A9
+83B8D9C4C72F2BD76F84BA82D1F9D7D64D771048A7550AC7B35E5A5B08E9C8A5
 ```
 
-## สิ่งที่ปรับใน v0.1.18
+## สิ่งที่ปรับใน v0.1.19
 
-- ตัวเลือกเกม/เซิร์ฟเวอร์ซิงก์ทันทีระหว่าง Item Finder, Bundle, Item Code, Event และ Product ที่เปิดอยู่
-- การโหลด Product workspace จะส่งเกม/เซิร์ฟเวอร์ที่กู้คืนไปยังหน้าอื่นด้วย
-- Runner ของ Bundle, Item Code, Event และ Product กด `ยืนยัน` ในหน้าต่างยืนยันการสร้างก่อนรอผลบันทึก
-- หน้า Aztek แบบเดิมที่สร้างทันทีโดยไม่มีหน้าต่างยืนยันยังใช้งานได้
+- เพิ่มข้อความแจ้งสถานะที่เข้าใจง่ายใน Item Finder, Bundle, Item Code, Event และ Product ทั้งระหว่างทำงาน สำเร็จ คำเตือน และข้อผิดพลาด
+- ข้อความผิดพลาดระบุรายการหรือช่องที่ต้องแก้ พร้อมแนวทางดำเนินการต่อ โดยคงรายการที่ยังสร้างไม่สำเร็จไว้ในคิว
+- การสร้าง Item Code ทั้งคิวจะข้ามรายการที่ข้อมูลไม่ครบและทำรายการที่พร้อมต่อได้ โดยไม่ทำให้ทั้งคิวหยุดทันที
+- เพิ่มการตรวจสอบข้อมูล คำขอ และสิทธิ์ของงาน Local พร้อมปรับการจัดการฐานข้อมูลและการเชื่อม Aztek ให้รัดกุมขึ้น
+- รวมการซิงก์เกม/เซิร์ฟเวอร์ระหว่างทุกหน้า และรองรับหน้าต่างยืนยันการสร้างของ Aztek
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +38,5 @@ EB2A39A47DC458261AA2E6CEC54FA2B0D8593E4D017A79B2B900BC9C6A5822A9
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.18 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.19 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
