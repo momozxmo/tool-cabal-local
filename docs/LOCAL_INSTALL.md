@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.19](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.19):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.20](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.20):
 
-- `All.for.Cabal.Web.Setup-0.1.19.exe`
-- `All.for.Cabal.Web.Setup-0.1.19.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.20.exe`
+- `All.for.Cabal.Web.Setup-0.1.20.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.19.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.19.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.20.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.20.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-83B8D9C4C72F2BD76F84BA82D1F9D7D64D771048A7550AC7B35E5A5B08E9C8A5
+5FBB1BC65919D3AAE195993CE1A065C7828BE5A4F75F87373B1B871CAF81A19A
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.19.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.20.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,21 +57,20 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเปลี่ยนแปลงใน v0.1.19
+## 5. การแก้ไขใน v0.1.20
 
-- เพิ่มข้อความแจ้งสถานะที่เข้าใจง่ายใน Item Finder, Bundle, Item Code, Event และ Product ทั้งระหว่างทำงาน สำเร็จ คำเตือน และข้อผิดพลาด
-- ข้อความผิดพลาดระบุรายการหรือช่องที่ต้องแก้ พร้อมแนวทางดำเนินการต่อ โดยคงรายการที่ยังสร้างไม่สำเร็จไว้ในคิว
-- การสร้าง Item Code ทั้งคิวจะข้ามรายการที่ข้อมูลไม่ครบและทำรายการที่พร้อมต่อได้ โดยไม่ทำให้ทั้งคิวหยุดทันที
-- เพิ่มการตรวจสอบข้อมูล คำขอ และสิทธิ์ของงาน Local พร้อมปรับการจัดการฐานข้อมูลและการเชื่อม Aztek ให้รัดกุมขึ้น
-- รวมการซิงก์เกม/เซิร์ฟเวอร์ระหว่างทุกหน้า และรองรับหน้าต่างยืนยันการสร้างของ Aztek
+- แก้ปุ่ม `สร้างทุกอันในคิว` หน้า Item Code กดแล้วไม่แสดงสถานะและไม่เปิดเว็บ หลังติดตั้งทับรุ่นเดิม
+- ป้องกัน Item Code และ Event โหลดไฟล์แจ้งเตือน JavaScript เก่าจาก browser cache
+- หลังยืนยันการสร้าง ระบบจะแสดงสถานะกำลังทำงานก่อนส่งคิวไปเปิด Chromium ตามปกติ
 
-## 6. สถานะการตรวจ v0.1.19
+## 6. สถานะการตรวจ v0.1.20
 
-- Automated tests: `1391 passed`
+- Automated tests: `1392 passed`
+- Browser regression จำลองการอัปเกรดที่ยังมี `console.js` รุ่นเก่าใน cache สำเร็จ
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,161,193` bytes (`255.74 MiB`)
-- Setup สร้างจาก source snapshot `0c840ff`
+- ขนาด Setup: `268,154,344` bytes (`255.73 MiB`)
+- Setup สร้างจาก source snapshot `21c82cb`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ยังไม่ได้ทดสอบอัปเกรดข้ามหมายเลขเวอร์ชันด้วยการติดตั้งจริงในรอบนี้
