@@ -5,21 +5,21 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.21](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.21/All.for.Cabal.Web.Setup-0.1.21.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.21/All.for.Cabal.Web.Setup-0.1.21.exe.sha256)
-- [ดูหน้า Release v0.1.21](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.21)
+- [ดาวน์โหลด Setup v0.1.22](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.22/All.for.Cabal.Web.Setup-0.1.22.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.22/All.for.Cabal.Web.Setup-0.1.22.exe.sha256)
+- [ดูหน้า Release v0.1.22](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.22)
 
 SHA-256:
 
 ```text
-B8664992AC5BC3AD6DFFDF8BA3C275E40D3A8CECC2DA42553DA4D612D4AE2F66
+2CBC244F6F85F9B0000BC5D068FFB422A30132DAFCB3B949527702AD24CF208D
 ```
 
-## สิ่งที่แก้ใน v0.1.21
+## สิ่งที่แก้ใน v0.1.22
 
-- แก้การเชื่อม Aztek Local ที่แจ้งว่า `ข้อมูล session ที่จับมาไม่สมบูรณ์ — session เดิมยังอยู่` ทั้งที่เปิดหน้า Aztek dashboard สำเร็จแล้ว
-- กรอง cookie และ localStorage ชั่วคราวจากผู้ให้บริการล็อกอินภายนอกออกจาก session ที่โปรแกรมจับ โดยเก็บเฉพาะข้อมูลของ Aztek และ SSO ที่อนุญาต
-- คงการตรวจข้อมูล pairing จากภายนอกแบบเข้มงวด และใช้ Aztek v2 ที่ `aztek-tools-v2.combo-interactive.com/combo` ตามเดิม
+- แก้ Item Code เลือกวันสิ้นสุดผิดหรือไม่เลือกวันที่บนปฏิทินของ Aztek v2
+- รองรับหัวปฏิทินที่ Aztek แยกเดือนและปีเป็นคนละข้อความ เช่น `Aug` และ `2026`
+- ใช้การแก้เดียวกันกับหน้าที่มีวันสิ้นสุดทั้ง Item Code, Event และ Product
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -36,5 +36,5 @@ B8664992AC5BC3AD6DFFDF8BA3C275E40D3A8CECC2DA42553DA4D612D4AE2F66
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.21 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.22 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
