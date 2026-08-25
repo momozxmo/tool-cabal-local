@@ -5,21 +5,21 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.20](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.20/All.for.Cabal.Web.Setup-0.1.20.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.20/All.for.Cabal.Web.Setup-0.1.20.exe.sha256)
-- [ดูหน้า Release v0.1.20](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.20)
+- [ดาวน์โหลด Setup v0.1.21](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.21/All.for.Cabal.Web.Setup-0.1.21.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.21/All.for.Cabal.Web.Setup-0.1.21.exe.sha256)
+- [ดูหน้า Release v0.1.21](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.21)
 
 SHA-256:
 
 ```text
-5FBB1BC65919D3AAE195993CE1A065C7828BE5A4F75F87373B1B871CAF81A19A
+B8664992AC5BC3AD6DFFDF8BA3C275E40D3A8CECC2DA42553DA4D612D4AE2F66
 ```
 
-## สิ่งที่แก้ใน v0.1.20
+## สิ่งที่แก้ใน v0.1.21
 
-- แก้ปุ่ม `สร้างทุกอันในคิว` หน้า Item Code กดแล้วไม่แสดงสถานะและไม่เปิดเว็บ หลังติดตั้งทับรุ่นเดิม
-- ป้องกัน Item Code และ Event โหลดไฟล์แจ้งเตือน JavaScript เก่าจาก browser cache
-- หลังยืนยันการสร้าง ระบบจะแสดงสถานะกำลังทำงานก่อนส่งคิวไปเปิด Chromium ตามปกติ
+- แก้การเชื่อม Aztek Local ที่แจ้งว่า `ข้อมูล session ที่จับมาไม่สมบูรณ์ — session เดิมยังอยู่` ทั้งที่เปิดหน้า Aztek dashboard สำเร็จแล้ว
+- กรอง cookie และ localStorage ชั่วคราวจากผู้ให้บริการล็อกอินภายนอกออกจาก session ที่โปรแกรมจับ โดยเก็บเฉพาะข้อมูลของ Aztek และ SSO ที่อนุญาต
+- คงการตรวจข้อมูล pairing จากภายนอกแบบเข้มงวด และใช้ Aztek v2 ที่ `aztek-tools-v2.combo-interactive.com/combo` ตามเดิม
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -36,5 +36,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.20 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.21 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
