@@ -5,21 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.22](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.22/All.for.Cabal.Web.Setup-0.1.22.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.22/All.for.Cabal.Web.Setup-0.1.22.exe.sha256)
-- [ดูหน้า Release v0.1.22](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.22)
+- [ดาวน์โหลด Setup v0.1.23](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.23/All.for.Cabal.Web.Setup-0.1.23.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.23/All.for.Cabal.Web.Setup-0.1.23.exe.sha256)
+- [ดูหน้า Release v0.1.23](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.23)
 
 SHA-256:
 
 ```text
-2CBC244F6F85F9B0000BC5D068FFB422A30132DAFCB3B949527702AD24CF208D
+9AE6032505AA6CEBF818EA4964004E2F96AB7B3C7B207D45B87F12276B9D43B2
 ```
 
-## สิ่งที่แก้ใน v0.1.22
+## สิ่งที่แก้ใน v0.1.23
 
-- แก้ Item Code เลือกวันสิ้นสุดผิดหรือไม่เลือกวันที่บนปฏิทินของ Aztek v2
-- รองรับหัวปฏิทินที่ Aztek แยกเดือนและปีเป็นคนละข้อความ เช่น `Aug` และ `2026`
-- ใช้การแก้เดียวกันกับหน้าที่มีวันสิ้นสุดทั้ง Item Code, Event และ Product
+- เพิ่มงานนำเข้า `Mastercode WR` จาก Sheet จริง พร้อมเลือก Sheet และ Preview ก่อนส่งเข้าคิว Item Code
+- Preview แสดงลำดับ Code รายวัน, Mastercode, Bundle, Usage Limit และช่วงเวลาเต็มวัน
+- บังคับ `Mastercode WR` ให้ใช้ Fix Codes หนึ่ง Code พร้อมตรวจข้อมูลบังคับก่อนสร้าง
+- แก้หน้า Account และการอ่าน Session พร้อมกันไม่ให้ชนกันจนเกิด `database is locked`
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -36,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.22 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.23 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

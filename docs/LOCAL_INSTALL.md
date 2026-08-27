@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.22](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.22):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.23](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.23):
 
-- `All.for.Cabal.Web.Setup-0.1.22.exe`
-- `All.for.Cabal.Web.Setup-0.1.22.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.23.exe`
+- `All.for.Cabal.Web.Setup-0.1.23.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.22.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.22.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.23.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.23.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-2CBC244F6F85F9B0000BC5D068FFB422A30132DAFCB3B949527702AD24CF208D
+9AE6032505AA6CEBF818EA4964004E2F96AB7B3C7B207D45B87F12276B9D43B2
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.22.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.23.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,20 +57,21 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การแก้ไขใน v0.1.22
+## 5. การแก้ไขใน v0.1.23
 
-- แก้ Item Code เลือกวันสิ้นสุดผิดหรือไม่เลือกวันที่บนปฏิทินของ Aztek v2
-- รองรับหัวปฏิทินที่ Aztek แยกเดือนและปีเป็นคนละข้อความ เช่น `Aug` และ `2026`
-- ใช้การแก้เดียวกันกับหน้าที่มีวันสิ้นสุดทั้ง Item Code, Event และ Product
+- เพิ่มงานนำเข้า `Mastercode WR` จาก Sheet จริง พร้อมเลือก Sheet และ Preview ก่อนส่งเข้าคิว Item Code
+- Preview แสดงลำดับ Code รายวัน, Mastercode, Bundle, Usage Limit และช่วงเวลาเต็มวัน
+- บังคับ `Mastercode WR` ให้ใช้ Fix Codes หนึ่ง Code พร้อมตรวจข้อมูลบังคับก่อนสร้าง
+- แก้หน้า Account และการอ่าน Session พร้อมกันไม่ให้ชนกันจนเกิด `database is locked`
 
-## 6. สถานะการตรวจ v0.1.22
+## 6. สถานะการตรวจ v0.1.23
 
-- Automated tests: `1394 passed`
-- Regression test ใช้รูปแบบ DOM จริงที่แยกหัวเดือน `Aug` และปี `2026` ออกจากกัน
+- Automated tests: `1407 passed`
+- Regression tests ครอบคลุมการนำเข้า/Preview `Mastercode WR`, Fix Codes หนึ่ง Code และการอ่าน Session แบบไม่ล็อกฐานข้อมูล
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,150,094` bytes (`255.73 MiB`)
-- Setup สร้างจาก source snapshot `722455a`
+- ขนาด Setup: `268,161,194` bytes (`255.74 MiB`)
+- Setup สร้างจาก source snapshot `79c1633`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ติดตั้งทับรุ่นเดิมและตรวจ health ของโปรแกรมที่ติดตั้งจริงสำเร็จ
