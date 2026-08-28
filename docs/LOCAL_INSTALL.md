@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.23](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.23):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.24](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.24):
 
-- `All.for.Cabal.Web.Setup-0.1.23.exe`
-- `All.for.Cabal.Web.Setup-0.1.23.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.24.exe`
+- `All.for.Cabal.Web.Setup-0.1.24.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.23.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.23.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.24.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.24.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-9AE6032505AA6CEBF818EA4964004E2F96AB7B3C7B207D45B87F12276B9D43B2
+B7E6585530F6DB70E9EAE97D4DA50CCBF14BC656CC9756139A181CE748BD0260
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.23.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.24.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,21 +57,20 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การแก้ไขใน v0.1.23
+## 5. การแก้ไขใน v0.1.24
 
-- เพิ่มงานนำเข้า `Mastercode WR` จาก Sheet จริง พร้อมเลือก Sheet และ Preview ก่อนส่งเข้าคิว Item Code
-- Preview แสดงลำดับ Code รายวัน, Mastercode, Bundle, Usage Limit และช่วงเวลาเต็มวัน
-- บังคับ `Mastercode WR` ให้ใช้ Fix Codes หนึ่ง Code พร้อมตรวจข้อมูลบังคับก่อนสร้าง
-- แก้หน้า Account และการอ่าน Session พร้อมกันไม่ให้ชนกันจนเกิด `database is locked`
+- รองรับไฟล์ Excel สำหรับงาน Import ได้สูงสุด 32 MB พร้อมข้อความแจ้งเตือนภาษาไทยเมื่อไฟล์ใหญ่เกินกำหนด
+- ปุ่ม `ส่งเข้าคิวสร้างบันเดิล` ส่งผลลัพธ์ทั้งหมดไปครบทุก Bundle แม้ไอเทมเดียวกันอยู่หลาย Bundle
+- checkbox ใน Item Finder ยังคงใช้กรองเฉพาะหน้ารวม Bundle เพื่อรีวิว ไม่ตัดรายการออกจากปุ่มส่งทั้งคิว
 
-## 6. สถานะการตรวจ v0.1.23
+## 6. สถานะการตรวจ v0.1.24
 
-- Automated tests: `1407 passed`
-- Regression tests ครอบคลุมการนำเข้า/Preview `Mastercode WR`, Fix Codes หนึ่ง Code และการอ่าน Session แบบไม่ล็อกฐานข้อมูล
+- Automated tests: `1413 passed`
+- Regression tests ครอบคลุมเพดาน Import 32 MB, การส่งผลลัพธ์ทั้งหมดเข้าคิว Bundle และความเสถียรของ Pairing Session test
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,161,194` bytes (`255.74 MiB`)
-- Setup สร้างจาก source snapshot `79c1633`
+- ขนาด Setup: `268,561,277` bytes (`256.12 MiB`)
+- Setup สร้างจาก source snapshot `112a6c1`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ติดตั้งทับรุ่นเดิมและตรวจ health ของโปรแกรมที่ติดตั้งจริงสำเร็จ

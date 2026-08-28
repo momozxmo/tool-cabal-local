@@ -5,22 +5,21 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.23](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.23/All.for.Cabal.Web.Setup-0.1.23.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.23/All.for.Cabal.Web.Setup-0.1.23.exe.sha256)
-- [ดูหน้า Release v0.1.23](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.23)
+- [ดาวน์โหลด Setup v0.1.24](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.24/All.for.Cabal.Web.Setup-0.1.24.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.24/All.for.Cabal.Web.Setup-0.1.24.exe.sha256)
+- [ดูหน้า Release v0.1.24](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.24)
 
 SHA-256:
 
 ```text
-9AE6032505AA6CEBF818EA4964004E2F96AB7B3C7B207D45B87F12276B9D43B2
+B7E6585530F6DB70E9EAE97D4DA50CCBF14BC656CC9756139A181CE748BD0260
 ```
 
-## สิ่งที่แก้ใน v0.1.23
+## สิ่งที่แก้ใน v0.1.24
 
-- เพิ่มงานนำเข้า `Mastercode WR` จาก Sheet จริง พร้อมเลือก Sheet และ Preview ก่อนส่งเข้าคิว Item Code
-- Preview แสดงลำดับ Code รายวัน, Mastercode, Bundle, Usage Limit และช่วงเวลาเต็มวัน
-- บังคับ `Mastercode WR` ให้ใช้ Fix Codes หนึ่ง Code พร้อมตรวจข้อมูลบังคับก่อนสร้าง
-- แก้หน้า Account และการอ่าน Session พร้อมกันไม่ให้ชนกันจนเกิด `database is locked`
+- รองรับไฟล์ Excel สำหรับงาน Import ได้สูงสุด 32 MB พร้อมข้อความแจ้งเตือนภาษาไทยเมื่อไฟล์ใหญ่เกินกำหนด
+- ปุ่ม `ส่งเข้าคิวสร้างบันเดิล` ส่งผลลัพธ์ทั้งหมดไปครบทุก Bundle แม้ไอเทมเดียวกันอยู่หลาย Bundle
+- checkbox ใน Item Finder ยังคงใช้กรองเฉพาะหน้ารวม Bundle เพื่อรีวิว ไม่ตัดรายการออกจากปุ่มส่งทั้งคิว
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +36,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.23 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.24 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
