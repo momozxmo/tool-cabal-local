@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.25](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.25):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.26](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.26):
 
-- `All.for.Cabal.Web.Setup-0.1.25.exe`
-- `All.for.Cabal.Web.Setup-0.1.25.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.26.exe`
+- `All.for.Cabal.Web.Setup-0.1.26.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.25.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.25.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.26.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.26.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-A88CCFE080D46AD863F8E5824BBB6144B6DED8A63300B5882B4F67BDFE277960
+92EE057A7E8BD892B5774CD29C5932833C46BA835FFFEFB0C7971F309538F0C7
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.25.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.26.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,20 +57,20 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การแก้ไขใน v0.1.25
+## 5. การแก้ไขใน v0.1.26
 
-- แก้ปุ่ม `ส่งเข้าคิวสร้างบันเดิล` ให้ไอเทมซ้ำถูกส่งไปครบทุก Bundle ที่พบ ไม่ค้างอยู่เฉพาะ Bundle แรก
-- ซ่อม workspace เดิมอัตโนมัติก่อนส่งคิว โดยคำนวณกลุ่ม Bundle ใหม่จากตำแหน่งที่พบจริง
-- ขยาย scrollbar ในทุกส่วนของเว็บให้จับและเลื่อนได้ง่ายขึ้น พร้อมสถานะ hover/active ที่มองเห็นชัด
+- เชื่อม Aztek ใหม่ได้แม้ session เดิมถอดรหัสไม่ได้ โดยเปิด Chromium แบบ session ว่างและยังไม่ลบข้อมูลเดิมจนกว่าจะเชื่อมสำเร็จ
+- เปิดการ์ด Player Experience บนหน้า Bundle ของ Aztek v2 และกรอก Tier `Common` ให้ reward อัตโนมัติ
+- เพิ่ม regression tests ครอบคลุม session ที่อ่านไม่ได้และ DOM การ์ด Player Experience จริง
 
-## 6. สถานะการตรวจ v0.1.25
+## 6. สถานะการตรวจ v0.1.26
 
-- Automated tests: `1416 passed`
-- Regression tests ครอบคลุมไอเทมเดียวกันที่อยู่หลาย Bundle, workspace เดิมก่อนส่งคิว และ scrollbar ที่ใช้งานง่ายขึ้น
+- Automated tests: `1418 passed`
+- Regression tests ครอบคลุม session เดิมที่ถอดรหัสไม่ได้และการกรอก Tier ของ Player Experience บน DOM จริง
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,557,594` bytes (`256.12 MiB`)
-- Setup สร้างจาก source snapshot `6dffe94`
+- ขนาด Setup: `268,557,396` bytes (`256.12 MiB`)
+- Setup สร้างจาก source snapshot `0d8f4ca`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ติดตั้งทับรุ่นเดิมและตรวจ health ของโปรแกรมที่ติดตั้งจริงสำเร็จ

@@ -5,21 +5,21 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.25](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.25/All.for.Cabal.Web.Setup-0.1.25.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.25/All.for.Cabal.Web.Setup-0.1.25.exe.sha256)
-- [ดูหน้า Release v0.1.25](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.25)
+- [ดาวน์โหลด Setup v0.1.26](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.26/All.for.Cabal.Web.Setup-0.1.26.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.26/All.for.Cabal.Web.Setup-0.1.26.exe.sha256)
+- [ดูหน้า Release v0.1.26](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.26)
 
 SHA-256:
 
 ```text
-A88CCFE080D46AD863F8E5824BBB6144B6DED8A63300B5882B4F67BDFE277960
+92EE057A7E8BD892B5774CD29C5932833C46BA835FFFEFB0C7971F309538F0C7
 ```
 
-## สิ่งที่แก้ใน v0.1.25
+## สิ่งที่แก้ใน v0.1.26
 
-- แก้ปุ่ม `ส่งเข้าคิวสร้างบันเดิล` ให้ไอเทมซ้ำถูกส่งไปครบทุก Bundle ที่พบ ไม่ค้างอยู่เฉพาะ Bundle แรก
-- ซ่อม workspace เดิมอัตโนมัติก่อนส่งคิว โดยคำนวณกลุ่ม Bundle ใหม่จากตำแหน่งที่พบจริง
-- ขยาย scrollbar ในทุกส่วนของเว็บให้จับและเลื่อนได้ง่ายขึ้น พร้อมสถานะ hover/active ที่มองเห็นชัด
+- เชื่อม Aztek ใหม่ได้แม้ session เดิมถอดรหัสไม่ได้ โดยเปิด Chromium แบบ session ว่างและยังไม่ลบข้อมูลเดิมจนกว่าจะเชื่อมสำเร็จ
+- เปิดการ์ด Player Experience บนหน้า Bundle ของ Aztek v2 และกรอก Tier `Common` ให้ reward อัตโนมัติ
+- เพิ่ม regression tests ครอบคลุม session ที่อ่านไม่ได้และ DOM การ์ด Player Experience จริง
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -36,5 +36,5 @@ A88CCFE080D46AD863F8E5824BBB6144B6DED8A63300B5882B4F67BDFE277960
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.25 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.26 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
