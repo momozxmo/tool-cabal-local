@@ -5,21 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.26](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.26/All.for.Cabal.Web.Setup-0.1.26.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.26/All.for.Cabal.Web.Setup-0.1.26.exe.sha256)
-- [ดูหน้า Release v0.1.26](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.26)
+- [ดาวน์โหลด Setup v0.1.27](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.27/All.for.Cabal.Web.Setup-0.1.27.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.27/All.for.Cabal.Web.Setup-0.1.27.exe.sha256)
+- [ดูหน้า Release v0.1.27](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.27)
 
 SHA-256:
 
 ```text
-92EE057A7E8BD892B5774CD29C5932833C46BA835FFFEFB0C7971F309538F0C7
+BAD5AE9E8AEE530065D2FAA445FB4F0DE17B6CD9539884832629E09D031FBAA5
 ```
 
-## สิ่งที่แก้ใน v0.1.26
+## สิ่งที่แก้ใน v0.1.27
 
-- เชื่อม Aztek ใหม่ได้แม้ session เดิมถอดรหัสไม่ได้ โดยเปิด Chromium แบบ session ว่างและยังไม่ลบข้อมูลเดิมจนกว่าจะเชื่อมสำเร็จ
-- เปิดการ์ด Player Experience บนหน้า Bundle ของ Aztek v2 และกรอก Tier `Common` ให้ reward อัตโนมัติ
-- เพิ่ม regression tests ครอบคลุม session ที่อ่านไม่ได้และ DOM การ์ด Player Experience จริง
+- ปรับการกรอก Product ให้ตรงกับหน้า Aztek ปัจจุบัน ทั้ง Category, รูปภาพ, สวิตช์, วันเวลา, Limit และ Primary Bundle
+- รอรายการ Category และ Bundle โหลดครบก่อนกรอก และไม่บันทึก cache ว่างเมื่อหน้า Aztek ยังโหลดไม่สำเร็จ
+- Preview ตรวจจับและลองเชื่อมหน้าใหม่เมื่อ Playwright target หลุด พร้อมแจ้งชัดเจนเมื่อ Aztek ไม่มีช่อง Tags
+- เพิ่ม regression tests ครอบคลุม Product form และการกู้คืนจาก target ที่หลุด
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -36,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.26 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.27 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
