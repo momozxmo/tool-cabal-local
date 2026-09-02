@@ -5,22 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.27](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.27/All.for.Cabal.Web.Setup-0.1.27.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.27/All.for.Cabal.Web.Setup-0.1.27.exe.sha256)
-- [ดูหน้า Release v0.1.27](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.27)
+- [ดาวน์โหลด Setup v0.1.28](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.28/All.for.Cabal.Web.Setup-0.1.28.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.28/All.for.Cabal.Web.Setup-0.1.28.exe.sha256)
+- [ดูหน้า Release v0.1.28](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.28)
 
 SHA-256:
 
 ```text
-BAD5AE9E8AEE530065D2FAA445FB4F0DE17B6CD9539884832629E09D031FBAA5
+4753D412B754E7C009ADD273A150A58C6B4714BF31DDD46D7E4A798AC2F1E3AB
 ```
 
-## สิ่งที่แก้ใน v0.1.27
+## สิ่งที่แก้ใน v0.1.28
 
-- ปรับการกรอก Product ให้ตรงกับหน้า Aztek ปัจจุบัน ทั้ง Category, รูปภาพ, สวิตช์, วันเวลา, Limit และ Primary Bundle
-- รอรายการ Category และ Bundle โหลดครบก่อนกรอก และไม่บันทึก cache ว่างเมื่อหน้า Aztek ยังโหลดไม่สำเร็จ
-- Preview ตรวจจับและลองเชื่อมหน้าใหม่เมื่อ Playwright target หลุด พร้อมแจ้งชัดเจนเมื่อ Aztek ไม่มีช่อง Tags
-- เพิ่ม regression tests ครอบคลุม Product form และการกู้คืนจาก target ที่หลุด
+- เพิ่มปุ่ม Undo ไอเทมล่าสุดที่ลบในหน้า Bundle โดยคืนข้อมูลและตำแหน่งเดิม
+- ปรับหน้า Product: เอา Tags ออก, กำหนดวินาทีสิ้นสุดเป็น 59 และเพิ่มช่องค้นหา Currency
+- ชื่อ Thumbnail เปลี่ยนตามไฟล์ล่าสุดและซิงก์ทันทีระหว่างแท็บ Product ที่เปิดอยู่ โดยไฟล์ยังคงอยู่ในแท็บที่เลือก
+- เอาปุ่ม Import Template สีน้ำเงินออกจาก Item Finder และเพิ่ม regression tests ครอบคลุมการทำงานใหม่
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +37,5 @@ BAD5AE9E8AEE530065D2FAA445FB4F0DE17B6CD9539884832629E09D031FBAA5
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.27 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.28 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
