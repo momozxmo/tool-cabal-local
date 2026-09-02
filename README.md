@@ -5,22 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.28](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.28/All.for.Cabal.Web.Setup-0.1.28.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.28/All.for.Cabal.Web.Setup-0.1.28.exe.sha256)
-- [ดูหน้า Release v0.1.28](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.28)
+- [ดาวน์โหลด Setup v0.1.29](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.29/All.for.Cabal.Web.Setup-0.1.29.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.29/All.for.Cabal.Web.Setup-0.1.29.exe.sha256)
+- [ดูหน้า Release v0.1.29](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.29)
 
 SHA-256:
 
 ```text
-4753D412B754E7C009ADD273A150A58C6B4714BF31DDD46D7E4A798AC2F1E3AB
+46221B071B576944E6403BD36B5326B3B788C850834F7B67E54E9C976169CE07
 ```
 
-## สิ่งที่แก้ใน v0.1.28
+## สิ่งที่แก้ใน v0.1.29
 
-- เพิ่มปุ่ม Undo ไอเทมล่าสุดที่ลบในหน้า Bundle โดยคืนข้อมูลและตำแหน่งเดิม
-- ปรับหน้า Product: เอา Tags ออก, กำหนดวินาทีสิ้นสุดเป็น 59 และเพิ่มช่องค้นหา Currency
-- ชื่อ Thumbnail เปลี่ยนตามไฟล์ล่าสุดและซิงก์ทันทีระหว่างแท็บ Product ที่เปิดอยู่ โดยไฟล์ยังคงอยู่ในแท็บที่เลือก
-- เอาปุ่ม Import Template สีน้ำเงินออกจาก Item Finder และเพิ่ม regression tests ครอบคลุมการทำงานใหม่
+- รวม Currency ที่ดึงจาก Aztek และช่องค้นหาไว้เป็นช่องเดียวในหน้า Product
+- ลบแถวราคาในหน้า Product ได้ทุกแถว รวมถึงแถวสุดท้าย
+- ปรับ Item Finder ให้ใช้ตำแหน่งใหม่ของช่อง "แลกเปลี่ยนได้" พร้อม fallback สำหรับหน้า Aztek แบบเดิม
+- เลือกเฉพาะไอเทมที่ค้นหาไม่เจอเพื่อค้นหาซ้ำได้ โดยเก็บผลเดิมและรายการที่ไม่ได้เลือกไว้
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.28 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.29 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

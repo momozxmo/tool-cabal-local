@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.28](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.28):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.29](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.29):
 
-- `All.for.Cabal.Web.Setup-0.1.28.exe`
-- `All.for.Cabal.Web.Setup-0.1.28.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.29.exe`
+- `All.for.Cabal.Web.Setup-0.1.29.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.28.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.28.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.29.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.29.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-4753D412B754E7C009ADD273A150A58C6B4714BF31DDD46D7E4A798AC2F1E3AB
+46221B071B576944E6403BD36B5326B3B788C850834F7B67E54E9C976169CE07
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.28.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.29.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -57,21 +57,21 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การแก้ไขใน v0.1.28
+## 5. การแก้ไขใน v0.1.29
 
-- เพิ่มปุ่ม Undo ไอเทมล่าสุดที่ลบในหน้า Bundle โดยคืนข้อมูลและตำแหน่งเดิม
-- ปรับหน้า Product: เอา Tags ออก, กำหนดวินาทีสิ้นสุดเป็น 59 และเพิ่มช่องค้นหา Currency
-- ชื่อ Thumbnail เปลี่ยนตามไฟล์ล่าสุดและซิงก์ทันทีระหว่างแท็บ Product ที่เปิดอยู่ โดยไฟล์ยังคงอยู่ในแท็บที่เลือก
-- เอาปุ่ม Import Template สีน้ำเงินออกจาก Item Finder และเพิ่ม regression tests ครอบคลุมการทำงานใหม่
+- รวม Currency ที่ดึงจาก Aztek และช่องค้นหาไว้เป็นช่องเดียวในหน้า Product
+- ลบแถวราคาในหน้า Product ได้ทุกแถว รวมถึงแถวสุดท้าย
+- ปรับ Item Finder ให้ใช้ตำแหน่งใหม่ของช่อง "แลกเปลี่ยนได้" พร้อม fallback สำหรับหน้า Aztek แบบเดิม
+- เลือกเฉพาะไอเทมที่ค้นหาไม่เจอเพื่อค้นหาซ้ำได้ โดยเก็บผลเดิมและรายการที่ไม่ได้เลือกไว้
 
-## 6. สถานะการตรวจ v0.1.28
+## 6. สถานะการตรวจ v0.1.29
 
-- Automated tests: `1427 passed`
-- Regression tests ครอบคลุม Undo ของ Bundle, Product end time/Thumbnail/Currency และการเอา Tags กับปุ่ม Import Template ออก
+- Automated tests: `1432 passed`
+- Regression tests ครอบคลุม Product Currency/การลบราคา, selector ใหม่ของช่องแลกเปลี่ยนได้ และการค้นหาเฉพาะรายการที่ไม่พบ
 - ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
 - SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `268,556,410` bytes (`256.12 MiB`)
-- Setup สร้างจาก source snapshot `6c676d0`
+- ขนาด Setup: `268,181,423` bytes (`255.76 MiB`)
+- Setup สร้างจาก source snapshot `d65e0c1`
 - Setup ยังไม่มี digital signature
 - ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
 - ติดตั้งทับรุ่นเดิมและตรวจ health ของโปรแกรมที่ติดตั้งจริงสำเร็จ
