@@ -5,22 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.29](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.29/All.for.Cabal.Web.Setup-0.1.29.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.29/All.for.Cabal.Web.Setup-0.1.29.exe.sha256)
-- [ดูหน้า Release v0.1.29](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.29)
+- [ดาวน์โหลด Setup v0.1.30](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.30/All.for.Cabal.Web.Setup-0.1.30.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.30/All.for.Cabal.Web.Setup-0.1.30.exe.sha256)
+- [ดูหน้า Release v0.1.30](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.30)
 
 SHA-256:
 
 ```text
-46221B071B576944E6403BD36B5326B3B788C850834F7B67E54E9C976169CE07
+5907BD48E7A8D943A449679C69D50E81571365A8878B7F71FBCEC76403D41624
 ```
 
-## สิ่งที่แก้ใน v0.1.29
+## สิ่งที่แก้ใน v0.1.30
 
-- รวม Currency ที่ดึงจาก Aztek และช่องค้นหาไว้เป็นช่องเดียวในหน้า Product
-- ลบแถวราคาในหน้า Product ได้ทุกแถว รวมถึงแถวสุดท้าย
-- ปรับ Item Finder ให้ใช้ตำแหน่งใหม่ของช่อง "แลกเปลี่ยนได้" พร้อม fallback สำหรับหน้า Aztek แบบเดิม
-- เลือกเฉพาะไอเทมที่ค้นหาไม่เจอเพื่อค้นหาซ้ำได้ โดยเก็บผลเดิมและรายการที่ไม่ได้เลือกไว้
+- ข้ามแท็บที่ซ่อนอยู่ในการ Import แผน Item Code เพื่อไม่ดึงรายการเก่ามาแทนแท็บที่ใช้งาน
+- รองรับตารางไอเทมรูปแบบ STM ที่ไม่มีหัวคอลัมน์ โดยตรวจโครงสร้างก่อนอ่าน
+- แสดงคำเตือนใต้ชื่อ Sheet ใน Item Finder และ Item Code ให้ตรวจรายการก่อนนำเข้า
+- ตรวจไฟล์ STM ตัวอย่างแล้วอ่านสองแท็บได้ครบแท็บละ 9 ไอเทม พร้อมจำนวนตรงต้นฉบับ
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -37,5 +37,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.29 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.30 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
