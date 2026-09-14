@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.31](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.31):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.32](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.32):
 
-- `All.for.Cabal.Web.Setup-0.1.31.exe`
-- `All.for.Cabal.Web.Setup-0.1.31.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.32.exe`
+- `All.for.Cabal.Web.Setup-0.1.32.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.31.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.31.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.32.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.32.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-07DCB499EB36A18452378C753CBB9A4D5BF70349BE1754FDF4EDADCDF8135619
+2317A4B5F952981CC8B7484D4A2EDBAC770057625F4EE317A5D285F07A6C7043
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.31.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.32.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -69,26 +69,17 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. การเพิ่มและแก้ไขใน v0.1.31
+## 5. v0.1.32 — ทดลองอัปเดตผ่านโปรแกรม
 
-- เพิ่ม popup รายละเอียดเวอร์ชันและปุ่มตรวจ/เริ่มอัปเดตเอง
-- ดาวน์โหลด Setup เต็มพร้อมตรวจ SHA-256 ก่อนติดตั้ง
-- เก็บร่างและคิวจากหน้าเครื่องมือทุกหน้าก่อนปิดโปรแกรม
-- กั้นการติดตั้งเมื่อมีงานค้าง และเตือนไฟล์หรือหน้า Aztek ที่อาจต้องจัดการ
-- เปิดโปรแกรมกลับและแสดงผลครั้งก่อน พร้อม retry ผ่านตัวช่วยอิสระจากเว็บหลัก
-- เพิ่มทางจัดการแท็บที่ปิดผิดปกติโดยต้องยืนยันก่อนนำออก
+รุ่นนี้เปลี่ยนหมายเลข build จาก v0.1.31 เพื่อทดลองกระบวนการอัปเดต ใช้ฟังก์ชันเครื่องมือเดิม
+หลังอัปเดตและเปิดกลับ กด “อัปเดตโปรแกรม” แล้วตรวจว่ารุ่นปัจจุบันเป็น 0.1.32 และร่าง/คิวยังอยู่
 
-## 6. สถานะการตรวจ v0.1.31
+## 6. สถานะการตรวจ v0.1.32
 
-- Full automated tests: `1455 passed, 1 warning`
-- หลังแก้ code review ทดสอบเฉพาะ updater/UI/API/launcher/helper: `39 passed`
-- ทดสอบ Windows integration แบบแยกด้วย Setup จริงจาก 0.1.31 ไป 0.1.32 จำลองผ่าน
-- ตรวจ checksum ผิด, retry, health รุ่นใหม่, ร่าง Bundle, config และ session เข้ารหัสผ่าน
-- ตรวจไฟล์ Setup ด้วยระบบตรวจ release artifact สำเร็จ
-- SHA-256 จากไฟล์ Setup ตรงกับไฟล์ `.sha256`
-- ขนาด Setup: `279,013,526` bytes (`266.09 MiB`)
-- Setup สร้างจาก source snapshot `eddcdd3`
+- ใช้โค้ดเดิมที่ผ่าน full suite 1,455 เทสต์ และชุด updater หลังรีวิว 39 เทสต์
+- Build โปรแกรม, helper และ Setup ผ่าน ตรวจ release tree และ SHA-256 ผ่าน
+- ขนาด Setup: 279,038,244 bytes
+- SHA-256 ตรงกับไฟล์ตรวจสอบที่เผยแพร่
+- Source snapshot: 0d2fffd (โค้ด updater eddcdd3)
 - Setup ยังไม่มี digital signature
-- ยังไม่ได้ตรวจบน clean VM ที่ตัดอินเทอร์เน็ตทั้งหมด
-- ยังไม่ได้ตรวจ Release นี้บน clean VM ที่ไม่มีเครื่องมือพัฒนา
-- ไม่ได้กดสร้างข้อมูลจริงใน Aztek ระหว่างการตรวจรุ่นนี้
+- ยังไม่ได้ตรวจบน clean VM และยังไม่อ้างว่ารุ่นนี้อัปเดตสำเร็จบนเครื่องผู้ใช้จนกว่าจะลองจริง

@@ -5,25 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.31](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.31/All.for.Cabal.Web.Setup-0.1.31.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.31/All.for.Cabal.Web.Setup-0.1.31.exe.sha256)
-- [ดูหน้า Release v0.1.31](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.31)
+- [ดาวน์โหลด Setup v0.1.32](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.32/All.for.Cabal.Web.Setup-0.1.32.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.32/All.for.Cabal.Web.Setup-0.1.32.exe.sha256)
+- [ดูหน้า Release v0.1.32](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.32)
 
 SHA-256:
 
 ```text
-07DCB499EB36A18452378C753CBB9A4D5BF70349BE1754FDF4EDADCDF8135619
+2317A4B5F952981CC8B7484D4A2EDBAC770057625F4EE317A5D285F07A6C7043
 ```
 
-## สิ่งที่เพิ่มและแก้ใน v0.1.31
+## v0.1.32 — ทดลองอัปเดตผ่านโปรแกรม
 
-- เพิ่มระบบตรวจอัปเดตและแสดงรายละเอียดเวอร์ชันใหม่ในโปรแกรม
-- ผู้ใช้เป็นคนกดอัปเดตเอง และสามารถกด `ไว้ก่อน` เพื่อทำงานต่อได้
-- ดาวน์โหลด Setup เต็มพร้อมตรวจ SHA-256 ก่อนติดตั้ง
-- เก็บร่างและคิวจาก Item Finder, Bundle, Item Code, Event และ Product ก่อนปิดโปรแกรม
-- กั้นการอัปเดตขณะมีงานทำ พร้อมเตือนไฟล์และหน้า Aztek ที่ยังค้าง
-- ติดตั้งแล้วเปิดโปรแกรมกลับอัตโนมัติ พร้อมรายงานผลและลองใหม่เมื่อผิดพลาด
-- แก้การกด `ไว้ก่อน` ระหว่างดาวน์โหลดไม่ให้ติดตั้งต่อเอง และจัดการแท็บที่ไม่ตอบสนองได้อย่างปลอดภัย
+รุ่นนี้ใช้ฟังก์ชันเดิมจาก v0.1.31 และเปลี่ยนหมายเลข build เพื่อทดลองอัปเดตจริง
+
+- ผู้ใช้ v0.1.31 กด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต”
+- โปรแกรมดาวน์โหลด ตรวจไฟล์ ติดตั้ง และเปิดกลับเป็น v0.1.32
+- ตรวจเลขรุ่นใน popup และตรวจว่าร่าง/คิวเดิมยังอยู่
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -41,5 +39,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.31 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.32 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
