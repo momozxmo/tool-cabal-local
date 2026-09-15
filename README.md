@@ -5,23 +5,24 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.32](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.32/All.for.Cabal.Web.Setup-0.1.32.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.32/All.for.Cabal.Web.Setup-0.1.32.exe.sha256)
-- [ดูหน้า Release v0.1.32](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.32)
+- [ดาวน์โหลด Setup v0.1.33](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.33/All.for.Cabal.Web.Setup-0.1.33.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.33/All.for.Cabal.Web.Setup-0.1.33.exe.sha256)
+- [ดูหน้า Release v0.1.33](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.33)
 
 SHA-256:
 
 ```text
-2317A4B5F952981CC8B7484D4A2EDBAC770057625F4EE317A5D285F07A6C7043
+1C8912D63A70854D3255239D3ADBA370B89AC86B95BF750C698046D4A19E417A
 ```
 
-## v0.1.32 — ทดลองอัปเดตผ่านโปรแกรม
+## v0.1.33 — Import Bundle จาก Excel และก็อปวาง
 
-รุ่นนี้ใช้ฟังก์ชันเดิมจาก v0.1.31 และเปลี่ยนหมายเลข build เพื่อทดลองอัปเดตจริง
-
-- ผู้ใช้ v0.1.31 กด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต”
-- โปรแกรมดาวน์โหลด ตรวจไฟล์ ติดตั้ง และเปิดกลับเป็น v0.1.32
-- ตรวจเลขรุ่นใน popup และตรวจว่าร่าง/คิวเดิมยังอยู่
+- ดาวน์โหลด Template แล้วใส่ Item ID บน Aztek ที่มีอยู่แล้ว
+- ก็อปเซลล์จาก Excel มาวาง หรือ Import ไฟล์และเลือก Sheet ได้
+- พรีวิวก่อนเพิ่มเข้าคิวเดิม รองรับ FIXED / CHOICE / RANDOM
+- ระบุจำนวน, Rarity, เรทสุ่ม และ Currency ได้ โดย RANDOM ตรวจเรทรวม 100%
+- Import เตรียมคิวเท่านั้น ไม่สร้างข้อมูลจริงบน Aztek อัตโนมัติ
+- ผู้ใช้ v0.1.31 ขึ้นไปกด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต”
 
 ## คุณสมบัติของเวอร์ชัน Local
 
@@ -39,5 +40,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.32 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.33 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

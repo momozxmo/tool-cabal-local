@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.32](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.32):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.33](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.33):
 
-- `All.for.Cabal.Web.Setup-0.1.32.exe`
-- `All.for.Cabal.Web.Setup-0.1.32.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.33.exe`
+- `All.for.Cabal.Web.Setup-0.1.33.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.32.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.32.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.33.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.33.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-2317A4B5F952981CC8B7484D4A2EDBAC770057625F4EE317A5D285F07A6C7043
+1C8912D63A70854D3255239D3ADBA370B89AC86B95BF750C698046D4A19E417A
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.32.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.33.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -69,17 +69,24 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. v0.1.32 — ทดลองอัปเดตผ่านโปรแกรม
+## 5. v0.1.33 — Import Bundle จาก Excel และก็อปวาง
 
-รุ่นนี้เปลี่ยนหมายเลข build จาก v0.1.31 เพื่อทดลองกระบวนการอัปเดต ใช้ฟังก์ชันเครื่องมือเดิม
-หลังอัปเดตและเปิดกลับ กด “อัปเดตโปรแกรม” แล้วตรวจว่ารุ่นปัจจุบันเป็น 0.1.32 และร่าง/คิวยังอยู่
+หน้า Bundle มีปุ่มดาวน์โหลด Template Excel สำหรับ Item ID บน Aztek ที่มีอยู่แล้ว
+หัวชุดใช้ชื่อบันเดิลและประเภท ส่วนรายการใช้ Item ID / จำนวน / Rarity / เรทสุ่ม
+ก็อปคอลัมน์ A:D มาวางได้โดยไม่ต้องพิมพ์ตัวคั่นเอง หรือเลือกไฟล์และ Sheet เพื่อพรีวิวก่อนเพิ่มเข้าคิวเดิม
 
-## 6. สถานะการตรวจ v0.1.32
+รองรับ FIXED, CHOICE และ RANDOM รวมถึง Currency โดย RANDOM ต้องมีเรททุกแถวรวม 100%
+ชื่อที่ชนกับคิวเดิมจะเติมเลขท้ายให้เห็นในพรีวิว Item ID ซ้ำข้ามบันเดิลได้
+Import ไม่ตรวจว่า ID มีอยู่จริงและไม่สร้างข้อมูลบน Aztek อัตโนมัติ
 
-- ใช้โค้ดเดิมที่ผ่าน full suite 1,455 เทสต์ และชุด updater หลังรีวิว 39 เทสต์
+## 6. สถานะการตรวจ v0.1.33
+
+- Full suite: 1,507 passed, 1 warning (development-secret warning ในเทสต์)
 - Build โปรแกรม, helper และ Setup ผ่าน ตรวจ release tree และ SHA-256 ผ่าน
-- ขนาด Setup: 279,038,244 bytes
-- SHA-256 ตรงกับไฟล์ตรวจสอบที่เผยแพร่
-- Source snapshot: 0d2fffd (โค้ด updater eddcdd3)
+- ขนาด Setup: 279,055,785 bytes
+- Source snapshot: f67e11390b16ef6e6317c0171b478a81551af8a3
+- ตรวจโมดูล Import ใน archive และเลขรุ่น 0.1.33 แล้ว
+- Template Excel และ JavaScript ในแพ็กมี SHA-256 ตรงกับ source
 - Setup ยังไม่มี digital signature
-- ยังไม่ได้ตรวจบน clean VM และยังไม่อ้างว่ารุ่นนี้อัปเดตสำเร็จบนเครื่องผู้ใช้จนกว่าจะลองจริง
+- ยังไม่ติดตั้ง/เปิดรุ่นนี้บนเครื่องผู้ใช้ ตามคำขอให้คงโปรแกรมเดิมไว้ และยังไม่ได้ตรวจบน clean VM
+- ไม่ได้สร้างข้อมูลจริงบน Aztek
