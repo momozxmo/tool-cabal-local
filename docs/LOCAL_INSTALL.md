@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.34](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.34):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.35](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.35):
 
-- `All.for.Cabal.Web.Setup-0.1.34.exe`
-- `All.for.Cabal.Web.Setup-0.1.34.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.35.exe`
+- `All.for.Cabal.Web.Setup-0.1.35.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.34.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.34.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.35.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.35.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-9EEC748C73EE70F3AA10EC75943CA4F1BAAE4ECA6A8AFC40BA03F107AD68DC7F
+7F305FB0FC0CA3505BB631DE6143A964356312F5EC8935DDE6DFB962DB0C62F4
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.34.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.35.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -69,7 +69,13 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. v0.1.34 — ปรับ Interface สำหรับงานทุกเครื่องมือ
+## 5. v0.1.35 — รองรับ Excel 64 MB และตรวจรุ่นเซิร์ฟเวอร์
+
+เพิ่มเพดานอัปโหลด Excel เป็น 64 MB ทั้ง backend และหน้า Import Bundle
+Launcher จะตรวจรุ่นก่อนใช้เซิร์ฟเวอร์ที่เปิดค้าง หากคนละรุ่นให้บันทึกงาน
+ปิดเซิร์ฟเวอร์เดิมแล้วเปิดโปรแกรมที่ติดตั้งอีกครั้ง
+
+### Interface จาก v0.1.34
 
 Item Finder, Bundle, Item Code, Event และ Product ใช้รูปแบบพื้นที่ทำงานเดียวกัน
 เพื่อให้เห็นเครื่องมือปัจจุบัน บริบทคิว และขั้นตอนถัดไปชัดขึ้น โดยยังใช้ import,
@@ -82,14 +88,14 @@ preview, queue และ create flow เดิม
 Product แสดงผลครั้งล่าสุดใกล้รายการในคิวที่เลือก และหน้า Bundle แยกผลรอบก่อน
 ออกจากคิวปัจจุบันให้ชัดเจน การเปลี่ยนแปลงนี้ไม่สร้างข้อมูลจริงบน Aztek อัตโนมัติ
 
-## 6. สถานะการตรวจ v0.1.34
+## 6. สถานะการตรวจ v0.1.35
 
-- Full suite: 1,541 passed, 1 warning (development-secret warning ในเทสต์)
+- Targeted regression suite: 107 passed (Import, ขนาดไฟล์, Launcher และ updater)
 - Build โปรแกรม, helper และ Setup ผ่าน ตรวจ release tree และ SHA-256 ผ่าน
-- ขนาด Setup: 279,069,384 bytes
-- Source snapshot: 7a5f70ed142b3c7abe2c3bf4059c266e790e559c
-- ตรวจเลขรุ่น 0.1.34 ในแพ็กแล้ว
-- `workspace-ui.css` และ `workspace-ui.js` ในแพ็กมี SHA-256 ตรงกับ source
+- ขนาด Setup: 279,082,952 bytes
+- Source snapshot: b0f952565790713ba39d3f4fa59b849cfd4a531e
+- ตรวจเลขรุ่น 0.1.35 ในแพ็กแล้ว
+- `bundle_import.js` ในแพ็กมี SHA-256 ตรงกับ source
 - Setup ยังไม่มี digital signature
 - ยังไม่ติดตั้ง/เปิดรุ่นนี้บนเครื่องผู้ใช้ ตามคำขอให้คงโปรแกรมเดิมไว้ และยังไม่ได้ตรวจบน clean VM
 - ไม่ได้สร้างข้อมูลจริงบน Aztek
