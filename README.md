@@ -5,23 +5,23 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.33](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.33/All.for.Cabal.Web.Setup-0.1.33.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.33/All.for.Cabal.Web.Setup-0.1.33.exe.sha256)
-- [ดูหน้า Release v0.1.33](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.33)
+- [ดาวน์โหลด Setup v0.1.34](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.34/All.for.Cabal.Web.Setup-0.1.34.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.34/All.for.Cabal.Web.Setup-0.1.34.exe.sha256)
+- [ดูหน้า Release v0.1.34](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.34)
 
 SHA-256:
 
 ```text
-1C8912D63A70854D3255239D3ADBA370B89AC86B95BF750C698046D4A19E417A
+9EEC748C73EE70F3AA10EC75943CA4F1BAAE4ECA6A8AFC40BA03F107AD68DC7F
 ```
 
-## v0.1.33 — Import Bundle จาก Excel และก็อปวาง
+## v0.1.34 — ปรับ Interface สำหรับงานทุกเครื่องมือ
 
-- ดาวน์โหลด Template แล้วใส่ Item ID บน Aztek ที่มีอยู่แล้ว
-- ก็อปเซลล์จาก Excel มาวาง หรือ Import ไฟล์และเลือก Sheet ได้
-- พรีวิวก่อนเพิ่มเข้าคิวเดิม รองรับ FIXED / CHOICE / RANDOM
-- ระบุจำนวน, Rarity, เรทสุ่ม และ Currency ได้ โดย RANDOM ตรวจเรทรวม 100%
-- Import เตรียมคิวเท่านั้น ไม่สร้างข้อมูลจริงบน Aztek อัตโนมัติ
+- ปรับ Item Finder, Bundle, Item Code, Event และ Product ให้แสดงบริบทงานและลำดับถัดไปชัดขึ้น
+- ปรับ Desktop/Mobile ลดฟอร์มและตารางล้นจอ พร้อมพื้นที่เลื่อนแนวนอนที่ใช้งานง่ายขึ้น
+- เพิ่มการใช้งานด้วย Keyboard สำหรับข้ามไปพื้นที่ทำงาน สลับแท็บภาษา และปิดปฏิทิน
+- แสดงผลครั้งล่าสุดของ Product ใกล้รายการที่เลือก และแยกประวัติ Bundle ออกจากคิวปัจจุบัน
+- รักษาพฤติกรรม import, preview, queue และ create เดิม ไม่สร้างข้อมูลจริงระหว่างอัปเดต
 - ผู้ใช้ v0.1.31 ขึ้นไปกด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต”
 
 ## คุณสมบัติของเวอร์ชัน Local
@@ -40,5 +40,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.33 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.34 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

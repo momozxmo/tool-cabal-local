@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.33](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.33):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.34](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.34):
 
-- `All.for.Cabal.Web.Setup-0.1.33.exe`
-- `All.for.Cabal.Web.Setup-0.1.33.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.34.exe`
+- `All.for.Cabal.Web.Setup-0.1.34.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.33.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.33.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.34.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.34.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-1C8912D63A70854D3255239D3ADBA370B89AC86B95BF750C698046D4A19E417A
+9EEC748C73EE70F3AA10EC75943CA4F1BAAE4ECA6A8AFC40BA03F107AD68DC7F
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.33.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.34.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -69,24 +69,27 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. v0.1.33 — Import Bundle จาก Excel และก็อปวาง
+## 5. v0.1.34 — ปรับ Interface สำหรับงานทุกเครื่องมือ
 
-หน้า Bundle มีปุ่มดาวน์โหลด Template Excel สำหรับ Item ID บน Aztek ที่มีอยู่แล้ว
-หัวชุดใช้ชื่อบันเดิลและประเภท ส่วนรายการใช้ Item ID / จำนวน / Rarity / เรทสุ่ม
-ก็อปคอลัมน์ A:D มาวางได้โดยไม่ต้องพิมพ์ตัวคั่นเอง หรือเลือกไฟล์และ Sheet เพื่อพรีวิวก่อนเพิ่มเข้าคิวเดิม
+Item Finder, Bundle, Item Code, Event และ Product ใช้รูปแบบพื้นที่ทำงานเดียวกัน
+เพื่อให้เห็นเครื่องมือปัจจุบัน บริบทคิว และขั้นตอนถัดไปชัดขึ้น โดยยังใช้ import,
+preview, queue และ create flow เดิม
 
-รองรับ FIXED, CHOICE และ RANDOM รวมถึง Currency โดย RANDOM ต้องมีเรททุกแถวรวม 100%
-ชื่อที่ชนกับคิวเดิมจะเติมเลขท้ายให้เห็นในพรีวิว Item ID ซ้ำข้ามบันเดิลได้
-Import ไม่ตรวจว่า ID มีอยู่จริงและไม่สร้างข้อมูลบน Aztek อัตโนมัติ
+หน้าจอ 360–1600 px ลดปัญหาฟอร์มและตารางล้นจอ เพิ่มพื้นที่เลื่อนแนวนอน
+และปรับป้ายชื่อราคา/เวลาที่ Fetch ให้อ่านง่ายขึ้น รองรับ Keyboard สำหรับ Skip link,
+แท็บภาษา และการปิดปฏิทินด้วย Escape พร้อมคืน focus
 
-## 6. สถานะการตรวจ v0.1.33
+Product แสดงผลครั้งล่าสุดใกล้รายการในคิวที่เลือก และหน้า Bundle แยกผลรอบก่อน
+ออกจากคิวปัจจุบันให้ชัดเจน การเปลี่ยนแปลงนี้ไม่สร้างข้อมูลจริงบน Aztek อัตโนมัติ
 
-- Full suite: 1,507 passed, 1 warning (development-secret warning ในเทสต์)
+## 6. สถานะการตรวจ v0.1.34
+
+- Full suite: 1,541 passed, 1 warning (development-secret warning ในเทสต์)
 - Build โปรแกรม, helper และ Setup ผ่าน ตรวจ release tree และ SHA-256 ผ่าน
-- ขนาด Setup: 279,055,785 bytes
-- Source snapshot: f67e11390b16ef6e6317c0171b478a81551af8a3
-- ตรวจโมดูล Import ใน archive และเลขรุ่น 0.1.33 แล้ว
-- Template Excel และ JavaScript ในแพ็กมี SHA-256 ตรงกับ source
+- ขนาด Setup: 279,069,384 bytes
+- Source snapshot: 7a5f70ed142b3c7abe2c3bf4059c266e790e559c
+- ตรวจเลขรุ่น 0.1.34 ในแพ็กแล้ว
+- `workspace-ui.css` และ `workspace-ui.js` ในแพ็กมี SHA-256 ตรงกับ source
 - Setup ยังไม่มี digital signature
 - ยังไม่ติดตั้ง/เปิดรุ่นนี้บนเครื่องผู้ใช้ ตามคำขอให้คงโปรแกรมเดิมไว้ และยังไม่ได้ตรวจบน clean VM
 - ไม่ได้สร้างข้อมูลจริงบน Aztek
