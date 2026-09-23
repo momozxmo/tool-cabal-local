@@ -5,15 +5,22 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.35](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.35/All.for.Cabal.Web.Setup-0.1.35.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.35/All.for.Cabal.Web.Setup-0.1.35.exe.sha256)
-- [ดูหน้า Release v0.1.35](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.35)
+- [ดาวน์โหลด Setup v0.1.36](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.36/All.for.Cabal.Web.Setup-0.1.36.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.36/All.for.Cabal.Web.Setup-0.1.36.exe.sha256)
+- [ดูหน้า Release v0.1.36](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.36)
 
 SHA-256:
 
 ```text
-7F305FB0FC0CA3505BB631DE6143A964356312F5EC8935DDE6DFB962DB0C62F4
+8E58904E5E8D5AA6D088E0D85D8CC05FAF392E64E2B3D72A9C60BFF17A4A7B3F
 ```
+
+## v0.1.36 — แก้เรทสุ่ม Bundle RANDOM
+
+- กรอกเรทสุ่มจริงตาม ID ของช่องบน Aztek ให้ถูกแถว แม้มีหลายไอเทมใน Bundle
+- ไม่กรอกเรทโชว์แทนเรทสุ่มจริง และยังรองรับฟอร์มชื่อช่องแบบเดิม
+- รุ่นนี้ไม่มีฟีเจอร์ Recheck Bundle ที่ยังพักงานไว้
+- ผู้ใช้ v0.1.31 ขึ้นไปกด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต” เมื่อพร้อม
 
 ## v0.1.35 — รองรับ Excel 64 MB และตรวจรุ่นเซิร์ฟเวอร์
 
@@ -42,5 +49,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.35 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.36 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

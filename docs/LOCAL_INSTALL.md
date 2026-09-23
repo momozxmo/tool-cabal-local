@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.35](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.35):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.36](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.36):
 
-- `All.for.Cabal.Web.Setup-0.1.35.exe`
-- `All.for.Cabal.Web.Setup-0.1.35.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.36.exe`
+- `All.for.Cabal.Web.Setup-0.1.36.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.35.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.35.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.36.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.36.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-7F305FB0FC0CA3505BB631DE6143A964356312F5EC8935DDE6DFB962DB0C62F4
+8E58904E5E8D5AA6D088E0D85D8CC05FAF392E64E2B3D72A9C60BFF17A4A7B3F
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.35.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.36.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
