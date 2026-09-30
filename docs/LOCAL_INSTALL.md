@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.36](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.36):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.37](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.37):
 
-- `All.for.Cabal.Web.Setup-0.1.36.exe`
-- `All.for.Cabal.Web.Setup-0.1.36.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.37.exe`
+- `All.for.Cabal.Web.Setup-0.1.37.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.36.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.36.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.37.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.37.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-8E58904E5E8D5AA6D088E0D85D8CC05FAF392E64E2B3D72A9C60BFF17A4A7B3F
+AA3FFFB2E364001BC4B64198EED756E5ACD041EC8276F7C744B61CE3AAADF30A
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.36.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.37.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -69,7 +69,17 @@ Controller มีสามปุ่ม:
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. v0.1.35 — รองรับ Excel 64 MB และตรวจรุ่นเซิร์ฟเวอร์
+## 5. v0.1.37 — Bundle Recheck
+
+หลังสร้าง Bundle แต่ละรายการ ระบบอ่านข้อมูลที่บันทึกจริงแล้วเทียบเอกสารต้นฉบับ
+แสดงผลผ่าน ไม่ตรง ตรวจไม่สำเร็จ หรือตรวจได้บางส่วน พร้อมตารางต้นฉบับ ค่าที่ส่งสร้าง
+และค่าจริง คิวทำต่อและส่งเลขไปหน้าอื่นอัตโนมัติเฉพาะเมื่อผ่านครบ ผลอื่นต้องรับทราบ
+และยืนยันแยก ตรวจซ้ำจากเลขเดิมและเปิดประวัติหลังกลับเข้าโปรแกรมได้โดยไม่สร้างซ้ำ
+
+ข้อมูลต้นฉบับที่ไม่ครบ และ Currency ที่แสดงเพียงชื่อจนยืนยันรหัสไม่ได้ ยังเป็นผลตรวจได้บางส่วน
+รายละเอียดอยู่ใน [รายการเปลี่ยนแปลง](RELEASE_NOTES_v0.1.37.md)
+
+### รองรับ Excel 64 MB และตรวจรุ่นเซิร์ฟเวอร์จาก v0.1.35
 
 เพิ่มเพดานอัปโหลด Excel เป็น 64 MB ทั้ง backend และหน้า Import Bundle
 Launcher จะตรวจรุ่นก่อนใช้เซิร์ฟเวอร์ที่เปิดค้าง หากคนละรุ่นให้บันทึกงาน
@@ -88,14 +98,15 @@ preview, queue และ create flow เดิม
 Product แสดงผลครั้งล่าสุดใกล้รายการในคิวที่เลือก และหน้า Bundle แยกผลรอบก่อน
 ออกจากคิวปัจจุบันให้ชัดเจน การเปลี่ยนแปลงนี้ไม่สร้างข้อมูลจริงบน Aztek อัตโนมัติ
 
-## 6. สถานะการตรวจ v0.1.35
+## 6. สถานะการตรวจ v0.1.37
 
-- Targeted regression suite: 107 passed (Import, ขนาดไฟล์, Launcher และ updater)
+- Full automated suite: 1,641 passed, 2 warnings (development secrets และ pytest cache เขียนไม่ได้)
 - Build โปรแกรม, helper และ Setup ผ่าน ตรวจ release tree และ SHA-256 ผ่าน
-- ขนาด Setup: 279,082,952 bytes
-- Source snapshot: b0f952565790713ba39d3f4fa59b849cfd4a531e
-- ตรวจเลขรุ่น 0.1.35 ในแพ็กแล้ว
-- `bundle_import.js` ในแพ็กมี SHA-256 ตรงกับ source
+- ขนาด Setup: 279,104,501 bytes
+- Source snapshot: 71fffadb5b3baae4a79a46cd8be96a16ae6da30e
+- ตรวจเลขรุ่น 0.1.37 ในแพ็กและ Setup แล้ว
+- `bundles.html` ในแพ็กมี SHA-256 ตรงกับ source
+- เปิด packaged executable ด้วย runtime ทดสอบแยกผ่าน: health, Local login, Bundle Recheck UI และ history API
 - Setup ยังไม่มี digital signature
 - ยังไม่ติดตั้ง/เปิดรุ่นนี้บนเครื่องผู้ใช้ ตามคำขอให้คงโปรแกรมเดิมไว้ และยังไม่ได้ตรวจบน clean VM
 - ไม่ได้สร้างข้อมูลจริงบน Aztek

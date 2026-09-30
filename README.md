@@ -5,15 +5,26 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.36](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.36/All.for.Cabal.Web.Setup-0.1.36.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.36/All.for.Cabal.Web.Setup-0.1.36.exe.sha256)
-- [ดูหน้า Release v0.1.36](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.36)
+- [ดาวน์โหลด Setup v0.1.37](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.37/All.for.Cabal.Web.Setup-0.1.37.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.37/All.for.Cabal.Web.Setup-0.1.37.exe.sha256)
+- [ดูหน้า Release v0.1.37](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.37)
 
 SHA-256:
 
 ```text
-8E58904E5E8D5AA6D088E0D85D8CC05FAF392E64E2B3D72A9C60BFF17A4A7B3F
+AA3FFFB2E364001BC4B64198EED756E5ACD041EC8276F7C744B61CE3AAADF30A
 ```
+
+## v0.1.37 — Bundle Recheck
+
+- หลังสร้างแต่ละ Bundle ตรวจข้อมูลที่บันทึกจริงเทียบเอกสารต้นฉบับ รวม ItemKind, Option, Duration, จำนวน, Rarity และเรท RANDOM
+- ตรวจซ้ำจากเลข Bundle เดิมและกู้ประวัติหลังเปิดโปรแกรมใหม่ โดยไม่สร้างซ้ำ
+- แสดงต้นฉบับ ค่าที่ส่งสร้าง และค่าที่บันทึกจริง พร้อมประวัติแต่ละรอบและตัวกรองผล
+- ทำรายการถัดไปและส่งต่ออัตโนมัติเฉพาะผลผ่านครบ ผลอื่นต้องรับทราบและยืนยันแยก
+- ข้อมูลต้นฉบับขาดหรือ Currency แสดงเพียงชื่อจนยืนยันรหัสไม่ได้ จะขึ้น “ตรวจได้บางส่วน”
+- ทดสอบ 1,641 รายการผ่าน และตรวจเปิดแพ็กเกจด้วย runtime แยกผ่าน
+- [รายการเปลี่ยนแปลง](docs/RELEASE_NOTES_v0.1.37.md)
+- ผู้ใช้ v0.1.31 ขึ้นไปกด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต” เมื่อพร้อม
 
 ## v0.1.36 — แก้เรทสุ่ม Bundle RANDOM
 
@@ -49,5 +60,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.36 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.37 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
