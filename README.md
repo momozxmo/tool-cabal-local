@@ -5,15 +5,25 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.38](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.38/All.for.Cabal.Web.Setup-0.1.38.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.38/All.for.Cabal.Web.Setup-0.1.38.exe.sha256)
-- [ดูหน้า Release v0.1.38](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.38)
+- [ดาวน์โหลด Setup v0.1.39](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.39/All.for.Cabal.Web.Setup-0.1.39.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.39/All.for.Cabal.Web.Setup-0.1.39.exe.sha256)
+- [ดูหน้า Release v0.1.39](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.39)
 
 SHA-256:
 
 ```text
-A74DA81C327062F1DF5CC905A34A7C1DA0D7102A48CE1ABCDC21AD3F0469F782
+EF72023BD2B005CDCAA6A39030A5D1DABB9053BA62606090131E68C72027FCE3
 ```
+
+## v0.1.39 — ปรับการเลือกและแก้ไขข้อมูล Bundle
+
+- Item Finder แยกส่งเฉพาะที่เลือกและส่งทั้งหมด พร้อมจำนวนรายการ
+- Clear ข้อความและพรีวิวในกล่องวางข้อมูล โดยคงคิวที่เพิ่มไว้แล้ว
+- รองรับเรต RANDOM เป็น `0` ทั้งไอเทมและ Currency; การนำเข้ายังต้องรวม `100%`
+- แสดงชื่อ Currency เต็มบรรทัด รองรับชื่อยาวและจอเล็ก
+- ทดสอบอัตโนมัติ 1,701 รายการผ่าน ครอบคลุม Desktop/Mobile, Keyboard และ Overflow
+- [รายการเปลี่ยนแปลง](docs/RELEASE_NOTES_v0.1.39.md)
+- ผู้ใช้ v0.1.31 ขึ้นไปกด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต” เมื่อพร้อม
 
 ## v0.1.38 — เลือกเบราว์เซอร์จาก Launcher
 
@@ -70,5 +80,5 @@ A74DA81C327062F1DF5CC905A34A7C1DA0D7102A48CE1ABCDC21AD3F0469F782
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.38 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.39 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

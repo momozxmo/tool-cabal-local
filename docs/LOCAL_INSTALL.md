@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.38](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.38):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.39](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.39):
 
-- `All.for.Cabal.Web.Setup-0.1.38.exe`
-- `All.for.Cabal.Web.Setup-0.1.38.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.39.exe`
+- `All.for.Cabal.Web.Setup-0.1.39.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.38.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.38.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.39.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.39.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-A74DA81C327062F1DF5CC905A34A7C1DA0D7102A48CE1ABCDC21AD3F0469F782
+EF72023BD2B005CDCAA6A39030A5D1DABB9053BA62606090131E68C72027FCE3
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.38.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.39.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -81,7 +81,20 @@ session ในเบราว์เซอร์เดิมยังอยู่
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. v0.1.37 — Bundle Recheck
+## 5. v0.1.39 — การเลือกและแก้ไขข้อมูล Bundle
+
+Item Finder มีปุ่มส่งเฉพาะที่เลือกและส่งทั้งหมดแยกกัน พร้อมจำนวนรายการ
+กล่องวางข้อมูลมี Clear ข้อมูลเพื่อล้างข้อความและพรีวิว โดยไม่ลบคิวที่เพิ่มแล้ว
+Bundle RANDOM รองรับเรต `0` ทั้งไอเทมและ Currency แต่การนำเข้ายังต้องรวม `100%`
+ชื่อ Currency ที่เพิ่มจะแสดงเต็มบรรทัด รวมถึงชื่อยาวบนจอเล็ก
+
+Document Reference ยังคงเอกสารต้นฉบับครบ หากส่งเพียงบางไอเทม Recheck อาจแสดงรายการขาด
+รายละเอียดและข้อจำกัดอยู่ใน [รายการเปลี่ยนแปลง v0.1.39](RELEASE_NOTES_v0.1.39.md)
+ทดสอบอัตโนมัติ 1,701 รายการผ่าน และตรวจ health, Local session, ทุกหน้าเครื่องมือ,
+UI ใหม่และการนำเข้าเรต 0 จากแพ็กเกจจริงด้วย runtime แยกผ่านแล้ว
+ยังไม่ติดตั้งทับเครื่องผู้ใช้ ไม่ทดสอบบน clean VM และไม่สร้างจริงบน Aztek
+
+### v0.1.37 — Bundle Recheck
 
 หลังสร้าง Bundle แต่ละรายการ ระบบอ่านข้อมูลที่บันทึกจริงแล้วเทียบเอกสารต้นฉบับ
 แสดงผลผ่าน ไม่ตรง ตรวจไม่สำเร็จ หรือตรวจได้บางส่วน พร้อมตารางต้นฉบับ ค่าที่ส่งสร้าง
