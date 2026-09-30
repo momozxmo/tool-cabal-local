@@ -5,15 +5,25 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.37](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.37/All.for.Cabal.Web.Setup-0.1.37.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.37/All.for.Cabal.Web.Setup-0.1.37.exe.sha256)
-- [ดูหน้า Release v0.1.37](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.37)
+- [ดาวน์โหลด Setup v0.1.38](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.38/All.for.Cabal.Web.Setup-0.1.38.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.38/All.for.Cabal.Web.Setup-0.1.38.exe.sha256)
+- [ดูหน้า Release v0.1.38](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.38)
 
 SHA-256:
 
 ```text
-AA3FFFB2E364001BC4B64198EED756E5ACD041EC8276F7C744B61CE3AAADF30A
+A74DA81C327062F1DF5CC905A34A7C1DA0D7102A48CE1ABCDC21AD3F0469F782
 ```
+
+## v0.1.38 — เลือกเบราว์เซอร์จาก Launcher
+
+- เลือก Default/Chrome/Edge/Firefox เพื่อเปิดหน้า All for Cabal และจำตัวที่เปิดสำเร็จล่าสุด
+- เปิดแต่ละครั้งพร้อมสิทธิ์เข้าเว็บใหม่ ไม่ต้องใช้เบราว์เซอร์ Default เพียงตัวเดียว
+- ถ้าไม่พบหรือเปิดตัวที่เลือกไม่ได้ จะแจ้งให้เลือกใหม่ ไม่เปิด Default แทนเอง
+- ตัวเลือกนี้ไม่เปลี่ยน Chromium ที่ใช้ทำงานอัตโนมัติบน Aztek และไม่ย้ายร่าง/คิวข้ามเบราว์เซอร์
+- ทดสอบ 1,662 รายการผ่าน และตรวจแพ็กเกจจริงด้วย runtime แยกผ่าน
+- [รายการเปลี่ยนแปลง](docs/RELEASE_NOTES_v0.1.38.md)
+- ผู้ใช้ v0.1.31 ขึ้นไปกด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต” เมื่อพร้อม
 
 ## v0.1.37 — Bundle Recheck
 
@@ -60,5 +70,5 @@ AA3FFFB2E364001BC4B64198EED756E5ACD041EC8276F7C744B61CE3AAADF30A
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.37 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.38 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

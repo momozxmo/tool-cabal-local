@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.37](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.37):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.38](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.38):
 
-- `All.for.Cabal.Web.Setup-0.1.37.exe`
-- `All.for.Cabal.Web.Setup-0.1.37.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.38.exe`
+- `All.for.Cabal.Web.Setup-0.1.38.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.37.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.37.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.38.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.38.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-AA3FFFB2E364001BC4B64198EED756E5ACD041EC8276F7C744B61CE3AAADF30A
+A74DA81C327062F1DF5CC905A34A7C1DA0D7102A48CE1ABCDC21AD3F0469F782
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.37.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.38.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -36,6 +36,18 @@ Controller มีสามปุ่ม:
 - `เปิดหน้าเว็บ` เปิดแท็บใหม่โดยใช้ server เดิม
 - `เริ่มใหม่` หยุดและเริ่ม local server ใหม่
 - `ปิดโปรแกรม` หยุด server และปิด Controller
+
+### เลือกเบราว์เซอร์
+
+ตั้งแต่ v0.1.38 ช่อง `เปิดเว็บด้วยเบราว์เซอร์` เลือก Default ตาม Windows,
+Google Chrome, Microsoft Edge หรือ Mozilla Firefox แล้วกด `เปิดหน้าเว็บ`
+โปรแกรมจำตัวที่เปิดสำเร็จล่าสุด รวมถึงเมื่อกด shortcut ซ้ำ ถ้าตัวที่เลือกไม่ได้ติดตั้ง
+หรือเปิดไม่สำเร็จ จะแจ้งให้เลือกตัวอื่น ไม่เปิด Default แทนเอง
+
+ทุกครั้งจะขอสิทธิ์เข้าเว็บใหม่ให้เบราว์เซอร์นั้น การคัดลอกเฉพาะ URL
+`http://127.0.0.1:8000` ไปอีกเบราว์เซอร์ไม่ให้สิทธิ์เข้าใช้งานโดยอัตโนมัติ
+session ในเบราว์เซอร์เดิมยังอยู่ แต่ร่าง/คิวที่เก็บในเบราว์เซอร์ไม่ย้ายตาม
+ตรวจหรือสำรองงานก่อนเปลี่ยน ตัวเลือกนี้ไม่เปลี่ยน Chromium สำหรับทำงานบน Aztek
 
 ## 3. เชื่อม Aztek
 
