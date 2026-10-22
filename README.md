@@ -5,15 +5,25 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.39](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.39/All.for.Cabal.Web.Setup-0.1.39.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.39/All.for.Cabal.Web.Setup-0.1.39.exe.sha256)
-- [ดูหน้า Release v0.1.39](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.39)
+- [ดาวน์โหลด Setup v0.1.40](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.40/All.for.Cabal.Web.Setup-0.1.40.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.40/All.for.Cabal.Web.Setup-0.1.40.exe.sha256)
+- [ดูหน้า Release v0.1.40](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.40)
 
 SHA-256:
 
 ```text
-EF72023BD2B005CDCAA6A39030A5D1DABB9053BA62606090131E68C72027FCE3
+31ABC0280BC9D055142884369C6A4E243E6DBCBC89807B10C44FE82BB6DD28FF
 ```
+
+## v0.1.40 — ตรวจเองครบแล้ว สร้างทุกบันเดิลต่อเนื่อง
+
+- เพิ่มปุ่มแยกพร้อมยืนยันครั้งเดียวสำหรับคิวและเกมปัจจุบัน ไม่เปิดโหมดถาวร
+- ทำต่อเมื่อบันทึกสำเร็จและมี Bundle ID แม้ Recheck ไม่ผ่านครบ โดยเก็บผลตรวจจริงไว้
+- ยังหยุดเมื่อกรอกไม่ครบ บันทึกไม่สำเร็จ ผลไม่แน่นอน หรือไม่มี ID; ปุ่มสร้างเดิมคงพฤติกรรมเดิม
+- ไม่อนุมัติส่งผลที่ไม่ผ่านไป Event/Product อัตโนมัติ และคงการป้องกันสร้างซ้ำ
+- ทดสอบ full 2,113 รายการผ่าน และตรวจแพ็กเกจด้วยข้อมูลทดสอบแยกผ่าน
+- [รายการเปลี่ยนแปลงและข้อจำกัด](docs/RELEASE_NOTES_v0.1.40.md)
+- กด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต” เมื่อพร้อม; ไม่ติดตั้งทับให้เอง
 
 ## v0.1.39 — ปรับการเลือกและแก้ไขข้อมูล Bundle
 
@@ -80,5 +90,5 @@ EF72023BD2B005CDCAA6A39030A5D1DABB9053BA62606090131E68C72027FCE3
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.39 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.40 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
