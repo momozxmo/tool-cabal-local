@@ -5,15 +5,24 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.40](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.40/All.for.Cabal.Web.Setup-0.1.40.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.40/All.for.Cabal.Web.Setup-0.1.40.exe.sha256)
-- [ดูหน้า Release v0.1.40](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.40)
+- [ดาวน์โหลด Setup v0.1.41](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.41/All.for.Cabal.Web.Setup-0.1.41.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.41/All.for.Cabal.Web.Setup-0.1.41.exe.sha256)
+- [ดูหน้า Release v0.1.41](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.41)
 
 SHA-256:
 
 ```text
-31ABC0280BC9D055142884369C6A4E243E6DBCBC89807B10C44FE82BB6DD28FF
+D2CD801DB6D522FE7712711F09F5334F5D209D6F1290F7BEA5F7B12AE98AB5B8
 ```
+
+## v0.1.41 — รวม ID-first ล่าสุดกับบันเดิลต่อเนื่อง
+
+- รวม Event/Product/Item Code ID-first และคงปุ่มตรวจเองครบแล้วจาก0.1.40
+- รักษาผล Recheck จริงและการยืนยันส่งต่อแยก; ไม่ข้าม safety gates หรือส่งสร้างซ้ำ
+- เพิ่ม guard หยุด Create เมื่อปุ่มหรือฟอร์มถูกซ่อนหลังตรวจความพร้อม
+- Full2,749passed1warning และแพ็กเกจจริงด้วย runtime แยกผ่าน; ไม่สร้าง Aztek จริง
+- [รายการเปลี่ยนแปลงและข้อจำกัด](docs/RELEASE_NOTES_v0.1.41.md)
+- ผู้ใช้เลือกอัปเดตเอง; actual install/reopen/ร่างและคิวยังต้องตรวจหลังอัปเดต
 
 ## v0.1.40 — ตรวจเองครบแล้ว สร้างทุกบันเดิลต่อเนื่อง
 
@@ -90,5 +99,5 @@ SHA-256:
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.40 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.41 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์

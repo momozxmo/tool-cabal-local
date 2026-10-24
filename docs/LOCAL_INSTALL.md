@@ -2,29 +2,29 @@
 
 ## 1. ดาวน์โหลดและตรวจไฟล์
 
-ดาวน์โหลดสองไฟล์จาก [Release v0.1.40](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.40):
+ดาวน์โหลดสองไฟล์จาก [Release v0.1.41](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.41):
 
-- `All.for.Cabal.Web.Setup-0.1.40.exe`
-- `All.for.Cabal.Web.Setup-0.1.40.exe.sha256`
+- `All.for.Cabal.Web.Setup-0.1.41.exe`
+- `All.for.Cabal.Web.Setup-0.1.41.exe.sha256`
 
 เปิด PowerShell ในโฟลเดอร์ Downloads แล้วใช้คำสั่ง:
 
 ```powershell
-Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.40.exe" -Algorithm SHA256
-Get-Content ".\All.for.Cabal.Web.Setup-0.1.40.exe.sha256"
+Get-FileHash ".\All.for.Cabal.Web.Setup-0.1.41.exe" -Algorithm SHA256
+Get-Content ".\All.for.Cabal.Web.Setup-0.1.41.exe.sha256"
 ```
 
 ค่าที่ถูกต้องคือ:
 
 ```text
-31ABC0280BC9D055142884369C6A4E243E6DBCBC89807B10C44FE82BB6DD28FF
+D2CD801DB6D522FE7712711F09F5334F5D209D6F1290F7BEA5F7B12AE98AB5B8
 ```
 
 ถ้าค่าไม่ตรง ห้ามเปิด Setup และให้ดาวน์โหลดไฟล์ใหม่
 
 ## 2. ติดตั้งและเปิดโปรแกรม
 
-1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.40.exe`
+1. ดับเบิลคลิก `All.for.Cabal.Web.Setup-0.1.41.exe`
 2. ติดตั้งตามขั้นตอนปกติ
 3. เลือกสร้างไอคอน Desktop ได้ตามต้องการ
 4. หน้าสุดท้ายปล่อยเครื่องหมาย `เปิด All for Cabal Web` ไว้ แล้วกด Finish
@@ -81,7 +81,16 @@ session ในเบราว์เซอร์เดิมยังอยู่
 
 การถอนการติดตั้งจะลบเฉพาะไฟล์โปรแกรม ส่วนฐานข้อมูล, config และ backup จะยังอยู่ หากต้องการลบข้อมูลถาวร ให้สำรองข้อมูลก่อนแล้วลบโฟลเดอร์ข้างต้นด้วยตนเอง
 
-## 5. v0.1.40 — ตรวจเองครบแล้ว สร้างทุกบันเดิลต่อเนื่อง
+## 5. v0.1.41 — รวม ID-first ล่าสุดกับบันเดิลต่อเนื่อง
+
+รวม Event/Product/Item Code ID-first กับปุ่มตรวจเองครบแล้วจาก0.1.40
+คงผล Recheck จริง/history และยืนยันส่งต่อแยก ไม่ข้าม incomplete/save-failure/uncertain/no-ID guards
+เพิ่ม guard ไม่กด Create เมื่อปุ่มหรือฟอร์มถูกซ่อนหลัง actionability trial
+Full2,749passed1warning/แพ็กเกจจริง runtimeแยกผ่าน โดยไม่สร้างข้อมูล Aztek จริง
+ดู [รายการเปลี่ยนแปลงและข้อจำกัด](RELEASE_NOTES_v0.1.41.md)
+การอัปเดตจริง/เปิดกลับ/ร่างและคิวต้องตรวจหลังผู้ใช้เลือกอัปเดตเอง; ไม่ได้ติดตั้งทับให้
+
+### v0.1.40 — ตรวจเองครบแล้ว สร้างทุกบันเดิลต่อเนื่อง
 
 เพิ่มปุ่มแยกสำหรับยืนยันตรวจเองครบแล้วครั้งเดียว ทำคิวของเกมปัจจุบันต่อเมื่อบันทึกสำเร็จและมี Bundle ID
 แม้ Recheck ไม่ผ่านครบ โดยคงผลตรวจจริงไว้และไม่อนุมัติส่งต่อให้อัตโนมัติ
