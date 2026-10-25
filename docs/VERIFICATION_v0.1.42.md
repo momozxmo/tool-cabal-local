@@ -34,7 +34,14 @@ DFA19F814791C221A0BBCBC1C523A663B6EB7C5B47F3E446BE961A7D741D0343
 Sidecar102bytes SHA-256: `5E78780D4452D3B038234568E24762B84CEFF38C3D6F69EC7D55866ADDEB8F50`
 ข้อความ checksum อ้างชื่อไฟล์ build ที่มีช่องว่าง; GitHub เปลี่ยนชื่อ asset เป็นจุดได้ ให้เทียบ digest กับไฟล์ที่ดาวน์โหลดจริง
 
-## ข้อจำกัด
+## ผลเผยแพร่และดาวน์โหลดกลับ
+
+เผยแพร่ stable/latest v0.1.42 วันที่25ตุลาคม2026 เวลา14:37:23Z แล้ว (draftfalse/prereleasefalse)
+ดาวน์โหลดทั้งสอง asset จาก GitHub ลงโฟลเดอร์หลักฐานใหม่สำเร็จ exit0; Setup279167040bytes และ sidecar102bytes มี SHA256ตรงค่าข้างต้นและไฟล์ build
+ตรวจ API asset digests/size และข้อความ Release ตรงกับคำอธิบายที่ตัวอัปเดตอ่าน
+ทดสอบ discovery แบบอ่านอย่างเดียวโดยจำลองรุ่นเดิม0.1.41 พบ available0.1.42 ไม่ได้เรียกติดตั้งหรือแก้ข้อมูลผู้ใช้
+
+## ข้อจำกัดหลังส่งมอบ
 
 Setup ยัง unsigned; clean-VM installation และ actual user update/reopen/ร่างและคิวเดิมยังไม่ยืนยัน
 การทดสอบ local/synthetic ไม่รับรองทุก live DOM/state/navigation variant และไม่ให้สิทธิ์สร้างข้อมูลจริงเพิ่ม
