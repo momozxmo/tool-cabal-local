@@ -5,15 +5,25 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.41](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.41/All.for.Cabal.Web.Setup-0.1.41.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.41/All.for.Cabal.Web.Setup-0.1.41.exe.sha256)
-- [ดูหน้า Release v0.1.41](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.41)
+- [ดาวน์โหลด Setup v0.1.42](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.42/All.for.Cabal.Web.Setup-0.1.42.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.42/All.for.Cabal.Web.Setup-0.1.42.exe.sha256)
+- [ดูหน้า Release v0.1.42](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.42)
 
 SHA-256:
 
 ```text
-D2CD801DB6D522FE7712711F09F5334F5D209D6F1290F7BEA5F7B12AE98AB5B8
+DFA19F814791C221A0BBCBC1C523A663B6EB7C5B47F3E446BE961A7D741D0343
 ```
+
+## v0.1.42 — ตรวจ Bundle แม่นยำขึ้น และดูจุดที่ต้องแก้ง่ายขึ้น
+
+- จับคู่ไอเทมที่คุณสมบัติเหมือนกันแต่ Rarity/เรทต่างกันได้แม่นยำขึ้น แม้สลับลำดับ
+- แยกอ่านไม่ครบออกจากข้อมูลไม่ตรง และกรองดูแถวที่มีปัญหาได้ทั้งผลล่าสุดกับประวัติ
+- ไม่เปลี่ยนผลตรวจจริงหรือข้ามการยืนยันส่งต่อ คิวต่อเนื่องใช้กติกาเดิม
+- ทดสอบ2,777รายการผ่าน ตรวจแพ็กเกจ/โปรไฟล์ทดสอบแยกแล้ว ไม่สร้างข้อมูลจริงบน Aztek
+- ไม่รวมการแก้ WR ที่พักไว้ และไม่เพิ่ม New Item
+- [รายการเปลี่ยนแปลง](docs/RELEASE_NOTES_v0.1.42.md) / [หลักฐานการตรวจ](docs/VERIFICATION_v0.1.42.md)
+- กด “อัปเดตโปรแกรม” → “ตรวจอัปเดต” → “อัปเดต” เมื่อพร้อม หรือ “ไว้ก่อน”; หลังอัปเดตตรวจเลขรุ่นและร่าง/คิวเดิม
 
 ## v0.1.41 — เลือกช่อง Aztek แม่นยำขึ้น และสร้างบันเดิลต่อเนื่อง
 
@@ -100,5 +110,5 @@ D2CD801DB6D522FE7712711F09F5334F5D209D6F1290F7BEA5F7B12AE98AB5B8
 
 อ่านขั้นตอนทั้งหมดได้ที่ [คู่มือติดตั้ง](docs/LOCAL_INSTALL.md)
 
-> ตัวติดตั้ง v0.1.41 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
+> ตัวติดตั้ง v0.1.42 ยังไม่มี digital signature Windows อาจแสดง `Unknown publisher`
 > หรือคำเตือน SmartScreen กรุณาตรวจ SHA-256 ก่อนเปิดไฟล์
