@@ -1,6 +1,6 @@
 # v0.1.43 verification
 
-Status: package verified; public download verification pending until release publication.
+Status: delivered — stable/latestv0.1.43 published and publicSetup/sidecardownloaded withsize/SHA256/APIdigests equalbuild. Issue#12CLOSED/COMPLETED. Actualuserinstall/reopen remainsunverified.
 
 - Source394af5647645d0b33a550e5ef2f9009a694eb1d0; New Item37source/testfiles, existing Bundle/ID-first retained, no heldWR changes.
 - ExactFULL6:3108passed1warning10333.65s,28October2026 17:47:41.844849Asia/Bangkok; wrapper/raw/signed0; actual/aggregate/uniqueJUnit3108/0failure0error0skip; evidence_errors[].
@@ -13,4 +13,6 @@ Status: package verified; public download verification pending until release pub
 - ExistingRuntimeWarningtest_local_runtime.py86/process-localdevelopmentsecrets retained, notwarning-free. Earlierverificationhelpererror(PILdeletes_versionattribute) wasdiagnosed/fixedonlyinverifier; noartifactrebuild.
 - Actualuserinstall/reopen/draftpreservation, signing, cleanVM, all-livevariants/Premiumlivecreate/imagepixelacceptance unverified. Entirelylostproof staysUnconfirmed. Singlelocalprocessscope, notmultiworkerdeployment.
 
-Public Setup/sidecar size/hash and stablelatest status will be verified after publication before delivery is declared complete.
+Publicrelease426574351 published2026-10-28T11:19:35Z/18:19:35Asia/Bangkok, stable/latesttrue/draftfalse/prereleasefalse. Freshdownloadverified18:21:04Bangkok:Setup281178982bytes/609F98EFE3EBE0BEC5C8A762DD24F8B7731E079AC583CD8A288CC6A99135A3B3 andsidecar102bytes/6D31ED8D4AE0B7120FFFD95ABA4A6445D9016FD72D8365B4760944B4221B9061 matchactualbuildandAPIdigests; notesidentical. ActualassetnameshaveGitHubdots, sidecarcontainsoriginalspacedfilename withbinarymarker, noartifactchanged.
+
+Source394af564 andacceptance/docs323e394 pushednormalfastforward; publicdocs/tag32661245 pushedatomically, noforce/PR. RealUpdateIO latestdiscoveryusingold0.1.42simulation seesavailable0.1.43+identicalnotes/assets2 withoutdownloading/installing. Issue#12closedcompleted2026-10-28T11:22:45Z/18:22:45Bangkokafterallgates andreadbackconfirmed. Userinstallation/reopen/draftpreservation stillnotclaimed.
