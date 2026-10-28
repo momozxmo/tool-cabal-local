@@ -5,15 +5,24 @@
 
 ## ดาวน์โหลด
 
-- [ดาวน์โหลด Setup v0.1.42](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.42/All.for.Cabal.Web.Setup-0.1.42.exe)
-- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.42/All.for.Cabal.Web.Setup-0.1.42.exe.sha256)
-- [ดูหน้า Release v0.1.42](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.42)
+- [ดาวน์โหลด Setup v0.1.43](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.43/All.for.Cabal.Web.Setup-0.1.43.exe)
+- [ดาวน์โหลดไฟล์ SHA-256](https://github.com/momozxmo/tool-cabal-local/releases/download/v0.1.43/All.for.Cabal.Web.Setup-0.1.43.exe.sha256)
+- [ดูหน้า Release v0.1.43](https://github.com/momozxmo/tool-cabal-local/releases/tag/v0.1.43)
 
 SHA-256:
 
 ```text
-DFA19F814791C221A0BBCBC1C523A663B6EB7C5B47F3E446BE961A7D741D0343
+609F98EFE3EBE0BEC5C8A762DD24F8B7731E079AC583CD8A288CC6A99135A3B3
 ```
+
+## v0.1.43 — สร้างและตรวจ Item ก่อนนำไปจัด Bundle
+
+- เตรียมร่างจาก Excel หรือ Finder เลือกใช้ Item เดิมหรือยืนยันสร้างใหม่เอง แล้วตรวจข้อมูลที่บันทึกเทียบต้นฉบับ
+- รองรับ PC/M TH/SEA คง Amt และแถวอ้างอิง ส่งต่อเฉพาะผลผ่านที่เลือก ไม่เพิ่มคิว Bundle ให้อัตโนมัติ
+- เก็บ ID/ประวัติ หยุดเมื่อไม่ตรงหรือยังยืนยันไม่ได้ ไม่สร้างซ้ำ และไม่เปลี่ยนผลให้ผ่านจากการรับทราบ
+- ทดสอบ3,108กรณีผ่าน ตรวจแพ็กเกจ/ข้อมูลแยกแล้ว ไม่สร้าง Aztek เพิ่มในการตรวจรีลีส
+- [วิธีใช้และข้อจำกัด](docs/RELEASE_NOTES_v0.1.43.md) / [หลักฐานการตรวจ](docs/VERIFICATION_v0.1.43.md)
+- เลือก “อัปเดต” หรือ “ไว้ก่อน” ได้ หลังอัปเดตตรวจเลขรุ่นและร่าง/คิวของตัวเอง
 
 ## v0.1.42 — ตรวจ Bundle แม่นยำขึ้น และดูจุดที่ต้องแก้ง่ายขึ้น
 
